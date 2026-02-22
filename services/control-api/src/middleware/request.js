@@ -2,6 +2,7 @@
 
 const { randomUUID } = require("crypto");
 const { observeRequest } = require("../services/metrics");
+const { recordErrorEvent } = require("../services/error-store");
 const { getRequestIp, getUserAgent } = require("../utils/http");
 const { logInfo } = require("../utils/logger");
 
@@ -30,6 +31,24 @@ function requestLogger(req, res, next) {
       statusCode: res.statusCode,
       durationMs: Number(durationMs.toFixed(2))
     });
+
+    if (res.statusCode >= 500) {
+      recordErrorEvent({
+        event: "http.5xx.response",
+        env: process.env.NODE_ENV || "development",
+        service: "control-api",
+        fields: {
+          requestId: req.requestId || null,
+          method: req.method,
+          path: routePath || req.originalUrl || req.url,
+          statusCode: res.statusCode
+        },
+        error: {
+          name: "Http5xxResponse",
+          message: `Response status ${res.statusCode}`
+        }
+      });
+    }
 
     logInfo("http.request.completed", {
       requestId: req.requestId || null,

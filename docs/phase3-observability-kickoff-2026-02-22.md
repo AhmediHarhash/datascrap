@@ -11,6 +11,8 @@
   - `services/control-api/scripts/uptime-monitor.js`
 - GitHub repo variable set:
   - `UPTIME_URLS` for staging+production `healthz` targets
+- Uptime workflow failure path now auto-creates/updates GitHub issue:
+  - `Uptime Monitor Incident`
 - Alert runbook published:
   - `docs/observability-alert-runbook-2026-02-22.md`
 
@@ -43,6 +45,6 @@
 
 ## Next Implementation Tasks
 1) Set `OBSERVABILITY_API_KEY` and dashboard/monitor secrets in all environments.
-2) Configure `vars.UPTIME_URLS` and optional alert webhooks in GitHub Actions.
+2) Configure optional alert webhooks in GitHub Actions (`ALERT_WEBHOOK_URL`, `ALERT_WEBHOOK_BEARER_TOKEN`).
 3) Connect `ERROR_TRACKING_WEBHOOK_URL` to your incident channel destination.
 4) Assign primary/secondary owners in runbook.

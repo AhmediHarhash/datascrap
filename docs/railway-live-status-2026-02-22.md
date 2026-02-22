@@ -118,6 +118,13 @@
   - `.github/workflows/uptime-monitor.yml`
 - Repo variable configured:
   - `UPTIME_URLS=https://control-api-staging-98c0.up.railway.app/healthz,https://control-api-production-e750.up.railway.app/healthz`
+- Failure fallback enabled:
+  - workflow auto-creates/updates issue `Uptime Monitor Incident`
 - Optional secrets to configure:
   - `ALERT_WEBHOOK_URL`
   - `ALERT_WEBHOOK_BEARER_TOKEN`
+
+## Error Tracking
+- API endpoint available:
+  - `GET /api/observability/errors/recent` (protected by `X-Observability-Key`)
+- Errors logged through `logError(...)` are retained in bounded in-memory buffer for fast triage.

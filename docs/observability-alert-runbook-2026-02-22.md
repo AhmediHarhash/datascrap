@@ -8,7 +8,13 @@
   - `GET /healthz` uptime monitor checks
   - structured API logs (`http.request.completed`)
   - `GET /api/observability/slo`
+  - `GET /api/observability/errors/recent`
   - `GET /metrics`
+
+## Automatic Alert Channel
+- GitHub workflow `Uptime Monitor` automatically opens or comments on issue:
+  - title: `Uptime Monitor Incident`
+- This is active even when external webhook secrets are not configured.
 
 ## Alert Thresholds
 1) Availability alert:
@@ -72,4 +78,3 @@
 - Primary owner: `TBD`
 - Secondary owner: `TBD`
 - Escalation contact: `TBD`
-

@@ -27,6 +27,7 @@ npm run start:control-api
 - `POST /api/devices/remove`
 - `POST /api/devices/rename`
 - `GET /api/observability/slo`
+- `GET /api/observability/errors/recent`
 - `GET /metrics`
 
 ## Smoke Test

@@ -2,6 +2,7 @@
 
 const { config } = require("../config");
 const { captureError } = require("../services/error-tracker");
+const { recordErrorEvent } = require("../services/error-store");
 
 function baseEntry(level, event, fields = {}) {
   return {
@@ -40,6 +41,13 @@ function logError(event, error, fields = {}) {
     error: sanitizeError(error)
   });
   console.error(JSON.stringify(payload));
+  recordErrorEvent({
+    event,
+    env: config.nodeEnv,
+    service: "control-api",
+    fields,
+    error: payload.error
+  });
   captureError(event, error, fields);
 }
 

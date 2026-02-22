@@ -2,6 +2,7 @@
 
 const { Router } = require("express");
 const { config } = require("../config");
+const { listRecentErrors, getErrorSummary } = require("../services/error-store");
 const { currentWindowSnapshot, toPrometheus } = require("../services/metrics");
 
 const router = Router();
@@ -29,6 +30,18 @@ router.get("/api/observability/slo", requireObservabilityKey, (_req, res) => {
   return res.status(200).json(currentWindowSnapshot());
 });
 
+router.get("/api/observability/errors/recent", requireObservabilityKey, (req, res) => {
+  if (!config.enableMetricsEndpoint) {
+    return res.status(404).json({ error: "Observability endpoints are disabled" });
+  }
+
+  const limit = Number(req.query.limit || 50);
+  return res.status(200).json({
+    summary: getErrorSummary(),
+    items: listRecentErrors(limit)
+  });
+});
+
 router.get("/metrics", requireObservabilityKey, (_req, res) => {
   if (!config.enableMetricsEndpoint) {
     return res.status(404).send("Not found");
@@ -42,4 +55,3 @@ router.get("/metrics", requireObservabilityKey, (_req, res) => {
 module.exports = {
   observabilityRouter: router
 };
-

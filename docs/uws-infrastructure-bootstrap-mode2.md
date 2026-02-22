@@ -85,7 +85,7 @@ Tracking doc:
 - `docs/observability-alert-runbook-2026-02-22.md`
 Checklist:
 - [x] uptime monitor on `/healthz`
-- [ ] error tracking enabled
+- [x] error tracking enabled
 - [ ] auth/license/device dashboards
 - [x] alert thresholds:
   - 5xx spike
