@@ -1,0 +1,21 @@
+{
+  "name": "datascrap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Datascrap control plane bootstrap",
+  "scripts": {
+    "start": "node services/control-api/src/server.js",
+    "start:control-api": "node services/control-api/src/server.js",
+    "dev:control-api": "node --watch services/control-api/src/server.js",
+    "smoke:control-api": "node services/control-api/scripts/smoke.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.13.1"
+  }
+}
+
