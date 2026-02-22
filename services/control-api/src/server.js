@@ -2,10 +2,8 @@
 
 require("dotenv").config();
 
-const cors = require("cors");
 const express = require("express");
 const helmet = require("helmet");
-const morgan = require("morgan");
 
 const { authRouter } = require("./routes/auth");
 const { configRouter } = require("./routes/config");
@@ -13,14 +11,18 @@ const { devicesRouter } = require("./routes/devices");
 const { licenseRouter } = require("./routes/license");
 const { config } = require("./config");
 const { closePool, runDbProbe } = require("./db/pool");
+const { corsPolicy } = require("./middleware/cors");
+const { attachRequestContext, requestLogger } = require("./middleware/request");
+const { logError, logInfo } = require("./utils/logger");
 
 const app = express();
 
 app.set("trust proxy", 1);
 app.use(helmet());
-app.use(cors());
+app.use(attachRequestContext);
+app.use(corsPolicy);
 app.use(express.json({ limit: "1mb" }));
-app.use(morgan("tiny"));
+app.use(requestLogger);
 
 app.get("/", (_req, res) => {
   res.status(200).json({
@@ -81,18 +83,26 @@ app.use((_req, res) => {
 });
 
 app.use((error, _req, res, _next) => {
-  console.error("[control-api] unhandled error:", error);
+  logError("http.unhandled.error", error, {
+    requestId: _req.requestId || null,
+    path: _req.originalUrl || _req.url,
+    method: _req.method
+  });
   res.status(500).json({ error: "Internal server error" });
 });
 
 const server = app.listen(config.port, () => {
-  console.log(`[control-api] listening on port ${config.port} (${config.nodeEnv})`);
+  logInfo("server.started", {
+    port: config.port,
+    env: config.nodeEnv
+  });
 });
 
 async function shutdown(signal) {
-  console.log(`[control-api] received ${signal}, shutting down`);
+  logInfo("server.shutdown.started", { signal });
   server.close(async () => {
     await closePool();
+    logInfo("server.shutdown.completed", { signal });
     process.exit(0);
   });
 }
@@ -104,4 +114,3 @@ process.on("SIGTERM", () => {
 process.on("SIGINT", () => {
   void shutdown("SIGINT");
 });
-

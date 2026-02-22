@@ -5,10 +5,35 @@ const { Router } = require("express");
 const { config } = require("../config");
 const { query, withTransaction } = require("../db/pool");
 const { requireAuth } = require("../middleware/auth");
+const { createRateLimiter, ipRateLimitKey } = require("../middleware/rate-limit");
 const { logAudit } = require("../services/audit");
+const {
+  getIdempotencyKey,
+  loadIdempotentResponse,
+  storeIdempotentResponse
+} = require("../services/idempotency");
 const { hashLicenseKey } = require("../utils/security");
 
 const router = Router();
+const rateLimitWindowMs = Math.max(1, config.rateLimitWindowSeconds) * 1_000;
+
+function accountRateLimitKey(req) {
+  return req.auth?.accountId ? `account:${req.auth.accountId}` : `ip:${ipRateLimitKey(req)}`;
+}
+
+const licenseRegisterRateLimit = createRateLimiter({
+  scope: "license.register",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitLicenseRegisterMax,
+  keyResolver: accountRateLimitKey
+});
+
+const licenseStatusRateLimit = createRateLimiter({
+  scope: "license.status",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitLicenseStatusMax,
+  keyResolver: accountRateLimitKey
+});
 
 function normalizeMaxDevices(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -17,9 +42,10 @@ function normalizeMaxDevices(value) {
   return Math.max(1, Math.min(10, Math.floor(parsed)));
 }
 
-router.post("/api/license/register", requireAuth, async (req, res) => {
+router.post("/api/license/register", requireAuth, licenseRegisterRateLimit, async (req, res) => {
   const licenseKey = String(req.body?.licenseKey || "").trim();
   const maxDevicesOverride = normalizeMaxDevices(req.body?.maxDevices);
+  const idempotencyKey = getIdempotencyKey(req);
 
   if (!licenseKey) {
     return res.status(400).json({ error: "licenseKey is required" });
@@ -27,6 +53,35 @@ router.post("/api/license/register", requireAuth, async (req, res) => {
 
   const keyHash = hashLicenseKey(licenseKey);
   const keyLast4 = licenseKey.slice(-4);
+  const idempotencyScopeKey = `account:${req.auth.accountId}`;
+  let idempotencyRequestHash = null;
+
+  if (idempotencyKey) {
+    try {
+      const result = await loadIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "license.register",
+        idempotencyKey,
+        payload: req.body
+      });
+
+      if (result.replay) {
+        res.setHeader("Idempotent-Replay", "true");
+        return res.status(result.replay.status).json(result.replay.body);
+      }
+
+      idempotencyRequestHash = result.requestHash;
+    } catch (error) {
+      if (error.code === "IDEMPOTENCY_KEY_REUSED") {
+        return res.status(409).json({
+          success: false,
+          errorType: "IDEMPOTENCY_KEY_REUSED",
+          message: "Idempotency key already used with different payload"
+        });
+      }
+      return res.status(500).json({ success: false, message: "Failed idempotency validation" });
+    }
+  }
 
   try {
     const result = await withTransaction(async (client) => {
@@ -106,12 +161,25 @@ router.post("/api/license/register", requireAuth, async (req, res) => {
       data: { keyLast4 }
     });
 
-    return res.status(200).json({
+    const responseBody = {
       success: true,
       valid: true,
       maxDevices: result.maxDevices,
       keyLast4
-    });
+    };
+
+    if (idempotencyKey && idempotencyRequestHash) {
+      await storeIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "license.register",
+        idempotencyKey,
+        requestHash: idempotencyRequestHash,
+        status: 200,
+        body: responseBody
+      });
+    }
+
+    return res.status(200).json(responseBody);
   } catch (error) {
     if (error.code === "INVALID_LICENSE") {
       return res.status(409).json({
@@ -127,7 +195,7 @@ router.post("/api/license/register", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/api/license/status", requireAuth, async (req, res) => {
+router.get("/api/license/status", requireAuth, licenseStatusRateLimit, async (req, res) => {
   try {
     const result = await query(
       `
@@ -166,4 +234,3 @@ router.get("/api/license/status", requireAuth, async (req, res) => {
 });
 
 module.exports = { licenseRouter: router };
-

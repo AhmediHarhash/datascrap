@@ -2,6 +2,7 @@
 
 const { randomUUID } = require("crypto");
 const { query } = require("../db/pool");
+const { logError } = require("../utils/logger");
 
 async function logAudit(eventType, details = {}) {
   try {
@@ -14,7 +15,11 @@ async function logAudit(eventType, details = {}) {
       [details.id || randomUUID(), details.accountId || null, details.userId || null, eventType, JSON.stringify(details.data || {})]
     );
   } catch (error) {
-    console.error(`[audit] failed for ${eventType}: ${error.message}`);
+    logError("audit.insert.failed", error, {
+      eventType,
+      accountId: details.accountId || null,
+      userId: details.userId || null
+    });
   }
 }
 

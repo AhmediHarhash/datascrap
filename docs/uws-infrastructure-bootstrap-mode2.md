@@ -68,18 +68,20 @@ Exit gate:
 Deliverables:
 - security and operational hardening for first paying users.
 Checklist:
-- [ ] strict CORS allowlist for extension + dashboard origins
-- [ ] rate limits on auth and license endpoints
-- [ ] idempotency on mutating device/license operations
-- [ ] DB migrations with rollback plan
+- [x] strict CORS allowlist for extension + dashboard origins
+- [x] rate limits on auth and license endpoints
+- [x] idempotency on mutating device/license operations
+- [x] DB migrations with rollback plan
 - [ ] automated daily Postgres backups verified
-- [ ] structured logs with correlation IDs
+- [x] structured logs with correlation IDs
 Exit gate:
 - chaos test (service restart + DB failover drill) completed without data loss.
 
 ## Phase 3 - Observability + SLO Control
 Deliverables:
 - measurable reliability with actionable alerts.
+Tracking doc:
+- `docs/phase3-observability-kickoff-2026-02-22.md`
 Checklist:
 - [ ] uptime monitor on `/healthz`
 - [ ] error tracking enabled
@@ -170,3 +172,9 @@ Exit gate:
 - DB migration `0001_control_plane_core.sql` applied to staging and production.
 - Auth/license/device flows verified end-to-end in staging.
 - Production health/readiness/config endpoints verified after rollout.
+
+## Hardening Snapshot (2026-02-22)
+- DB migration `0002_idempotency_keys.sql` added for request replay safety.
+- Route-level rate limiting enforced for auth/license/device endpoints.
+- CORS policy tightened with strict-mode env controls and extension-origin prefix support.
+- Structured JSON logs enabled with `X-Request-Id` correlation.

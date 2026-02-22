@@ -2,6 +2,7 @@
 
 const { Pool } = require("pg");
 const { config } = require("../config");
+const { logError } = require("../utils/logger");
 
 let pool = null;
 
@@ -25,7 +26,7 @@ function getPool() {
   });
 
   pool.on("error", (error) => {
-    console.error("[control-api] postgres pool error:", error.message);
+    logError("postgres.pool.error", error);
   });
 
   return pool;
@@ -92,4 +93,3 @@ module.exports = {
   runDbProbe,
   withTransaction
 };
-

@@ -14,6 +14,7 @@
 1) `Postgres`
 - Provisioned and healthy in staging and production.
 - Phase 2 migration `0001_control_plane_core.sql` applied in both environments.
+- Phase 3 migration `0002_idempotency_keys.sql` applied in both environments.
 
 2) `control-api`
 - Service ID: `955c58a3-9816-41d7-a963-68c6bcfe024a`
@@ -27,6 +28,10 @@
   - `ACCESS_TOKEN_TTL_SECONDS=900`
   - `REFRESH_TOKEN_TTL_DAYS=30`
   - `DEFAULT_MAX_DEVICES=2`
+  - `CORS_STRICT=true`
+  - `CORS_ALLOWED_ORIGIN_PREFIXES=chrome-extension://`
+  - `RATE_LIMIT_*` policy values set
+  - `IDEMPOTENCY_TTL_HOURS=24`
 
 ## Public Domains
 - Staging:
@@ -39,6 +44,12 @@
   - `GET /healthz` -> `200`
   - `GET /readyz` -> `200` (`db reachable`)
   - `GET /api/config` -> `200`
+  - CORS checks:
+    - disallowed web origin -> `403`
+    - extension-style origin (`chrome-extension://...`) -> `200`
+  - Idempotency checks:
+    - `POST /api/license/register` replay returns `Idempotent-Replay: true`
+    - `POST /api/devices/rename` replay returns `Idempotent-Replay: true`
   - End-to-end flow passed:
     - register
     - login with device binding
@@ -50,16 +61,28 @@
   - `GET /healthz` -> `200`
   - `GET /readyz` -> `200` (`db reachable`)
   - `GET /api/config` -> `200`
+  - CORS checks:
+    - disallowed web origin -> `403`
+    - extension-style origin -> `200`
+  - Auth/license check:
+    - register/login successful
+    - license register replay returns `Idempotent-Replay: true`
 
 ## Repository Status
 - GitHub repo:
   - `https://github.com/AhmediHarhash/datascrap`
-- Phase 2 local changes include:
+- Phase 2/3 local changes include:
   - `services/control-api/src/routes/auth.js`
   - `services/control-api/src/routes/license.js`
   - `services/control-api/src/routes/devices.js`
   - `services/control-api/src/db/migrations.js`
   - `services/control-api/migrations/0001_control_plane_core.sql`
+  - `services/control-api/migrations/0002_idempotency_keys.sql`
+  - `services/control-api/src/middleware/cors.js`
+  - `services/control-api/src/middleware/rate-limit.js`
+  - `services/control-api/src/middleware/request.js`
+  - `services/control-api/src/services/idempotency.js`
+  - `services/control-api/src/utils/logger.js`
   - `services/control-api/scripts/migrate.js`
   - `.env.example`
   - `infra/railway/control-api.env.example`
@@ -69,8 +92,8 @@
 - Environment: `staging`
 - Service: `control-api`
 
-## Next Phase Focus (Hardening)
-1) Strict CORS allowlist for extension/dashboard origins.
-2) Auth/license rate limiting.
-3) Idempotency keys on mutating operations.
-4) Backup/restore drill and alerting setup.
+## Next Phase Focus (Observability)
+1) Uptime monitor + alert wiring for `/healthz`.
+2) Error tracking integration and alert routing.
+3) Auth/license/device dashboards with p95 latency.
+4) SLO document + alert-to-resolution runbook drill.

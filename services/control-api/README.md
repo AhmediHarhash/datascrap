@@ -37,3 +37,19 @@ npm run smoke:control-api
 
 - `migrate:control-api` needs `DATABASE_URL` set.
 - Device limit is enforced server-side from account `max_devices` (default `2`).
+- CORS can be locked down with:
+  - `CORS_STRICT=true`
+  - `CORS_ALLOWED_ORIGINS` (comma-separated exact origins)
+  - `CORS_ALLOWED_ORIGIN_PREFIXES` (for extension origins, default `chrome-extension://`)
+- Mutating `license` and `devices` endpoints support idempotency with `Idempotency-Key`.
+- Request logs are structured JSON and include `X-Request-Id`.
+
+## Rollback Notes
+
+- Migration `0002_idempotency_keys.sql` can be reverted safely with:
+
+```sql
+DROP TABLE IF EXISTS idempotency_keys;
+```
+
+- If rollback is applied, remove idempotency headers in clients or redeploy API with idempotency disabled.

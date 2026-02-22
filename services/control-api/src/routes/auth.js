@@ -5,6 +5,7 @@ const { Router } = require("express");
 const { config } = require("../config");
 const { query, withTransaction } = require("../db/pool");
 const { requireAuth } = require("../middleware/auth");
+const { createRateLimiter, ipRateLimitKey } = require("../middleware/rate-limit");
 const { logAudit } = require("../services/audit");
 const { getRequestIp, getUserAgent } = require("../utils/http");
 const {
@@ -17,6 +18,35 @@ const {
 } = require("../utils/security");
 
 const router = Router();
+const rateLimitWindowMs = Math.max(1, config.rateLimitWindowSeconds) * 1_000;
+
+const registerRateLimit = createRateLimiter({
+  scope: "auth.register",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitAuthRegisterMax,
+  keyResolver: ipRateLimitKey
+});
+
+const loginRateLimit = createRateLimiter({
+  scope: "auth.login",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitAuthLoginMax,
+  keyResolver: ipRateLimitKey
+});
+
+const refreshRateLimit = createRateLimiter({
+  scope: "auth.refresh",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitAuthRefreshMax,
+  keyResolver: ipRateLimitKey
+});
+
+const logoutRateLimit = createRateLimiter({
+  scope: "auth.logout",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitAuthLogoutMax,
+  keyResolver: ipRateLimitKey
+});
 
 function createSessionExpiryDate() {
   const now = Date.now();
@@ -116,7 +146,7 @@ async function bindDevice(client, args) {
   }
 }
 
-router.post("/api/auth/register", async (req, res) => {
+router.post("/api/auth/register", registerRateLimit, async (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const password = String(req.body?.password || "");
   const displayName = req.body?.displayName ? String(req.body.displayName).trim() : null;
@@ -187,7 +217,7 @@ router.post("/api/auth/register", async (req, res) => {
   }
 });
 
-router.post("/api/auth/login", async (req, res) => {
+router.post("/api/auth/login", loginRateLimit, async (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const password = String(req.body?.password || "");
   const deviceId = String(req.body?.deviceId || "").trim();
@@ -290,7 +320,7 @@ router.post("/api/auth/login", async (req, res) => {
   }
 });
 
-router.post("/api/auth/refresh", async (req, res) => {
+router.post("/api/auth/refresh", refreshRateLimit, async (req, res) => {
   const refreshToken = String(req.body?.refreshToken || "").trim();
   if (!refreshToken) {
     return res.status(400).json({ error: "refreshToken is required" });
@@ -393,7 +423,7 @@ router.post("/api/auth/refresh", async (req, res) => {
   }
 });
 
-router.post("/api/auth/logout", async (req, res) => {
+router.post("/api/auth/logout", logoutRateLimit, async (req, res) => {
   const refreshToken = String(req.body?.refreshToken || "").trim();
   if (!refreshToken) {
     return res.status(400).json({ error: "refreshToken is required" });

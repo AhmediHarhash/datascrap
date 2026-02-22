@@ -2,11 +2,46 @@
 
 const { randomUUID } = require("crypto");
 const { Router } = require("express");
+const { config } = require("../config");
 const { withTransaction } = require("../db/pool");
+const { createRateLimiter, ipRateLimitKey } = require("../middleware/rate-limit");
 const { logAudit } = require("../services/audit");
+const {
+  getIdempotencyKey,
+  loadIdempotentResponse,
+  storeIdempotentResponse
+} = require("../services/idempotency");
 const { hashLicenseKey } = require("../utils/security");
 
 const router = Router();
+const rateLimitWindowMs = Math.max(1, config.rateLimitWindowSeconds) * 1_000;
+
+function licenseOrIpKey(req) {
+  const key = String(req.body?.key || "").trim();
+  if (!key) return `ip:${ipRateLimitKey(req)}`;
+  return `license:${hashLicenseKey(key)}`;
+}
+
+const devicesValidateRateLimit = createRateLimiter({
+  scope: "devices.validate",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitDevicesValidateMax,
+  keyResolver: licenseOrIpKey
+});
+
+const devicesListRateLimit = createRateLimiter({
+  scope: "devices.list",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitDevicesListMax,
+  keyResolver: licenseOrIpKey
+});
+
+const devicesMutateRateLimit = createRateLimiter({
+  scope: "devices.mutate",
+  windowMs: rateLimitWindowMs,
+  maxRequests: config.rateLimitDevicesMutateMax,
+  keyResolver: licenseOrIpKey
+});
 
 async function getAccountByKey(client, rawKey) {
   const keyHash = hashLicenseKey(rawKey);
@@ -37,13 +72,41 @@ async function countDevices(client, accountId) {
   return Number(countResult.rows[0].count || 0);
 }
 
-router.post("/api/devices/validate-devices", async (req, res) => {
+router.post("/api/devices/validate-devices", devicesValidateRateLimit, async (req, res) => {
   const key = String(req.body?.key || "").trim();
   const deviceId = String(req.body?.deviceId || "").trim();
   const deviceName = req.body?.deviceName ? String(req.body.deviceName).trim() : null;
+  const idempotencyKey = getIdempotencyKey(req);
+  const idempotencyScopeKey = key ? `license:${hashLicenseKey(key)}` : null;
+  let idempotencyRequestHash = null;
 
   if (!key || !deviceId) {
     return res.status(400).json({ valid: false, message: "key and deviceId are required" });
+  }
+
+  if (idempotencyKey && idempotencyScopeKey) {
+    try {
+      const replay = await loadIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "devices.validate",
+        idempotencyKey,
+        payload: req.body
+      });
+      if (replay.replay) {
+        res.setHeader("Idempotent-Replay", "true");
+        return res.status(replay.replay.status).json(replay.replay.body);
+      }
+      idempotencyRequestHash = replay.requestHash;
+    } catch (error) {
+      if (error.code === "IDEMPOTENCY_KEY_REUSED") {
+        return res.status(409).json({
+          valid: false,
+          errorType: "IDEMPOTENCY_KEY_REUSED",
+          message: "Idempotency key already used with different payload"
+        });
+      }
+      return res.status(500).json({ valid: false, message: "Failed idempotency validation" });
+    }
   }
 
   try {
@@ -119,13 +182,24 @@ router.post("/api/devices/validate-devices", async (req, res) => {
       };
     });
 
+    if (idempotencyKey && idempotencyScopeKey && idempotencyRequestHash) {
+      await storeIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "devices.validate",
+        idempotencyKey,
+        requestHash: idempotencyRequestHash,
+        status: 200,
+        body: result
+      });
+    }
+
     return res.status(200).json(result);
   } catch (_error) {
     return res.status(500).json({ valid: false, message: "Unexpected device validation error" });
   }
 });
 
-router.post("/api/devices", async (req, res) => {
+router.post("/api/devices", devicesListRateLimit, async (req, res) => {
   const key = String(req.body?.key || "").trim();
   if (!key) {
     return res.status(400).json({ success: false, message: "No license key provided" });
@@ -167,12 +241,40 @@ router.post("/api/devices", async (req, res) => {
   }
 });
 
-router.post("/api/devices/remove", async (req, res) => {
+router.post("/api/devices/remove", devicesMutateRateLimit, async (req, res) => {
   const key = String(req.body?.key || "").trim();
   const deviceId = String(req.body?.deviceId || "").trim();
+  const idempotencyKey = getIdempotencyKey(req);
+  const idempotencyScopeKey = key ? `license:${hashLicenseKey(key)}` : null;
+  let idempotencyRequestHash = null;
 
   if (!key || !deviceId) {
     return res.status(400).json({ success: false, message: "key and deviceId are required" });
+  }
+
+  if (idempotencyKey && idempotencyScopeKey) {
+    try {
+      const replay = await loadIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "devices.remove",
+        idempotencyKey,
+        payload: req.body
+      });
+      if (replay.replay) {
+        res.setHeader("Idempotent-Replay", "true");
+        return res.status(replay.replay.status).json(replay.replay.body);
+      }
+      idempotencyRequestHash = replay.requestHash;
+    } catch (error) {
+      if (error.code === "IDEMPOTENCY_KEY_REUSED") {
+        return res.status(409).json({
+          success: false,
+          errorType: "IDEMPOTENCY_KEY_REUSED",
+          message: "Idempotency key already used with different payload"
+        });
+      }
+      return res.status(500).json({ success: false, message: "Failed idempotency validation" });
+    }
   }
 
   try {
@@ -196,19 +298,58 @@ router.post("/api/devices/remove", async (req, res) => {
       return { success: true };
     });
 
+    if (idempotencyKey && idempotencyScopeKey && idempotencyRequestHash) {
+      await storeIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "devices.remove",
+        idempotencyKey,
+        requestHash: idempotencyRequestHash,
+        status: 200,
+        body: result
+      });
+    }
+
     return res.status(200).json(result);
   } catch (_error) {
     return res.status(500).json({ success: false, message: "Failed to remove device" });
   }
 });
 
-router.post("/api/devices/rename", async (req, res) => {
+router.post("/api/devices/rename", devicesMutateRateLimit, async (req, res) => {
   const key = String(req.body?.key || "").trim();
   const deviceId = String(req.body?.deviceId || "").trim();
   const deviceName = String(req.body?.deviceName || "").trim();
+  const idempotencyKey = getIdempotencyKey(req);
+  const idempotencyScopeKey = key ? `license:${hashLicenseKey(key)}` : null;
+  let idempotencyRequestHash = null;
 
   if (!key || !deviceId || !deviceName) {
     return res.status(400).json({ success: false, message: "key, deviceId and deviceName are required" });
+  }
+
+  if (idempotencyKey && idempotencyScopeKey) {
+    try {
+      const replay = await loadIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "devices.rename",
+        idempotencyKey,
+        payload: req.body
+      });
+      if (replay.replay) {
+        res.setHeader("Idempotent-Replay", "true");
+        return res.status(replay.replay.status).json(replay.replay.body);
+      }
+      idempotencyRequestHash = replay.requestHash;
+    } catch (error) {
+      if (error.code === "IDEMPOTENCY_KEY_REUSED") {
+        return res.status(409).json({
+          success: false,
+          errorType: "IDEMPOTENCY_KEY_REUSED",
+          message: "Idempotency key already used with different payload"
+        });
+      }
+      return res.status(500).json({ success: false, message: "Failed idempotency validation" });
+    }
   }
 
   try {
@@ -239,6 +380,17 @@ router.post("/api/devices/rename", async (req, res) => {
       return { success: true };
     });
 
+    if (idempotencyKey && idempotencyScopeKey && idempotencyRequestHash) {
+      await storeIdempotentResponse({
+        scopeKey: idempotencyScopeKey,
+        operation: "devices.rename",
+        idempotencyKey,
+        requestHash: idempotencyRequestHash,
+        status: 200,
+        body: result
+      });
+    }
+
     return res.status(200).json(result);
   } catch (_error) {
     return res.status(500).json({ success: false, message: "Failed to rename device" });
@@ -246,4 +398,3 @@ router.post("/api/devices/rename", async (req, res) => {
 });
 
 module.exports = { devicesRouter: router };
-
