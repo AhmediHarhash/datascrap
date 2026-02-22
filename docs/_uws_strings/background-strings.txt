@@ -1,0 +1,669 @@
+﻿ > 
+ alt
+ background
+ background dimensions
+ Background Image
+ Description
+ dimensions
+ href
+ Image
+ src
+ src dimensions
+ URL
+!==i&&!r)return a({success:!1,error:
+!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(t,Symbol.toStringTag,{value:
+"]?([^
+#content
+${c}
+${e.name||
+${e.value}
+${r}
+${t.name}
+${t[1]}
+${t}
+)()}catch(t){if(
+)).charset=
+),u=0;u<l.length;u++){var d=l[u];if(d.getAttribute(
+).replace(/\/[^\/]+$/,
+).replace(/\?.*$/,
+);if(a.length)for(var r=a.length-1;r>-1&&(!t||!/^http(s?):/.test(t));)t=a[r--].src}if(!t)throw new Error(
+');return t.includes(
+);t=t.replace(/#.*$/,
+);var e=n.g.document;if(!t&&e&&(e.currentScript&&
+)||t.includes('
+)||t.includes("\n")?`"${t}"`:t}return"object"==typeof a?`"${JSON.stringify(a).replace(/"/g,
+)==a||d.getAttribute(
+)==e+s){o=d;break}}o||(c=!0,(o=document.createElement(
+, 
+,{value:!0})},(()=>{var t;n.g.importScripts&&(t=n.g.location+
+,AUTOMATION_COMPLETED:
+,AUTOMATION_ERROR:
+,AUTOMATION_PROGRESS:
+,AUTOMATION_START:
+,AUTOMATION_STARTED:
+,AUTOMATION_STOP:
+,AUTOMATION_STOPPED:
+,automationId:t,tableDataId:e})})).then((t=>{})).catch((t=>{a({success:!1,status:
+,clipboard:
+,data:{isPro:!0,timestamp:Date.now(),source:t.source||
+,default:
+,downloads:
+,ELEMENT_PICKER_RESULT:
+,ELEMENT_PICKER_START:
+,ELEMENT_PICKER_STOP:
+,error:
+,error:t.message||
+,message:
+,n.g=function(){if(
+,n.l=(a,r,s,i)=>{if(t[a])t[a].push(r);else{var o,c;if(void 0!==s)for(var l=document.getElementsByTagName(
+,n.nc),o.setAttribute(
+,o.name=
+,o.timeout=120,n.nc&&o.setAttribute(
+,o.type=s,o.request=i,r[1](o)}}),
+,result:t,tableDataId:t.tableDataId}),r=!0)})).catch((t=>{clearTimeout(s),r||(a({success:!1,status:
+,target:o}),12e4);o.onerror=h.bind(null,o.onerror),o.onload=h.bind(null,o.onload),c&&document.head.appendChild(o)}},n.r=t=>{
+,timestamp:Date.now()}),!0}handleWakeUpBackground(t,e){return e({success:!0,status:
+.ads
+.advertisement
+.article-content
+.author
+.byline
+.ceNzKf[aria-hidden="true"]
+.comment
+.comments
+.content
+.cX2Znh
+.date
+.DkEaL
+.DkEaL.fontBodyMedium
+.DUwDvf.lfPIob
+.entry-content
+.F7nice .UY7F9
+.F7nice span[aria-hidden="true"]
+.gallery img
+.Io6YTe.fontBodyMedium
+.main-content
+.menu
+.menu-price
+.mgr77e[aria-label*="Price"]
+.MW4etd
+.nav
+.navigation
+.OqCZI .t39EBf
+.post-content
+.price-display
+.price-range
+.publish-date
+.PYvSYb
+.RDApEe.YrbPuc
+.section-carousel-images img
+.section-info-definition
+.section-popular-times-container .fontBodyMedium
+.section-result-details .fontBodyMedium
+.section-result-details .section-result-price-range
+.section-result-menu-item .fontBodyMedium
+.section-result-menu-item-name
+.section-result-menu-item-price
+.sidebar
+.social-share
+.t39EBf.GUrTXd
+.UY7F9
+.x3AX1-LfntMc-header-title-title
+.y0skZc-jyrRxf-eEDwDf .t39EBf
+.YhemCb
+.ZKCDEc img
+//
+/favicon.ico
+/g,'
+: 
+:a.type),i=a&&a.target&&a.target.src;o.message=
+:case
+:return this.handleGetAutomationRunners(t,a);case
+:return this.handleOpenSidePanel(e,a);case
+:return this.handlePingBackground(t,a);case
+:return this.handleRerunAutomation(t,e,a);case
+:return this.handleSidePanelStatus(t,a);case
+:return this.handleStartAutomation(t,e,a);case
+:return this.handleStopAutomation(t,e,a);case
+:return this.handleStopAutomationById(t,e,a);case
+:return this.handleWakeUpBackground(t,a);case
+; 
+[aria-label*='$']
+[aria-label*='price']
+[class*="ad-"]
+[class*="author"]
+[class*="date"]
+[class*="share"]
+[class*="social"]
+[data-attrid="description"]
+[data-attrid="title"] h1
+[data-item-id*="phone"] .Io6YTe
+[data-item-id="address"] .Io6YTe
+[data-value*='menu']
+[data-value*='price']
+[data-value="Category"] .YhemCb
+[data-value="Hours"] .t39EBf
+[data-value="Price level"]
+[data-value="Rating"] span
+[id*="ad-"]
+[itemprop]
+[itemscope]
+[rel="author"]
+[role="main"]
+\n
+],clipboard:[
+].includes(t)?await this.ensureHostPermissions(t,null,!0):!![
+].includes(t)?await this.ensureHostPermissions(t,null,e):![
+].includes(t)||await this.hasHostPermissions()}static async checkOptionalPermissionsForOperation(t){const e={downloads:[
+]+)['
+__
+||
+}),!0;if(
+}),!0;try{const{automationService:e}=n(363);let r=!1;const s=setTimeout((()=>{r||(a({success:!0,status:
+}),!0;try{const{automationService:e}=n(363);return e.stopAutomationById(t.automationId).then((t=>{a({success:!0,status:
+}),!0}}handleStopAutomation(t,e,a){return i.emit(o.AUTOMATION_STOP),a({success:!0,status:
+}),!0}handleLicenseRegistered(t,e,a){return chrome.runtime.sendMessage({type:
+}),!0}handleSidePanelStatus(t,e){return e({status:
+}),!0}handleStopAutomationById(t,e,a){if(!t.automationId)return a({success:!1,error:
+}),Object.defineProperty(t,
+}),r=!0)})),!0}catch(t){return a({success:!1,status:
+}),r=!0)}),1e3);return e.rerunAutomation(t.automationId).then((t=>{clearTimeout(s),r||(a({success:!0,status:
+})})),!0}catch(t){return a({success:!1,status:
+})})),!0}handleRerunAutomation(t,e,a){if(!t.automationId)return a({success:!1,error:
+})})).catch((t=>{a({success:!1,status:
+};return e[t]||e.default}static async requestPermissionsWithDialog(t,e=null){this.getPermissionRequestMessage(t);return[
+}}),a({success:!0,status:
++e+
++i+
++s+
+===a.type?
+===e.currentScript.tagName.toUpperCase()&&(t=e.currentScript.src),!t)){var a=e.getElementsByTagName(
+==typeof globalThis)return globalThis;try{return this||new Function(
+==typeof window)return window}}(),n.o=(t,e)=>Object.prototype.hasOwnProperty.call(t,e),t={},e=
+10000
+12px
+1px solid rgba(255, 255, 255, 0.3)
+2px
+2px 6px
+2px solid rgba(255, 225, 0, 0.7)
+3px
+403
+403 forbidden
+404
+4px
+500
+502
+503
+504
+a[data-item-id="authority"]
+a[data-item-id="authority"] .Io6YTe
+a[data-value="Website"]
+a[data-value="Website"] .Io6YTe
+a[href]
+a[href^="http"]:not([href*="google"]):not([href*="maps"])
+a[href^="mailto:"]
+a[href^="tel:"]
+about:blank
+absolute
+access denied
+address
+All click attempts failed
+All natural click attempts failed
+alt
+aria-disabled
+aria-label
+article
+author
+auto
+automation
+Automation already running
+Automation stopped successfully
+AUTOMATION_ACTION
+AUTOMATION_STOP
+automation-highlight
+automationId
+automation-rerun
+automations
+Average Rating
+blocked
+blocked_error
+boolean
+btn
+bulk_extraction
+bulk-extraction
+Business Category
+Business Hours
+Business/Place Name
+button
+button click failed
+button click failed after retries
+button.CsEnBe[aria-label*="Address"]
+button[aria-label*="phone"] .Io6YTe
+button[data-item-id*="http"]
+button[data-item-id*="http"] .Io6YTe
+button[data-item-id="address"] .Io6YTe
+button[data-item-id="phone:tel:"] .Io6YTe
+button[data-photo-index] img
+button[data-value="Address"] .Io6YTe
+button[data-value="Category"]
+button[data-value="Phone"] .Io6YTe
+button[data-value="Reviews"] .UY7F9
+cancelled
+Cannot create more tabs: system limits reached
+category
+center
+certificate
+certificate error
+Child index out of bounds
+chrome://newtab/
+chrome_error
+class
+click
+Click failed
+click_button
+clickable element
+clicked
+Clicking 'Load More' button...
+Clicking 'Next Page' button...
+Column 
+complete
+completed
+connection
+ConstraintError
+container
+Container not found
+content
+content changed
+Content changed after pagination, continuing to next page
+content load
+content load after navigation
+coordinates
+Could not establish connection
+Could not reliably find the element using any strategy
+createdAt
+css
+data-
+data:
+data:image/gif;base64,
+dataHash
+data-src
+data-srcset
+data-value
+date
+dateFrom
+datetime
+dateTo
+default
+Description
+direct
+direct-fallback
+disabled
+div
+div, span
+div:contains('$')
+dns
+dns_probe_finished_nxdomain
+down
+element
+Element has disabled class
+Element has no size
+Element has zero dimensions
+Element is aria-disabled
+Element is disabled
+Element is hidden
+Element is not clickable
+Element is transparent
+Element not found
+Element not found for interaction
+Element scrolled into view
+email
+Email Addresses
+Email Count
+email_count
+emailPatterns must be an array if provided
+emails
+enhanced-click
+enhanced-highlight
+enhanced-scroll
+err_name_not_resolved
+error
+Error executing metadata extraction
+event
+execute() method must be implemented by runner subclasses
+extract
+Extract custom elements using selectors
+Extract email addresses from page content
+Extract Google Maps place information
+Extract phone numbers from page content
+Extract webpage content as AI-ready text
+EXTRACT_LIST
+EXTRACT_LIST action has an invalid allSelectors array. It requires at least one selector
+EXTRACT_PAGES
+EXTRACT_PAGES action requires a non-empty elements array
+EXTRACT_PAGES_EMAIL
+EXTRACT_PAGES_GOOGLE_MAPS
+EXTRACT_PAGES_PHONE
+EXTRACT_PAGES_TEXT
+Extracting data from current page...
+Extracting data from list items...
+Extracting metadata...
+Extraction cancelled
+Extraction was cancelled
+extractionOptions must be an object if provided
+extractionType
+failed
+Failed after all retry attempts
+Failed to click element: 
+Failed to click: 
+false
+fixed
+footer
+Full Address
+function
+gateway timeout
+gi
+google.com
+h1
+h1.DUwDvf
+h1.qrShPb
+h1.x3AX1-LfntMc-header-title-title
+h1[data-attrid="title"]
+h1[data-value="Name"]
+h2
+h3
+h4
+header
+heading
+hidden
+hierarchy
+high
+highlight
+Host permissions are required to execute automation tasks. Please grant permissions and try again.
+Host permissions are required to interact with web pages. Please grant permissions and try again.
+hours
+href
+href^="tel:"
+http
+http://
+http_error
+http-equiv
+httpError
+https://
+human-like
+id
+image
+Image URLs
+image_background
+image_container
+image_url
+img
+includeMetadata must be a boolean if provided
+Infinite scroll complete - no more content available
+infinite scroll container
+infinite_scroll
+initialize
+Initializing infinite scroll extraction...
+Initializing 'Load More' button extraction...
+Initializing pagination extraction...
+internet
+Invalid JSON-LD
+Invalid URL
+invalid_url
+invalid_url_error
+Item extraction failed
+itemprop
+itemtype
+javascript:
+js-
+Latitude, Longitude
+left
+link
+link[rel="canonical"]
+link[rel="icon"], link[rel="shortcut icon"]
+link_container
+link_url
+list
+list container
+List container not found
+listExtractor
+load more button
+Load More complete - no more 'Load More' buttons found
+LOAD_MORE
+LOAD_MORE action with navigate method requires at least one button selector
+loaded
+loading
+low
+mailto:
+main
+maps
+max attempts reached
+medium
+Menu Items & Prices
+META
+Meta Description
+meta[name^="twitter:"]
+meta[name="author"]
+meta[name="date"]
+meta[name="description"]
+meta[name="publish_date"]
+meta[name="twitter:description"]
+meta[name="twitter:title"]
+meta[property^="og:"]
+meta[property="article:author"]
+meta[property="article:published_time"]
+meta[property="og:description"]
+meta[property="og:title"]
+Metadata extraction complete
+metadata.extractionType
+metadata.url
+metadataExtractor
+Missing canonical URL
+Missing og:description
+Missing og:image
+Missing og:title
+Missing og:url
+Missing page description in meta tags
+Missing page title in meta tags
+Missing required actions: EXTRACT_LIST or LOAD_MORE
+Missing selector or selector type in parameters
+Missing twitter:card
+Missing twitter:description
+Missing twitter:title
+Missing viewport meta tag
+mousedown
+mouseenter
+mousemove
+mouseover
+mouseup
+Must provide either itemHashData or itemIndex
+name
+natural-sequence
+nav
+navigate
+navigation
+nearest
+network
+network_error
+networkError
+No active tab available to run automation
+No automation running
+No children found to highlight
+no content changes after navigation
+No data available
+No element data provided
+No elements with matching tag found
+No item found in extraction result
+No list items found in container
+no load more button found
+no more changes
+no more new content
+no more pagination buttons
+no new items after retries
+No result from image background extraction
+No result from image URL extraction
+No result from link URL extraction
+No result from text extraction
+No selectors provided or invalid selectors array
+No tab ID provided
+No URL found in the original automation
+No valid selectors found
+none
+NOSCRIPT
+number
+Number of Emails
+Number of Phone Numbers
+Number of Reviews
+numeric_value
+obfuscated
+object
+og:
+onclick
+opacity 0.3s ease-in-out
+Operation cancelled
+Page Content
+Page Extraction
+Page failed to load
+page load
+Page load timeout
+Page Title
+PAGE URL
+page_load_error
+page-extraction
+pageExtractor
+pagination button
+Pagination complete - no content changes after navigation
+Pagination complete - no more new content found
+Pagination complete - no more 'Next' buttons found
+Pagination complete - unable to click 'Next' button
+paragraph
+phone
+Phone Count
+Phone Number
+Phone Numbers
+phone_count
+phonePatterns must be an array if provided
+phones
+Place Description
+Place Images
+Place Name
+place_images
+place_name
+poster
+price
+Price Level
+Price Range
+price_level
+prices
+processing
+progress
+property
+Publish Date
+publish_date
+Queued
+Rating
+rating_count
+reached bottom
+readonly
+readwrite
+Receiving end does not exist
+redirect_error
+retry
+review
+Review Count
+Reviews
+rgba(0, 0, 0, 0.7)
+rgba(0, 150, 255, 0.1)
+rgba(0, 150, 255, 0.8)
+rgba(0, 255, 0, 0.1)
+rgba(0, 255, 0, 0.8)
+rgba(255, 225, 0, 0.2)
+rgba(255, 225, 0, 0.3)
+rgba(255, 225, 0, 0.7)
+right
+role
+running
+script
+script[type="application/ld+json"]
+scripting
+scroll
+Scrolling to load more content...
+security
+selector
+server error
+service unavailable
+smart
+Smart extraction failed
+smooth
+Source URL
+span
+span.ceNzKf
+span:contains('$')
+src
+srcset
+ssl
+ssl error
+ssl_error
+sslError
+standard
+start
+Starting metadata extraction...
+status
+stopped
+string
+style
+success
+summary
+tab_error
+tableData
+tableData_dataHash
+tableDataId
+tableRows
+Target element not found
+tel:
+text
+text_content
+Time
+time[datetime]
+time_value
+timeout
+timeout_error
+Title
+to-bottom
+to-top
+true
+twitter:
+type
+type_status
+ultimateWebScraperDB
+unable to click next button
+undefined
+unknown
+Unknown error
+Unknown error during element finding
+Unknown error during metadata extraction
+Unknown error during scroll element into view operation
+Unknown error during scroll until visible operation
+Unknown error during scrolling
+Unknown error in bulk extraction
+Unknown error in load more operation
+Unknown error testing selectors
+Unknown extraction error
+unknown_error
+unlimited
+up
+url
+URL changed after pagination, content loaded, continuing to next page
+url changed and content loaded
+url format
+url_status_update
+use strict
+user
+VIDEO
+wait
+website
+Website URL
+white
+Word Count
+word_count
+www.
+xpath

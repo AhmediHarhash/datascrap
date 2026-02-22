@@ -1,0 +1,198 @@
+__reactContainer$
+__reactEvents$
+__reactFiber$
+__reactHandles$
+__reactListeners$
+__reactProps$
+; visit
+). If you meant to render a collection of children, use an array instead.
+[data-element-picker-highlighted="true"]
+[data-testid^="element-picker-"]
+[data-testid^="element-picker-selected-"]
+[data-testid="element-picker-overlay"]
+[href^='mailto:']
+[href^='tel:']
+[object Object]
+][type="radio"]
+@@iterator
+@@toPrimitive must return a primitive value.
+@layer
+@media
+@supports (
+&args[]=
+#1f2937
+#1f2937 !important
+#374151 !important
+#4b5563
+#9ca3af
+#d1d5db
+#d97706
+#ef4444
+#element-picker-root
+#FFAA00
+#FFE100
+#ffffff
+#ffffff !important
+↑ Up Arrow
+⚠️ Please select at least one attribute
+0 0 0 2px rgba(0, 0, 0, 0.5)
+0 10px 25px rgba(0, 0, 0, 0.25)
+0 1px 3px rgba(0,0,0,0.3)
+0 20px 40px rgba(0, 0, 0, 0.3)
+1.4 !important
+12px !important
+14px !important
+1px solid
+1px solid #1f2937
+1px solid #374151
+1px solid #374151 !important
+1px solid #4b5563 !important
+2px 0
+2px 6px
+3px solid #FFE100
+6px 12px
+6px 8px
+8px 12px
+8px 16px
+absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium
+act(...) is not supported in production builds of React.
+Add selector
+all 0.2s ease
+All extraction actions will be executed in sequence during automation.
+aria-*
+at new
+Auto Extract
+background-color 0.2s ease
+bg-[#FFAA00]
+bg-[#FFAA00]/5
+bg-[#FFE100]
+bg-[#FFE100]/5
+bg-black p-5 rounded-lg shadow-xl w-96 border border-gray-800 max-h-[90vh] overflow-y-auto
+bg-gray-700 px-1 rounded text-xs font-mono
+border-[#FFE100] bg-gray-800
+border-gray-700 bg-gray-800 hover:border-gray-600
+border-gray-700 bg-gray-900 opacity-50 cursor-not-allowed
+cancel close invalid load scroll toggle
+change click focusin focusout input keydown keyup selectionchange
+Click Element
+Click Mode
+Click on an element to add it to your selection.
+Close Picker
+compositionend focusout keydown keypress keyup mousedown
+compositionstart focusout keydown keypress keyup mousedown
+compositionupdate focusout keydown keypress keyup mousedown
+Configure Action
+Couldn't find a style target. This probably means that the value for the 'insert' parameter is invalid.
+data-*
+e.g., 'Product Title', 'Buy Button'
+Edit Element
+Element name (optional)
+Element Picker
+Element Picker Help
+Element Selectors
+ep-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite
+Error generating stack:
+Extract Data
+Extract image URL or picture
+Extract Mode
+Extract specific technical attributes (for advanced users)
+Extract the visible text from this element
+Extract web link or URL
+Finish Selection
+fixed inset-0 flex items-center justify-center z-[2147483650] bg-black bg-opacity-50
+fixed shadow-lg rounded z-[2147483645] text-white border border-gray-600 pointer-events-auto
+flex flex-col min-w-0 flex-1
+flex gap-0.5
+flex items-center flex-1 min-w-0
+flex items-center gap-1
+flex items-center gap-1.5
+flex items-center gap-2
+flex justify-between items-center mb-4
+flex-shrink-0 inline-block w-2.5 h-2.5 rounded-full mr-1.5
+flex-shrink-0 text-xs
+focusout contextmenu dragend focusin keydown keyup mousedown mouseup selectionchange
+font-medium text-white text-sm
+font-mono text-blue-300
+font-semibold text-[#FFAA00] flex items-center gap-2 mb-2
+font-semibold text-[#FFE100] flex items-center gap-2 mb-2
+font-semibold text-white mb-2
+font-size:10px;
+for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+ForwardRef(
+Got it
+h-3.5 w-3.5 rounded border-gray-600 text-[#FFE100] focus:ring-[#FFE100]
+h-3.5 w-3.5 text-[#FFE100] border-gray-600 focus:ring-[#FFE100]
+Help Information
+Hover + 🔼 to expand area
+Hover + Click to select
+Hover over elements on the page to highlight them.
+How It Works
+input[name=
+key to expand selection to the parent element.
+Let PandaExtract automatically figure out what to extract. Great for dynamic or group content!
+list-disc pl-5 space-y-2
+max-h-48 overflow-y-auto border border-gray-800 rounded
+Minified React error #
+Mode to register clicks
+monospace !important
+mt-2 p-1.5 bg-amber-900 border border-amber-600 rounded text-amber-200 text-xs
+mt-3 bg-gray-800 border border-gray-700 rounded p-2
+mt-4 w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded
+none !important
+Not available for this element
+Objects are not valid as a React child (found:
+Press ESC or click the Finish Selection button when done.
+pt-2 border-t border-gray-800
+React.Children.only expected to receive a single React element child.
+React.cloneElement(...): The argument must be a React element, but you passed
+relative border rounded-lg p-2 cursor-pointer transition-all
+Remove Element
+Remove selector
+return;
+rgba(0, 0, 0, 0.5)
+rgba(0, 0, 0, 0.9)
+rgba(255, 170, 0, 0.1)
+rgba(255, 170, 0, 0.2)
+rgba(255, 225, 0, 0.1)
+rgba(255, 225, 0, 0.2)
+Save Element
+Select technical details to extract:
+Selected Elements (
+Selection Mode
+setState(...): takes an object of state variables to update or a function which returns an object of state variables.
+space-y-1.5 max-h-28 overflow-y-auto
+space-y-4 text-gray-300 text-sm
+system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important
+Text Content
+text-[#FFAA00]
+text-[#FFE100]
+text-gray-400 flex-shrink-0
+text-gray-400 hover:text-blue-400 p-1 rounded hover:bg-gray-700/50
+text-gray-400 hover:text-red-400 p-1 rounded hover:bg-gray-700/50
+text-gray-400 hover:text-white
+text-gray-500 flex-shrink-0
+text-gray-500 ml-1
+text-lg font-bold text-[#FFE100]
+text-sm font-medium text-gray-300 block mb-2
+text-white flex-1 min-w-0
+text-xs bg-amber-600 text-white px-1.5 py-0.5 rounded
+text-xs font-medium truncate max-w-[100px]
+text-xs font-semibold text-gray-400 mb-1.5
+text-xs text-blue-400 flex items-center gap-0.5
+text-xs text-gray-300 flex-1
+text-xs text-gray-400
+text-xs text-gray-400 leading-tight
+text-xs text-gray-500 italic
+text-xs text-gray-500 truncate max-w-[80px]
+Time to wait after clicking this element before continuing (default: 500ms)
+Toggle between selection and click modes using the buttons in the header.
+url(
+use strict
+w-full text-left px-2 py-1 rounded text-xs hover:bg-gray-700/50 transition-colors font-mono flex items-center gap-1
+Wait time after click (milliseconds)
+What do you want to do?
+What information should we extract?
+While hovering, press the
+xlink:actuate xlink:arcrole xlink:role xlink:show xlink:title xlink:type
+You can edit or remove elements from your selection using the icons next to each element.

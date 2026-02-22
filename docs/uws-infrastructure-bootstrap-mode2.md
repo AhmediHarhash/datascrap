@@ -1,0 +1,164 @@
+# UWS Infrastructure Bootstrap (Mode 2, Client-Powered)
+
+## Objective
+Prepare a production-ready infrastructure path that starts cheap (around Railway hobby baseline) and scales in controlled phases.
+
+## Locked Constraints
+- Local-first product:
+  - extraction compute runs on client devices
+  - no default cloud row storage by us
+- Cloud scope:
+  - auth
+  - license/subscription
+  - 2-device enforcement
+  - usage counters
+  - minimal settings sync
+
+## Target MVP Topology (Phase 1)
+1) Extension client (Chrome MV3)
+- not hosted by us for runtime compute
+- user device does extraction
+
+2) Control-plane API (Railway service)
+- stateless API container
+- endpoints:
+  - auth/session
+  - license register/validate
+  - device list/add/remove/rename
+  - usage counters
+  - remote config fetch
+
+3) Postgres (Railway managed)
+- single source of truth for account, device, license, usage metadata
+
+4) Optional Redis (defer to phase 3+)
+- only if needed for high-throughput rate limiting, queues, or burst traffic
+
+## Phase-by-Phase Production Plan
+
+## Phase 0 - Repo + Secrets + Safety Rails
+Deliverables:
+- infra runbooks and env templates committed.
+- secret inventory finalized.
+- budget guardrail policy defined.
+Checklist:
+- [ ] baseline env template prepared (`infra/railway/control-plane.env.example`)
+- [ ] JWT key rotation policy defined
+- [ ] DB backup policy defined
+- [ ] Railway usage cap policy defined
+- [ ] incident contact + owner defined
+Exit gate:
+- no unknown secrets, no unknown owners, no unknown budget policy.
+
+## Phase 1 - Control Plane MVP (Low Cost)
+Deliverables:
+- one API service + one Postgres service on Railway.
+- health checks + readiness checks.
+- auth + license + device-limit flows live.
+Checklist:
+- [ ] `GET /healthz` and `GET /readyz` deployed
+- [ ] short-lived access token + refresh token rotation implemented
+- [ ] max 2 active devices enforced server-side
+- [ ] audit rows for auth/license/device actions
+- [ ] staging and production Railway environments separated
+Exit gate:
+- end-to-end login/license/device flow passes from extension to production API.
+
+## Phase 2 - Production Hardening
+Deliverables:
+- security and operational hardening for first paying users.
+Checklist:
+- [ ] strict CORS allowlist for extension + dashboard origins
+- [ ] rate limits on auth and license endpoints
+- [ ] idempotency on mutating device/license operations
+- [ ] DB migrations with rollback plan
+- [ ] automated daily Postgres backups verified
+- [ ] structured logs with correlation IDs
+Exit gate:
+- chaos test (service restart + DB failover drill) completed without data loss.
+
+## Phase 3 - Observability + SLO Control
+Deliverables:
+- measurable reliability with actionable alerts.
+Checklist:
+- [ ] uptime monitor on `/healthz`
+- [ ] error tracking enabled
+- [ ] auth/license/device dashboards
+- [ ] alert thresholds:
+  - 5xx spike
+  - auth failure spike
+  - license validation latency spike
+- [ ] SLOs published:
+  - API availability
+  - p95 auth latency
+  - p95 license-check latency
+Exit gate:
+- alert-to-resolution runbook tested by simulation.
+
+## Phase 4 - Scale and Cost Control
+Deliverables:
+- stable operation for larger active user base while keeping margins healthy.
+Checklist:
+- [ ] per-endpoint rate-limit tuning
+- [ ] cache for hot read paths (only if required)
+- [ ] read/write query optimization and indexes
+- [ ] monthly cost dashboard and anomaly alerts
+- [ ] predictable overage strategy
+Exit gate:
+- cost per active user stays within target band for two billing cycles.
+
+## Phase 5 - Optional Cloud Features
+Deliverables:
+- scheduling/integrations rolled out only after stable control plane.
+Checklist:
+- [ ] background job system isolated from core auth/license APIs
+- [ ] queue/backoff/dead-letter policies defined
+- [ ] integration secrets vaulting complete
+- [ ] opt-in data handling policy explicitly enforced
+Exit gate:
+- optional features do not degrade baseline auth/license SLAs.
+
+## Environment Layout
+1) `local`
+- dev-only tokens and local DB
+
+2) `staging`
+- production-like config with separate DB
+- smoke tests before production promotion
+
+3) `production`
+- real billing and device enforcement
+- strict secrets and alerting
+
+## Minimal Database Domains
+1) `users`
+2) `accounts`
+3) `sessions`
+4) `licenses`
+5) `devices`
+6) `usage_counters`
+7) `audit_events`
+8) `app_config`
+
+## Security Baseline
+1) JWT access token short TTL (`5-15m`)
+2) refresh token rotation with server revocation list
+3) hashed refresh tokens at rest
+4) per-account device cap enforced in transaction
+5) IP and UA capture for suspicious session detection
+6) no extracted row payload in telemetry
+
+## Cost Control Baseline
+1) keep compute client-side
+2) keep cloud write volume low (metadata only)
+3) defer Redis and job workers until needed
+4) enforce budget alerts and hard spend caps
+5) review p95 latency before scaling instance size
+
+## Immediate Execution Order
+1) Create Railway project + staging + production envs.
+2) Create Postgres service in each env.
+3) Deploy control-plane API service with health checks.
+4) Set required secrets and rotate keys.
+5) Run extension end-to-end smoke test against staging.
+6) Promote to production and monitor first 48 hours.

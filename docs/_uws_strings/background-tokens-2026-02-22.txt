@@ -1,0 +1,315 @@
+,AUTOMATION_COMPLETED:
+,AUTOMATION_ERROR:
+,AUTOMATION_PROGRESS:
+,AUTOMATION_START:
+,AUTOMATION_STARTED:
+,AUTOMATION_STOP:
+,AUTOMATION_STOPPED:
+,clipboard:
+,default:
+,downloads:
+,ELEMENT_PICKER_RESULT:
+,ELEMENT_PICKER_START:
+,ELEMENT_PICKER_STOP:
+,error:
+,error:t.message||
+,message:
+,n.nc),o.setAttribute(
+,o.name=
+,o.timeout=120,n.nc&&o.setAttribute(
+:a.type),i=a&&a.target&&a.target.src;o.message=
+:return this.handleGetAutomationRunners(t,a);case
+:return this.handleOpenSidePanel(e,a);case
+:return this.handlePingBackground(t,a);case
+:return this.handleRerunAutomation(t,e,a);case
+:return this.handleSidePanelStatus(t,a);case
+:return this.handleStartAutomation(t,e,a);case
+:return this.handleStopAutomation(t,e,a);case
+:return this.handleStopAutomationById(t,e,a);case
+:return this.handleWakeUpBackground(t,a);case
+.ceNzKf[aria-hidden="true"]
+.F7nice .UY7F9
+.F7nice span[aria-hidden="true"]
+.gallery img
+.mgr77e[aria-label*="Price"]
+.OqCZI .t39EBf
+.section-carousel-images img
+.section-popular-times-container .fontBodyMedium
+.section-result-details .fontBodyMedium
+.section-result-details .section-result-price-range
+.section-result-menu-item .fontBodyMedium
+.y0skZc-jyrRxf-eEDwDf .t39EBf
+.ZKCDEc img
+');return t.includes(
+);t=t.replace(/#.*$/,
+);var e=n.g.document;if(!t&&e&&(e.currentScript&&
+).replace(/\?.*$/,
+).replace(/\/[^\/]+$/,
+)).charset=
+)==a||d.getAttribute(
+)||t.includes('
+[aria-label*='$']
+[aria-label*='price']
+[class*="ad-"]
+[class*="author"]
+[class*="date"]
+[class*="share"]
+[class*="social"]
+[data-attrid="description"]
+[data-attrid="title"] h1
+[data-item-id*="phone"] .Io6YTe
+[data-item-id="address"] .Io6YTe
+[data-value*='menu']
+[data-value*='price']
+[data-value="Category"] .YhemCb
+[data-value="Hours"] .t39EBf
+[data-value="Price level"]
+[data-value="Rating"] span
+[id*="ad-"]
+[itemprop]
+[itemscope]
+[rel="author"]
+[role="main"]
+],clipboard:[
+].includes(t)?await this.ensureHostPermissions(t,null,!0):!![
+].includes(t)?await this.ensureHostPermissions(t,null,e):![
+#content
++e+
++i+
++s+
+===a.type?
+🤖 [LISTEXTRACTOR-RUNNER]
+🤖 [LISTEXTRACTOR-RUNNER] No automation ID or tableData ID provided for context
+🤖 [LISTEXTRACTOR-RUNNER] No tabId provided
+🤖 [PAGE-EXTRACTOR-RUNNER] No tableDataId provided
+1px solid rgba(255, 255, 255, 0.3)
+2px 6px
+2px solid rgba(255, 225, 0, 0.7)
+403 forbidden
+a[data-item-id="authority"]
+a[data-item-id="authority"] .Io6YTe
+a[data-value="Website"]
+a[data-value="Website"] .Io6YTe
+a[href]
+a[href^="http"]:not([href*="google"]):not([href*="maps"])
+a[href^="mailto:"]
+a[href^="tel:"]
+access denied
+All click attempts failed
+All natural click attempts failed
+Automation already running
+Automation stopped successfully
+Average Rating
+background dimensions
+Background Image
+Business Category
+Business Hours
+Business/Place Name
+button click failed
+button click failed after retries
+button.CsEnBe[aria-label*="Address"]
+button[aria-label*="phone"] .Io6YTe
+button[data-item-id*="http"]
+button[data-item-id*="http"] .Io6YTe
+button[data-item-id="address"] .Io6YTe
+button[data-item-id="phone:tel:"] .Io6YTe
+button[data-photo-index] img
+button[data-value="Address"] .Io6YTe
+button[data-value="Category"]
+button[data-value="Phone"] .Io6YTe
+button[data-value="Reviews"] .UY7F9
+Cannot create more tabs: system limits reached
+certificate error
+Child index out of bounds
+chrome://newtab/
+Click failed
+clickable element
+Clicking 'Load More' button...
+Clicking 'Next Page' button...
+Container not found
+content changed
+Content changed after pagination, continuing to next page
+content load
+content load after navigation
+Could not establish connection
+Could not reliably find the element using any strategy
+data:image/gif;base64,
+div, span
+div:contains('$')
+Element has disabled class
+Element has no size
+Element has zero dimensions
+Element is aria-disabled
+Element is disabled
+Element is hidden
+Element is not clickable
+Element is transparent
+Element not found
+Element not found for interaction
+Element scrolled into view
+Email Addresses
+Email Count
+emailPatterns must be an array if provided
+Error executing metadata extraction
+execute() method must be implemented by runner subclasses
+Extract custom elements using selectors
+Extract email addresses from page content
+Extract Google Maps place information
+Extract phone numbers from page content
+Extract webpage content as AI-ready text
+EXTRACT_LIST action has an invalid allSelectors array. It requires at least one selector
+EXTRACT_PAGES action requires a non-empty elements array
+Extracting data from current page...
+Extracting data from list items...
+Extracting metadata...
+Extraction cancelled
+Extraction was cancelled
+extractionOptions must be an object if provided
+Failed after all retry attempts
+Failed to click element:
+Failed to click:
+Full Address
+gateway timeout
+h1[data-attrid="title"]
+h1[data-value="Name"]
+Host permissions are required to execute automation tasks. Please grant permissions and try again.
+Host permissions are required to interact with web pages. Please grant permissions and try again.
+href^="tel:"
+Image URLs
+includeMetadata must be a boolean if provided
+Infinite scroll complete - no more content available
+infinite scroll container
+Initializing 'Load More' button extraction...
+Initializing infinite scroll extraction...
+Initializing pagination extraction...
+Invalid JSON-LD
+invalid url
+Invalid URL
+Item extraction failed
+Latitude, Longitude
+link[rel="canonical"]
+link[rel="icon"], link[rel="shortcut icon"]
+list container
+List container not found
+load more button
+Load More complete - no more 'Load More' buttons found
+LOAD_MORE action with navigate method requires at least one button selector
+max attempts reached
+Menu Items & Prices
+Meta Description
+meta[name^="twitter:"]
+meta[name="author"]
+meta[name="date"]
+meta[name="description"]
+meta[name="publish_date"]
+meta[name="twitter:description"]
+meta[name="twitter:title"]
+meta[property^="og:"]
+meta[property="article:author"]
+meta[property="article:published_time"]
+meta[property="og:description"]
+meta[property="og:title"]
+Metadata extraction complete
+Missing canonical URL
+Missing og:description
+Missing og:image
+Missing og:title
+Missing og:url
+Missing page description in meta tags
+Missing page title in meta tags
+Missing required actions: EXTRACT_LIST or LOAD_MORE
+Missing selector or selector type in parameters
+Missing twitter:card
+Missing twitter:description
+Missing twitter:title
+Missing viewport meta tag
+Must provide either itemHashData or itemIndex
+No active tab available to run automation
+No automation running
+No children found to highlight
+no content changes after navigation
+No data available
+No element data provided
+No elements with matching tag found
+No item found in extraction result
+No list items found in container
+no load more button found
+no more changes
+no more new content
+no more pagination buttons
+no new items after retries
+No result from image background extraction
+No result from image URL extraction
+No result from link URL extraction
+No result from text extraction
+No selectors provided or invalid selectors array
+No tab ID provided
+No URL found in the original automation
+No valid selectors found
+Number of Emails
+Number of Phone Numbers
+Number of Reviews
+opacity 0.3s ease-in-out
+Operation cancelled
+Page Content
+Page Extraction
+Page failed to load
+page load
+Page load timeout
+Page Title
+PAGE URL
+pagination button
+Pagination complete - no content changes after navigation
+Pagination complete - no more 'Next' buttons found
+Pagination complete - no more new content found
+Pagination complete - unable to click 'Next' button
+Phone Count
+Phone Number
+Phone Numbers
+phonePatterns must be an array if provided
+Place Description
+Place Images
+Place Name
+Price Level
+Price Range
+Publish Date
+reached bottom
+Receiving end does not exist
+Review Count
+rgba(0, 0, 0, 0.7)
+rgba(0, 150, 255, 0.1)
+rgba(0, 150, 255, 0.8)
+rgba(0, 255, 0, 0.1)
+rgba(0, 255, 0, 0.8)
+rgba(255, 225, 0, 0.2)
+rgba(255, 225, 0, 0.3)
+rgba(255, 225, 0, 0.7)
+script[type="application/ld+json"]
+Scrolling to load more content...
+server error
+service unavailable
+Smart extraction failed
+Source URL
+span:contains('$')
+src dimensions
+ssl error
+Starting metadata extraction...
+Target element not found
+time[datetime]
+unable to click next button
+Unknown error
+Unknown error during element finding
+Unknown error during metadata extraction
+Unknown error during scroll element into view operation
+Unknown error during scroll until visible operation
+Unknown error during scrolling
+Unknown error in bulk extraction
+Unknown error in load more operation
+Unknown error testing selectors
+Unknown extraction error
+URL changed after pagination, content loaded, continuing to next page
+url changed and content loaded
+url format
+use strict
+Website URL
+Word Count

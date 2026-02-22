@@ -1,0 +1,701 @@
+﻿--
+ */
+ {
+ > 
+ at 
+ at new 
+ Click
+ Click Mode
+ Extract
+ for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+ key to expand selection to the parent element.
+ Mode to register clicks
+ react-mount-point-unstable 
+ Selection Mode
+#000000
+#1f2937
+#1f2937 !important
+#374151
+#374151 !important
+#4b5563
+#9ca3af
+#d1d5db
+#d97706
+#ef4444
+#element-picker-root
+#FFAA00
+#FFE100
+#ffffff
+#ffffff !important
+$!
+$&/
+$?
+${n.id}
+${r.id}
+&args[]=
+) {
+). If you meant to render a collection of children, use an array instead.
+)]+)["
+, 
+...
+.Consumer
+.drag-handle
+.Provider
+/$
+; visit 
+@@iterator
+@@toPrimitive must return a primitive value.
+@layer
+@media 
+@supports (
+[data-element-picker-highlighted="true"]
+[data-testid^="element-picker-"]
+[data-testid^="element-picker-selected-"]
+[data-testid="element-picker-overlay"]
+[href^='mailto:']
+[href^='tel:']
+[object Object]
+\n
+\n    @keyframes ep-pulse {\n      0%, 100% { opacity: 1; }\n      50% { opacity: 0.5; }\n    }\n  
+\n/*# sourceMappingURL=data:application/json;base64,
+\nError generating stack: 
+']?([^
+][type="radio"]
+__bubble
+__html
+__reactContainer$
+__reactEvents$
+__reactFiber$
+__reactHandles$
+__reactListeners$
+__reactProps$
+_reactListening
+</svg>
+<anonymous>
+<script><\/script>
+<svg>
+= "
+=0
+=2
+0 0 0 2px rgba(0, 0, 0, 0.5)
+0 0 320 512
+0 0 352 512
+0 0 448 512
+0 0 512 512
+0 0 576 512
+0 10px 25px rgba(0, 0, 0, 0.25)
+0 1px 3px rgba(0,0,0,0.3)
+0 20px 40px rgba(0, 0, 0, 0.3)
+0.5
+1.3
+1.4
+1.4 !important
+100
+100%
+11px
+12px
+12px !important
+14px
+14px !important
+16px
+18.3.1
+18.3.1-next-f1338f8080-20240426
+18px
+1em
+1px
+1px solid
+1px solid #1f2937
+1px solid #374151
+1px solid #374151 !important
+1px solid #4b5563 !important
+2147483638
+2147483639
+2147483640
+-24px
+250px
+288px
+2px
+2px 0
+2px 6px
+3px solid #FFE100
+420px
+4px
+50%
+500
+600
+6px
+6px 12px
+6px 8px
+8px
+8px 12px
+8px 16px
+90vh
+absolute
+absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium
+acceptCharset
+accept-charset
+act(...) is not supported in production builds of React.
+action
+Add
+Add selector
+Advanced
+afterblur
+all
+all 0.2s ease
+All extraction actions will be executed in sequence during automation.
+alt
+altKey
+Animation
+AnimationEnd
+AnimationEvent
+animationiteration
+AnimationStart
+annotation-xml
+aria-
+aria-*
+aria-label
+ArrowDown
+ArrowLeft
+ArrowRight
+ArrowUp
+attr
+attribute
+attributes
+audio
+auto
+Auto Extract
+autoFocus
+autoReverse
+auxclick
+background
+background-color 0.2s ease
+background-image
+Backspace
+backwards
+beforeblur
+beforeinput
+beforeunload
+bg-[#FFAA00]
+bg-[#FFAA00]/5
+bg-[#FFE100]
+bg-[#FFE100]/5
+bg_img_
+bg-black p-5 rounded-lg shadow-xl w-96 border border-gray-800 max-h-[90vh] overflow-y-auto
+bg-gray-700 px-1 rounded text-xs font-mono
+black
+block
+blur
+body
+bold
+boolean
+border-[#FFE100] bg-gray-800
+border-box
+border-gray-700 bg-gray-800 hover:border-gray-600
+border-gray-700 bg-gray-900 opacity-50 cursor-not-allowed
+button
+Cache
+cancel
+cancel close invalid load scroll toggle
+CapsLock
+capture
+center
+change
+change click focusin focusout input keydown keyup selectionchange
+charCode
+checkbox
+checked
+children
+children dangerouslySetInnerHTML defaultValue defaultChecked innerHTML suppressContentEditableWarning suppressHydrationWarning style
+class
+className
+Clear
+click
+Click Element
+Click Mode
+Click on an element to add it to your selection.
+clipboardData
+close
+Close Picker
+collapsed
+color-profile
+cols
+column
+compositionend
+compositionend focusout keydown keypress keyup mousedown
+CompositionEvent
+compositionstart
+compositionstart focusout keydown keypress keyup mousedown
+compositionupdate
+compositionupdate focusout keydown keypress keyup mousedown
+Configure Action
+contains
+content
+contentEditable
+Context
+contextmenu
+Control
+copy
+Couldn't find a style target. This probably means that the value for the 'insert' parameter is invalid.
+crosshair
+crossOrigin
+css
+cssFloat
+ctrlKey
+currentColor
+cut
+dangerouslySetInnerHTML
+data
+data-
+data-*
+data:
+data-element-id
+data-element-picker-highlighted
+data-element-selector
+data-testid
+datetime-local
+dblclick
+default
+defaultValue
+DehydratedFragment
+Delete
+DELETED
+deltaX
+deltaY
+details
+dialog
+display
+div
+documentMode
+download
+drag
+dragend
+dragenter
+dragexit
+draggable
+drag-handle
+dragleave
+dragover
+dragstart
+drop
+e.g., 'Product Title', 'Buy Button'
+Edit Element
+Element name (optional)
+Element Picker
+Element Picker Help
+Element Selectors
+element-name
+element-picker
+element-picker-highlight
+element-picker-overlay
+element-picker-root
+element-picker-selected-${n}
+element-picker-selected-${t}
+ellipsis
+embed
+End
+Enter
+ep-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite
+error
+Escape
+externalResourcesRequired
+extract
+Extract Data
+Extract image URL or picture
+Extract Mode
+Extract specific technical attributes (for advanced users)
+Extract the visible text from this element
+Extract web link or URL
+extractType
+F1
+F10
+F11
+F12
+F2
+F3
+F4
+F5
+F6
+F7
+F8
+F9
+false
+file
+Finish Selection
+fixed
+fixed inset-0 flex items-center justify-center z-[2147483650] bg-black bg-opacity-50
+fixed shadow-lg rounded z-[2147483645] text-white border border-gray-600 pointer-events-auto
+flex
+flex flex-col min-w-0 flex-1
+flex gap-0.5
+flex items-center flex-1 min-w-0
+flex items-center gap-1
+flex items-center gap-1.5
+flex items-center gap-2
+flex justify-between items-center mb-4
+flex-1
+flex-shrink-0
+flex-shrink-0 inline-block w-2.5 h-2.5 rounded-full mr-1.5 
+flex-shrink-0 text-xs
+float
+focus
+focusable
+focusin
+focusout
+focusout contextmenu dragend focusin keydown keyup mousedown mouseup selectionchange
+font-face
+font-face-format
+font-face-name
+font-face-src
+font-face-uri
+font-medium text-white text-sm
+font-mono text-blue-300
+font-semibold text-[#FFAA00] flex items-center gap-2 mb-2
+font-semibold text-[#FFE100] flex items-center gap-2 mb-2
+font-semibold text-white mb-2
+font-size:10px;
+for
+forceUpdate
+foreignObject
+formAction
+ForwardRef
+ForwardRef(
+forwards
+Fragment
+fullscreenchange
+function
+Got it
+gotpointercapture
+grab
+grabbing
+h2
+h3
+h-3.5 w-3.5 rounded border-gray-600 text-[#FFE100] focus:ring-[#FFE100]
+h-3.5 w-3.5 text-[#FFE100] border-gray-600 focus:ring-[#FFE100]
+h4
+hashchange
+head
+Help Information
+hidden
+high
+Home
+Hover + Click to select
+Hover over elements on the page to highlight them.
+How It Works
+href
+htmlFor
+http
+http://www.w3.org/1998/Math/MathML
+http://www.w3.org/1999/xhtml
+http://www.w3.org/1999/xlink
+http://www.w3.org/2000/svg
+http://www.w3.org/XML/1998/namespace
+httpEquiv
+http-equiv
+https://reactjs.org/docs/error-decoder.html?invariant=
+id
+iframe
+image
+image_url
+img
+img_
+important
+initial
+inline
+inline-block
+inline-flex
+innerHTML
+input
+input[name=
+Insert
+invalid
+javascript:
+keydown
+keypress
+keyup
+ko
+label
+Lazy
+leave
+left
+Let PandaExtract automatically figure out what to extract. Great for dynamic or group content!
+li
+link
+link_
+link_url
+list-disc pl-5 space-y-2
+load
+lostpointercapture
+low
+mailto:
+math
+max-h-48 overflow-y-auto border border-gray-800 rounded
+medium
+Memo
+message
+Meta
+metaKey
+method
+Minified React error #
+missing-glyph
+Mode
+monospace !important
+mouse
+mousedown
+mouseenter
+mouseleave
+mousemove
+mouseout
+mouseover
+mouseup
+movementX
+movementY
+moz
+ms
+mt-2 p-1.5 bg-amber-900 border border-amber-600 rounded text-amber-200 text-xs
+mt-3
+mt-3 bg-gray-800 border border-gray-700 rounded p-2
+mt-4 w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded
+multiple
+muted
+name
+nonce
+none
+none !important
+normal
+noscript
+Not available for this element
+not-allowed
+nowrap
+number
+NumLock
+object
+object with keys {
+Objects are not valid as a React child (found: 
+Offscreen
+on
+onAnimationEnd
+onAnimationIteration
+onAnimationStart
+onBeforeInput
+onBlur
+onChange
+onClick
+onClickCapture
+onCompositionEnd
+onCompositionStart
+onCompositionUpdate
+onDoubleClick
+onDoubleClickCapture
+onFocus
+oninput
+onMouseDown
+onMouseDownCapture
+onMouseEnter
+onMouseLeave
+onMouseMove
+onMouseMoveCapture
+onMouseUp
+onMouseUpCapture
+onPointerEnter
+onPointerLeave
+onpropertychange
+onScroll
+onSelect
+onTransitionEnd
+option
+OS
+PageDown
+PageUp
+passive
+password
+paste
+path
+Pause
+placeholder
+play
+pointer
+pointercancel
+pointerdown
+pointerenter
+pointerleave
+pointermove
+pointerout
+pointerover
+pointerup
+popstate
+Portal
+poster
+preserveAlpha
+Press ESC or click the Finish Selection button when done.
+Profiler
+property
+props
+pt-2 border-t border-gray-800
+px
+radio
+ratechange
+react.cache
+React.Children.only expected to receive a single React element child.
+React.cloneElement(...): The argument must be a React element, but you passed 
+react.context
+react.debug_trace_mode
+react.element
+react.forward_ref
+react.fragment
+react.lazy
+react.legacy_hidden
+react.memo
+react.offscreen
+react.portal
+react.profiler
+react.provider
+react.scope
+react.strict_mode
+react.suspense
+react.suspense_list
+react.tracing_marker
+react-dom
+Recommended
+rel
+relative border rounded-lg p-2 cursor-pointer transition-all 
+Remove Element
+Remove selector
+reset
+resize
+return;
+rgba(0, 0, 0, 0.5)
+rgba(0, 0, 0, 0.9)
+rgba(255, 170, 0, 0.1)
+rgba(255, 170, 0, 0.2)
+rgba(255, 225, 0, 0.1)
+rgba(255, 225, 0, 0.2)
+Root
+rows
+rowSpan
+Save Element
+Scope
+script
+scroll
+ScrollLock
+search
+seeked
+select
+Select technical details to extract:
+selected
+Selected Elements (
+Selection Mode
+selectionchange
+selectionStart
+selectstart
+setState
+setState(...): takes an object of state variables to update or a function which returns an object of state variables.
+Shift
+shiftKey
+size
+smart
+smart_
+smart_extract
+source
+space-between
+space-y-0.5
+space-y-1.5
+space-y-1.5 max-h-28 overflow-y-auto
+space-y-4 text-gray-300 text-sm
+span
+spellCheck
+src
+start
+static
+StrictMode
+string
+style
+submit
+suppressContentEditableWarning
+suppressHydrationWarning
+Suspense
+SuspenseList
+svg
+symbol
+system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important
+Tab
+tabIndex
+target
+tel
+test
+text
+Text Content
+text-[#FFAA00]
+text-[#FFE100]
+text_
+textarea
+TextEvent
+text-gray-400 flex-shrink-0
+text-gray-400 hover:text-blue-400 p-1 rounded hover:bg-gray-700/50
+text-gray-400 hover:text-red-400 p-1 rounded hover:bg-gray-700/50
+text-gray-400 hover:text-white
+text-gray-500 flex-shrink-0
+text-gray-500 ml-1
+textInput
+text-lg font-bold text-[#FFE100]
+text-sm
+text-sm font-medium text-gray-300 block mb-2
+text-white flex-1 min-w-0
+text-xs bg-amber-600 text-white px-1.5 py-0.5 rounded
+text-xs font-medium truncate max-w-[100px]
+text-xs font-semibold text-gray-400 mb-1.5
+text-xs text-blue-400 flex items-center gap-0.5
+text-xs text-gray-300 flex-1
+text-xs text-gray-400
+text-xs text-gray-400 leading-tight
+text-xs text-gray-500 italic
+text-xs text-gray-500 truncate max-w-[80px]
+Time to wait after clicking this element before continuing (default: 500ms)
+title
+together
+toggle
+Toggle between selection and click modes using the buttons in the header.
+touchcancel
+touchend
+touchmove
+touchstart
+TracingMarker
+Transition
+TransitionEnd
+TransitionEvent
+transparent
+true
+type
+ul
+undefined
+Unidentified
+unknown
+unknown-event
+unset
+url
+url(
+Use 
+use strict
+value
+video
+visible
+volumechange
+Wait time after click (milliseconds)
+wait-time
+Webkit
+w-full text-left px-2 py-1 rounded text-xs hover:bg-gray-700/50 transition-colors font-mono flex items-center gap-1
+What do you want to do?
+What information should we extract?
+wheel
+wheelDelta
+wheelDeltaX
+wheelDeltaY
+While hovering, press the 
+xlink:actuate xlink:arcrole xlink:role xlink:show xlink:title xlink:type
+xlink:href
+xlinkHref
+xml:base
+xml:lang
+xml:space
+xpath
+You can edit or remove elements from your selection using the icons next to each element.
