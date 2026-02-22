@@ -86,7 +86,7 @@ Tracking doc:
 Checklist:
 - [x] uptime monitor on `/healthz`
 - [x] error tracking enabled
-- [ ] auth/license/device dashboards
+- [x] auth/license/device dashboards
 - [x] alert thresholds:
   - 5xx spike
   - auth failure spike

@@ -108,23 +108,33 @@
 - Service: `control-api`
 
 ## Next Phase Focus (Observability)
-1) Uptime monitor + alert wiring for `/healthz`.
-2) Error tracking integration and alert routing.
-3) Auth/license/device dashboards with p95 latency.
-4) SLO document + alert-to-resolution runbook drill.
+1) Keep SLO thresholds calibrated with real traffic baselines.
+2) Connect external incident webhooks (optional) for multi-channel alerts.
+3) Assign primary/secondary owner contacts in runbook.
+4) Start Phase 4 cost/perf tuning loops.
 
 ## GitHub Automation
 - Workflow committed:
   - `.github/workflows/uptime-monitor.yml`
+  - `.github/workflows/slo-monitor.yml`
 - Repo variable configured:
   - `UPTIME_URLS=https://control-api-staging-98c0.up.railway.app/healthz,https://control-api-production-e750.up.railway.app/healthz`
+  - `OBSERVABILITY_URL_STAGING=https://control-api-staging-98c0.up.railway.app`
+  - `OBSERVABILITY_URL_PRODUCTION=https://control-api-production-e750.up.railway.app`
+  - SLO thresholds (`MAX_*`, `MIN_*`) configured for workflow defaults
 - Failure fallback enabled:
   - workflow auto-creates/updates issue `Uptime Monitor Incident`
-- Optional secrets to configure:
+  - workflow auto-creates/updates issue `SLO Monitor Incident`
+- Repo secrets configured:
+  - `OBSERVABILITY_KEY_STAGING`
+  - `OBSERVABILITY_KEY_PRODUCTION`
+- Optional additional secrets:
   - `ALERT_WEBHOOK_URL`
   - `ALERT_WEBHOOK_BEARER_TOKEN`
 
 ## Error Tracking
 - API endpoint available:
   - `GET /api/observability/errors/recent` (protected by `X-Observability-Key`)
+- Dashboard endpoint available:
+  - `GET /api/observability/dashboard` (protected by `X-Observability-Key`)
 - Errors logged through `logError(...)` are retained in bounded in-memory buffer for fast triage.

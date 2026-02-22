@@ -30,6 +30,21 @@ router.get("/api/observability/slo", requireObservabilityKey, (_req, res) => {
   return res.status(200).json(currentWindowSnapshot());
 });
 
+router.get("/api/observability/dashboard", requireObservabilityKey, (_req, res) => {
+  if (!config.enableMetricsEndpoint) {
+    return res.status(404).json({ error: "Observability endpoints are disabled" });
+  }
+
+  const snapshot = currentWindowSnapshot();
+  return res.status(200).json({
+    generatedAt: snapshot.generatedAt,
+    windowMinutes: snapshot.windowMinutes,
+    window: snapshot.window,
+    slo: snapshot.slo,
+    topRoutes: snapshot.topRoutes
+  });
+});
+
 router.get("/api/observability/errors/recent", requireObservabilityKey, (req, res) => {
   if (!config.enableMetricsEndpoint) {
     return res.status(404).json({ error: "Observability endpoints are disabled" });

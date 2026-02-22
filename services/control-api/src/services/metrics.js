@@ -17,6 +17,7 @@ const state = {
     deviceFailures: 0
   },
   routeTotals: new Map(),
+  requestEvents: [],
   healthzEvents: [],
   authLatencyEvents: [],
   licenseLatencyEvents: []
@@ -40,6 +41,15 @@ function pathIsLicense(path) {
 
 function pathIsDevice(path) {
   return path.startsWith("/api/devices");
+}
+
+function classifyFamily(path) {
+  if (pathIsAuth(path)) return "auth";
+  if (pathIsLicense(path)) return "license";
+  if (pathIsDevice(path)) return "devices";
+  if (path === "/healthz" || path === "/readyz") return "health";
+  if (path.startsWith("/api/observability/") || path === "/metrics") return "observability";
+  return "other";
 }
 
 function statusClass(statusCode) {
@@ -70,11 +80,72 @@ function percentile(values, p) {
   return Number(sorted[index].toFixed(2));
 }
 
+function percent(numerator, denominator, digits = 2) {
+  if (!denominator) return null;
+  return Number(((numerator / denominator) * 100).toFixed(digits));
+}
+
+function summarizeWindowFamilies(requestEvents) {
+  const families = new Map();
+  for (const event of requestEvents) {
+    const family = event.family;
+    const stats = families.get(family) || {
+      requests: 0,
+      failures: 0,
+      durations: []
+    };
+
+    stats.requests += 1;
+    if (event.statusCode >= 400) stats.failures += 1;
+    stats.durations.push(event.durationMs);
+    families.set(family, stats);
+  }
+
+  const output = {};
+  for (const [family, stats] of families.entries()) {
+    output[family] = {
+      requests: stats.requests,
+      failures: stats.failures,
+      failureRatePercent: percent(stats.failures, stats.requests),
+      avgDurationMs:
+        stats.requests > 0
+          ? Number((stats.durations.reduce((sum, value) => sum + value, 0) / stats.requests).toFixed(2))
+          : 0,
+      p95DurationMs: percentile(stats.durations, 95)
+    };
+  }
+
+  return output;
+}
+
+function summarizeWindowRequests(requestEvents) {
+  let status2xx = 0;
+  let status4xx = 0;
+  let status5xx = 0;
+
+  for (const event of requestEvents) {
+    if (event.statusCode >= 500) status5xx += 1;
+    else if (event.statusCode >= 400) status4xx += 1;
+    else if (event.statusCode >= 200) status2xx += 1;
+  }
+
+  const total = requestEvents.length;
+  return {
+    requestsTotal: total,
+    status2xx,
+    status4xx,
+    status5xx,
+    errorRatePercent: percent(status5xx, total),
+    byFamily: summarizeWindowFamilies(requestEvents)
+  };
+}
+
 function observeRequest({ method, path, statusCode, durationMs }) {
   const ts = Date.now();
   const classKey = statusClass(statusCode);
   const routeKey = `${method} ${path}`;
   const safeDurationMs = Number.isFinite(durationMs) ? Math.max(0, durationMs) : 0;
+  const family = classifyFamily(path);
 
   state.totals.requests += 1;
   if (classKey === "2xx") state.totals.status2xx += 1;
@@ -96,6 +167,13 @@ function observeRequest({ method, path, statusCode, durationMs }) {
   if (statusCode >= 400) routeStats.errorCount += 1;
   state.routeTotals.set(routeKey, routeStats);
 
+  pushBoundedEvent(state.requestEvents, {
+    ts,
+    statusCode,
+    durationMs: safeDurationMs,
+    family
+  });
+
   if (path === "/healthz") {
     pushBoundedEvent(state.healthzEvents, { ts, ok: statusCode >= 200 && statusCode < 400 });
   }
@@ -107,6 +185,7 @@ function observeRequest({ method, path, statusCode, durationMs }) {
   }
 
   const cutoffMs = ts - WINDOW_MS;
+  pruneEvents(state.requestEvents, cutoffMs);
   pruneEvents(state.healthzEvents, cutoffMs);
   pruneEvents(state.authLatencyEvents, cutoffMs);
   pruneEvents(state.licenseLatencyEvents, cutoffMs);
@@ -116,6 +195,7 @@ function currentWindowSnapshot() {
   const now = Date.now();
   const cutoffMs = now - WINDOW_MS;
 
+  pruneEvents(state.requestEvents, cutoffMs);
   pruneEvents(state.healthzEvents, cutoffMs);
   pruneEvents(state.authLatencyEvents, cutoffMs);
   pruneEvents(state.licenseLatencyEvents, cutoffMs);
@@ -145,6 +225,8 @@ function currentWindowSnapshot() {
       avgDurationMs: item.count > 0 ? Number((item.totalDurationMs / item.count).toFixed(2)) : 0
     }));
 
+  const window = summarizeWindowRequests(state.requestEvents);
+
   return {
     generatedAt: new Date(now).toISOString(),
     since: new Date(STARTED_AT_MS).toISOString(),
@@ -152,6 +234,7 @@ function currentWindowSnapshot() {
     totals: {
       ...state.totals
     },
+    window,
     slo: {
       availability: {
         targetPercent: 99.5,
@@ -187,6 +270,35 @@ function toPrometheus(snapshot) {
   lines.push(`control_api_failures_total{family=\"auth\"} ${snapshot.totals.authFailures}`);
   lines.push(`control_api_failures_total{family=\"license\"} ${snapshot.totals.licenseFailures}`);
   lines.push(`control_api_failures_total{family=\"devices\"} ${snapshot.totals.deviceFailures}`);
+
+  lines.push("# HELP control_api_window_requests_total Requests in current rolling window");
+  lines.push("# TYPE control_api_window_requests_total gauge");
+  lines.push(`control_api_window_requests_total ${snapshot.window.requestsTotal}`);
+  lines.push(`control_api_window_requests_total{status_class=\"2xx\"} ${snapshot.window.status2xx}`);
+  lines.push(`control_api_window_requests_total{status_class=\"4xx\"} ${snapshot.window.status4xx}`);
+  lines.push(`control_api_window_requests_total{status_class=\"5xx\"} ${snapshot.window.status5xx}`);
+
+  lines.push("# HELP control_api_window_error_rate_percent 5xx error rate in rolling window");
+  lines.push("# TYPE control_api_window_error_rate_percent gauge");
+  lines.push(`control_api_window_error_rate_percent ${snapshot.window.errorRatePercent ?? "NaN"}`);
+
+  lines.push("# HELP control_api_window_family_failure_rate_percent Failure rate by endpoint family");
+  lines.push("# TYPE control_api_window_family_failure_rate_percent gauge");
+  for (const [family, stats] of Object.entries(snapshot.window.byFamily || {})) {
+    lines.push(
+      `control_api_window_family_failure_rate_percent{family=\"${family}\"} ${
+        stats.failureRatePercent ?? "NaN"
+      }`
+    );
+  }
+
+  lines.push("# HELP control_api_window_family_p95_ms p95 latency by endpoint family in rolling window");
+  lines.push("# TYPE control_api_window_family_p95_ms gauge");
+  for (const [family, stats] of Object.entries(snapshot.window.byFamily || {})) {
+    lines.push(
+      `control_api_window_family_p95_ms{family=\"${family}\"} ${stats.p95DurationMs ?? "NaN"}`
+    );
+  }
 
   lines.push("# HELP control_api_slo_value SLO values in current window");
   lines.push("# TYPE control_api_slo_value gauge");

@@ -14,6 +14,8 @@
 ## Automatic Alert Channel
 - GitHub workflow `Uptime Monitor` automatically opens or comments on issue:
   - title: `Uptime Monitor Incident`
+- GitHub workflow `SLO Monitor` automatically opens or comments on issue:
+  - title: `SLO Monitor Incident`
 - This is active even when external webhook secrets are not configured.
 
 ## Alert Thresholds

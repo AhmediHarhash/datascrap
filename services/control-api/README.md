@@ -27,6 +27,7 @@ npm run start:control-api
 - `POST /api/devices/remove`
 - `POST /api/devices/rename`
 - `GET /api/observability/slo`
+- `GET /api/observability/dashboard`
 - `GET /api/observability/errors/recent`
 - `GET /metrics`
 
@@ -46,6 +47,19 @@ Environment variables:
 - `UPTIME_URLS` (comma-separated, defaults to staging+production `healthz`)
 - `ALERT_WEBHOOK_URL` (optional)
 - `ALERT_WEBHOOK_BEARER_TOKEN` (optional)
+
+## SLO Monitor Script
+
+```bash
+node services/control-api/scripts/slo-monitor.js
+```
+
+Environment variables:
+- `OBSERVABILITY_URL_STAGING` / `OBSERVABILITY_URL_PRODUCTION` (optional)
+- `OBSERVABILITY_KEY_STAGING` / `OBSERVABILITY_KEY_PRODUCTION`
+- `MAX_WINDOW_5XX_RATE_PERCENT` (default `2`)
+- `MAX_AUTH_P95_MS` (default `600`)
+- `MAX_LICENSE_P95_MS` (default `600`)
 
 ## Notes
 

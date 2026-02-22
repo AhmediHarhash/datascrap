@@ -5,14 +5,29 @@
 - Hardening prerequisites are complete (CORS, rate limits, idempotency), so observability can be measured on stable behavior.
 - Observability endpoints are now exposed:
   - `GET /api/observability/slo`
+  - `GET /api/observability/dashboard`
   - `GET /metrics`
+  - `GET /api/observability/errors/recent`
 - Scheduled uptime monitor workflow added:
   - `.github/workflows/uptime-monitor.yml`
   - `services/control-api/scripts/uptime-monitor.js`
+- Scheduled SLO monitor workflow added:
+  - `.github/workflows/slo-monitor.yml`
+  - `services/control-api/scripts/slo-monitor.js`
 - GitHub repo variable set:
   - `UPTIME_URLS` for staging+production `healthz` targets
+  - `OBSERVABILITY_URL_STAGING` and `OBSERVABILITY_URL_PRODUCTION`
+  - SLO threshold vars (`MAX_*`, `MIN_*`)
+- GitHub repo secrets set:
+  - `OBSERVABILITY_KEY_STAGING`
+  - `OBSERVABILITY_KEY_PRODUCTION`
 - Uptime workflow failure path now auto-creates/updates GitHub issue:
   - `Uptime Monitor Incident`
+- SLO workflow failure path now auto-creates/updates GitHub issue:
+  - `SLO Monitor Incident`
+- Latest workflow checks:
+  - `Uptime Monitor`: success
+  - `SLO Monitor`: ready (will run after workflow file is on `main`)
 - Alert runbook published:
   - `docs/observability-alert-runbook-2026-02-22.md`
 
@@ -44,7 +59,7 @@
   - endpoints: `/api/license/status`, `/api/devices/validate-devices`
 
 ## Next Implementation Tasks
-1) Set `OBSERVABILITY_API_KEY` and dashboard/monitor secrets in all environments.
+1) Keep dashboard and monitor thresholds tuned based on real traffic.
 2) Configure optional alert webhooks in GitHub Actions (`ALERT_WEBHOOK_URL`, `ALERT_WEBHOOK_BEARER_TOKEN`).
 3) Connect `ERROR_TRACKING_WEBHOOK_URL` to your incident channel destination.
 4) Assign primary/secondary owners in runbook.

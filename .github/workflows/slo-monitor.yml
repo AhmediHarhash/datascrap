@@ -1,0 +1,88 @@
+name: SLO Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  slo-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run SLO Monitor
+        id: slo
+        run: node services/control-api/scripts/slo-monitor.js
+        env:
+          OBSERVABILITY_URL_STAGING: ${{ vars.OBSERVABILITY_URL_STAGING }}
+          OBSERVABILITY_URL_PRODUCTION: ${{ vars.OBSERVABILITY_URL_PRODUCTION }}
+          OBSERVABILITY_KEY_STAGING: ${{ secrets.OBSERVABILITY_KEY_STAGING }}
+          OBSERVABILITY_KEY_PRODUCTION: ${{ secrets.OBSERVABILITY_KEY_PRODUCTION }}
+          MAX_WINDOW_5XX_RATE_PERCENT: ${{ vars.MAX_WINDOW_5XX_RATE_PERCENT }}
+          MAX_AUTH_P95_MS: ${{ vars.MAX_AUTH_P95_MS }}
+          MAX_LICENSE_P95_MS: ${{ vars.MAX_LICENSE_P95_MS }}
+          MIN_WINDOW_REQUESTS: ${{ vars.MIN_WINDOW_REQUESTS }}
+          MIN_P95_SAMPLES: ${{ vars.MIN_P95_SAMPLES }}
+          MIN_FAMILY_REQUESTS: ${{ vars.MIN_FAMILY_REQUESTS }}
+          MAX_AUTH_FAILURE_RATE_PERCENT: ${{ vars.MAX_AUTH_FAILURE_RATE_PERCENT }}
+          MAX_LICENSE_FAILURE_RATE_PERCENT: ${{ vars.MAX_LICENSE_FAILURE_RATE_PERCENT }}
+          MAX_DEVICE_FAILURE_RATE_PERCENT: ${{ vars.MAX_DEVICE_FAILURE_RATE_PERCENT }}
+          MIN_HEALTHZ_SAMPLES: ${{ vars.MIN_HEALTHZ_SAMPLES }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_WEBHOOK_BEARER_TOKEN: ${{ secrets.ALERT_WEBHOOK_BEARER_TOKEN }}
+
+      - name: Create Or Update SLO Incident Issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'SLO Monitor Incident';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              'Automatic alert from SLO monitor workflow.',
+              '',
+              `- Workflow run: ${runUrl}`,
+              `- Trigger: ${context.eventName}`,
+              `- Timestamp (UTC): ${new Date().toISOString()}`,
+              '',
+              'Please investigate SLO threshold violations in staging/production.'
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['incident', 'slo']
+              });
+            }
