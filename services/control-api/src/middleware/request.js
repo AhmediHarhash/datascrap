@@ -1,6 +1,7 @@
 "use strict";
 
 const { randomUUID } = require("crypto");
+const { observeRequest } = require("../services/metrics");
 const { getRequestIp, getUserAgent } = require("../utils/http");
 const { logInfo } = require("../utils/logger");
 
@@ -18,10 +19,22 @@ function requestLogger(req, res, next) {
 
   res.on("finish", () => {
     const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+    const routePath =
+      req.route && req.route.path
+        ? `${req.baseUrl || ""}${req.route.path}`
+        : req.path || (req.originalUrl ? String(req.originalUrl).split("?")[0] : req.url);
+
+    observeRequest({
+      method: req.method,
+      path: routePath || "unknown",
+      statusCode: res.statusCode,
+      durationMs: Number(durationMs.toFixed(2))
+    });
+
     logInfo("http.request.completed", {
       requestId: req.requestId || null,
       method: req.method,
-      path: req.originalUrl || req.url,
+      path: routePath || req.originalUrl || req.url,
       statusCode: res.statusCode,
       durationMs: Number(durationMs.toFixed(2)),
       ip: getRequestIp(req),
@@ -36,4 +49,3 @@ module.exports = {
   attachRequestContext,
   requestLogger
 };
-

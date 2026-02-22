@@ -26,12 +26,25 @@ npm run start:control-api
 - `POST /api/devices`
 - `POST /api/devices/remove`
 - `POST /api/devices/rename`
+- `GET /api/observability/slo`
+- `GET /metrics`
 
 ## Smoke Test
 
 ```bash
 npm run smoke:control-api
 ```
+
+## Uptime Monitor Script
+
+```bash
+node services/control-api/scripts/uptime-monitor.js
+```
+
+Environment variables:
+- `UPTIME_URLS` (comma-separated, defaults to staging+production `healthz`)
+- `ALERT_WEBHOOK_URL` (optional)
+- `ALERT_WEBHOOK_BEARER_TOKEN` (optional)
 
 ## Notes
 
@@ -43,6 +56,11 @@ npm run smoke:control-api
   - `CORS_ALLOWED_ORIGIN_PREFIXES` (for extension origins, default `chrome-extension://`)
 - Mutating `license` and `devices` endpoints support idempotency with `Idempotency-Key`.
 - Request logs are structured JSON and include `X-Request-Id`.
+- Observability endpoints can be protected with `OBSERVABILITY_API_KEY` using header `X-Observability-Key`.
+- Optional error tracking webhook:
+  - `ERROR_TRACKING_WEBHOOK_URL`
+  - `ERROR_TRACKING_WEBHOOK_BEARER_TOKEN`
+  - `ERROR_TRACKING_MIN_INTERVAL_SECONDS`
 
 ## Rollback Notes
 

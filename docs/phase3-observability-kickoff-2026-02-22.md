@@ -3,6 +3,16 @@
 ## Scope Started
 - Baseline structured request/error logging is live with `X-Request-Id` correlation.
 - Hardening prerequisites are complete (CORS, rate limits, idempotency), so observability can be measured on stable behavior.
+- Observability endpoints are now exposed:
+  - `GET /api/observability/slo`
+  - `GET /metrics`
+- Scheduled uptime monitor workflow added:
+  - `.github/workflows/uptime-monitor.yml`
+  - `services/control-api/scripts/uptime-monitor.js`
+- GitHub repo variable set:
+  - `UPTIME_URLS` for staging+production `healthz` targets
+- Alert runbook published:
+  - `docs/observability-alert-runbook-2026-02-22.md`
 
 ## Phase 3 Targets
 1) Uptime monitor on `GET /healthz` for staging and production.
@@ -32,11 +42,7 @@
   - endpoints: `/api/license/status`, `/api/devices/validate-devices`
 
 ## Next Implementation Tasks
-1) Add external monitors for both public domains.
-2) Define alert thresholds:
-- 5xx > 2% for 5 minutes
-- auth failures > baseline + 3 sigma
-- license p95 latency > 600ms for 10 minutes
-3) Wire error tracking transport and DSN secret handling.
-4) Publish on-call/owner assignments in runbook.
-
+1) Set `OBSERVABILITY_API_KEY` and dashboard/monitor secrets in all environments.
+2) Configure `vars.UPTIME_URLS` and optional alert webhooks in GitHub Actions.
+3) Connect `ERROR_TRACKING_WEBHOOK_URL` to your incident channel destination.
+4) Assign primary/secondary owners in runbook.

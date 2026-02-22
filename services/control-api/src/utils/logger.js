@@ -1,6 +1,7 @@
 "use strict";
 
 const { config } = require("../config");
+const { captureError } = require("../services/error-tracker");
 
 function baseEntry(level, event, fields = {}) {
   return {
@@ -34,14 +35,12 @@ function logWarn(event, fields = {}) {
 }
 
 function logError(event, error, fields = {}) {
-  console.error(
-    JSON.stringify(
-      baseEntry("error", event, {
-        ...fields,
-        error: sanitizeError(error)
-      })
-    )
-  );
+  const payload = baseEntry("error", event, {
+    ...fields,
+    error: sanitizeError(error)
+  });
+  console.error(JSON.stringify(payload));
+  captureError(event, error, fields);
 }
 
 module.exports = {
@@ -49,4 +48,3 @@ module.exports = {
   logInfo,
   logWarn
 };
-

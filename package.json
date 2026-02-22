@@ -8,7 +8,8 @@
     "start:control-api": "node services/control-api/src/server.js",
     "dev:control-api": "node --watch services/control-api/src/server.js",
     "smoke:control-api": "node services/control-api/scripts/smoke.js",
-    "migrate:control-api": "node services/control-api/scripts/migrate.js"
+    "migrate:control-api": "node services/control-api/scripts/migrate.js",
+    "uptime:control-api": "node services/control-api/scripts/uptime-monitor.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

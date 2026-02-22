@@ -44,7 +44,14 @@ const config = {
   rateLimitDevicesValidateMax: int(process.env.RATE_LIMIT_DEVICES_VALIDATE_MAX, 120),
   rateLimitDevicesMutateMax: int(process.env.RATE_LIMIT_DEVICES_MUTATE_MAX, 60),
   rateLimitDevicesListMax: int(process.env.RATE_LIMIT_DEVICES_LIST_MAX, 120),
-  idempotencyTtlHours: int(process.env.IDEMPOTENCY_TTL_HOURS, 24)
+  idempotencyTtlHours: int(process.env.IDEMPOTENCY_TTL_HOURS, 24),
+  enableMetricsEndpoint: bool(process.env.ENABLE_METRICS_ENDPOINT, true),
+  metricsWindowMinutes: int(process.env.METRICS_WINDOW_MINUTES, 60),
+  metricsMaxSamples: int(process.env.METRICS_MAX_SAMPLES, 20_000),
+  observabilityApiKey: process.env.OBSERVABILITY_API_KEY || "",
+  errorTrackingWebhookUrl: process.env.ERROR_TRACKING_WEBHOOK_URL || "",
+  errorTrackingWebhookBearerToken: process.env.ERROR_TRACKING_WEBHOOK_BEARER_TOKEN || "",
+  errorTrackingMinIntervalSeconds: int(process.env.ERROR_TRACKING_MIN_INTERVAL_SECONDS, 15)
 };
 
 module.exports = { config };

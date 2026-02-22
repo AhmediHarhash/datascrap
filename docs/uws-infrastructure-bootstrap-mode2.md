@@ -82,15 +82,16 @@ Deliverables:
 - measurable reliability with actionable alerts.
 Tracking doc:
 - `docs/phase3-observability-kickoff-2026-02-22.md`
+- `docs/observability-alert-runbook-2026-02-22.md`
 Checklist:
-- [ ] uptime monitor on `/healthz`
+- [x] uptime monitor on `/healthz`
 - [ ] error tracking enabled
 - [ ] auth/license/device dashboards
-- [ ] alert thresholds:
+- [x] alert thresholds:
   - 5xx spike
   - auth failure spike
   - license validation latency spike
-- [ ] SLOs published:
+- [x] SLOs published:
   - API availability
   - p95 auth latency
   - p95 license-check latency

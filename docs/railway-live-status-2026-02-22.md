@@ -32,6 +32,10 @@
   - `CORS_ALLOWED_ORIGIN_PREFIXES=chrome-extension://`
   - `RATE_LIMIT_*` policy values set
   - `IDEMPOTENCY_TTL_HOURS=24`
+  - `ENABLE_METRICS_ENDPOINT=true`
+  - `METRICS_WINDOW_MINUTES=60`
+  - `METRICS_MAX_SAMPLES=20000`
+  - `OBSERVABILITY_API_KEY` configured per environment
 
 ## Public Domains
 - Staging:
@@ -47,6 +51,9 @@
   - CORS checks:
     - disallowed web origin -> `403`
     - extension-style origin (`chrome-extension://...`) -> `200`
+  - Observability:
+    - `GET /api/observability/slo` -> `200` (with `X-Observability-Key`)
+    - `GET /metrics` -> `200` (with `X-Observability-Key`)
   - Idempotency checks:
     - `POST /api/license/register` replay returns `Idempotent-Replay: true`
     - `POST /api/devices/rename` replay returns `Idempotent-Replay: true`
@@ -64,6 +71,9 @@
   - CORS checks:
     - disallowed web origin -> `403`
     - extension-style origin -> `200`
+  - Observability:
+    - `GET /api/observability/slo` -> `200` (with `X-Observability-Key`)
+    - `GET /metrics` -> `200` (with `X-Observability-Key`)
   - Auth/license check:
     - register/login successful
     - license register replay returns `Idempotent-Replay: true`
@@ -83,6 +93,11 @@
   - `services/control-api/src/middleware/request.js`
   - `services/control-api/src/services/idempotency.js`
   - `services/control-api/src/utils/logger.js`
+  - `services/control-api/src/services/metrics.js`
+  - `services/control-api/src/services/error-tracker.js`
+  - `services/control-api/src/routes/observability.js`
+  - `.github/workflows/uptime-monitor.yml`
+  - `services/control-api/scripts/uptime-monitor.js`
   - `services/control-api/scripts/migrate.js`
   - `.env.example`
   - `infra/railway/control-api.env.example`
@@ -97,3 +112,12 @@
 2) Error tracking integration and alert routing.
 3) Auth/license/device dashboards with p95 latency.
 4) SLO document + alert-to-resolution runbook drill.
+
+## GitHub Automation
+- Workflow committed:
+  - `.github/workflows/uptime-monitor.yml`
+- Repo variable configured:
+  - `UPTIME_URLS=https://control-api-staging-98c0.up.railway.app/healthz,https://control-api-production-e750.up.railway.app/healthz`
+- Optional secrets to configure:
+  - `ALERT_WEBHOOK_URL`
+  - `ALERT_WEBHOOK_BEARER_TOKEN`

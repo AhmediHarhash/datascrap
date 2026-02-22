@@ -9,6 +9,7 @@ const { authRouter } = require("./routes/auth");
 const { configRouter } = require("./routes/config");
 const { devicesRouter } = require("./routes/devices");
 const { licenseRouter } = require("./routes/license");
+const { observabilityRouter } = require("./routes/observability");
 const { config } = require("./config");
 const { closePool, runDbProbe } = require("./db/pool");
 const { corsPolicy } = require("./middleware/cors");
@@ -77,6 +78,7 @@ app.use(configRouter);
 app.use(authRouter);
 app.use(licenseRouter);
 app.use(devicesRouter);
+app.use(observabilityRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
