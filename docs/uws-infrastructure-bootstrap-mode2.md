@@ -42,7 +42,7 @@ Deliverables:
 - secret inventory finalized.
 - budget guardrail policy defined.
 Checklist:
-- [ ] baseline env template prepared (`infra/railway/control-plane.env.example`)
+- [x] baseline env template prepared (`infra/railway/control-api.env.example`)
 - [ ] JWT key rotation policy defined
 - [ ] DB backup policy defined
 - [ ] Railway usage cap policy defined
@@ -56,11 +56,11 @@ Deliverables:
 - health checks + readiness checks.
 - auth + license + device-limit flows live.
 Checklist:
-- [ ] `GET /healthz` and `GET /readyz` deployed
-- [ ] short-lived access token + refresh token rotation implemented
-- [ ] max 2 active devices enforced server-side
-- [ ] audit rows for auth/license/device actions
-- [ ] staging and production Railway environments separated
+- [x] `GET /healthz` and `GET /readyz` deployed
+- [x] short-lived access token + refresh token rotation implemented
+- [x] max 2 active devices enforced server-side
+- [x] audit rows for auth/license/device actions
+- [x] staging and production Railway environments separated
 Exit gate:
 - end-to-end login/license/device flow passes from extension to production API.
 
@@ -162,3 +162,11 @@ Exit gate:
 4) Set required secrets and rotate keys.
 5) Run extension end-to-end smoke test against staging.
 6) Promote to production and monitor first 48 hours.
+
+## Phase 1 Delivery Snapshot (2026-02-22)
+- Railway project and env separation complete.
+- Staging + production Postgres provisioned.
+- Control API deployed in both environments.
+- DB migration `0001_control_plane_core.sql` applied to staging and production.
+- Auth/license/device flows verified end-to-end in staging.
+- Production health/readiness/config endpoints verified after rollout.
