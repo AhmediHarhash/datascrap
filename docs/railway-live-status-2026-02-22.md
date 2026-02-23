@@ -249,3 +249,12 @@
 - Jobs are processed by dedicated `jobs-worker` service, isolated from `control-api` request path.
 - Scheduler endpoints (`/api/schedules/*`) are live with interval/cron/timezone support.
 - `jobs-worker` now performs periodic due-schedule sweeps and enqueues jobs with schedule metadata.
+- Scheduler policy-fix redeploys:
+  - staging `control-api` deployment id: `138ba203-cf8c-4251-92f0-558e2aa63ea6`
+  - production `control-api` deployment id: `d2552d25-8125-4164-a85e-c3f6ec7c5de8`
+- Post-redeploy verification:
+  - queue monitor passed on both envs (`2026-02-23T04:24:18.295Z`)
+  - staging schedule smoke passed:
+    - account: `4ded7e50-98e8-4be0-91af-c0ccf87cef8f`
+    - schedule: `3846104d-d160-4355-8cda-545c52e0419b`
+    - run-now job: `1df1f056-928d-4d81-9b7a-d9d4a92a3303`

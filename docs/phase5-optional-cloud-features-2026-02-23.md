@@ -137,3 +137,8 @@ Enable optional scheduling/integration infrastructure without impacting core aut
 - command: `npm run phase5:schedule:smoke:control-api`
 - result: success
 - created schedule and executed `run-now` enqueue path
+
+7. Post-rollout policy-fix validation:
+- schedule update policy now enforces webhook/metadata checks using effective target job type (including updates that only change payload).
+- staging and production `control-api` redeployed after fix.
+- queue monitor passed on both environments after redeploy.
