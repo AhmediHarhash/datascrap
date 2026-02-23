@@ -21,7 +21,7 @@ npm run hardening:railway
 ## What It Executes
 
 1) `npm run smoke:extension`
-- storage/runtime + epic5/6/7/8/9/10 checks
+- storage/runtime + epic5/6/7/8/9/10/11 checks
 
 2) local API boot + `npm run smoke:control-api`
 - verifies `/healthz` and `/readyz`
@@ -31,9 +31,11 @@ npm run hardening:railway
 - boot API with `ENABLE_OPTIONAL_CLOUD_FEATURES=true`
 - `npm run phase5:smoke:control-api`
 - `npm run phase5:schedule:smoke:control-api`
+- `npm run phase9:monitor:smoke:control-api`
 - cloud smoke covers both:
   - `integration.webhook.deliver`
   - `extraction.page.summary`
+  - `monitor.page.diff`
   - integration secret connection test (`/api/integrations/secrets/test`)
 
 If DB is missing, cloud smoke is skipped automatically.
@@ -85,9 +87,9 @@ npm run test:local:hardening
 - policy load/save
 - integration secret upsert/list/remove
 - jobs enqueue/list/cancel
-- jobs preset test: webhook + extraction summary
+- jobs preset test: webhook + extraction summary + monitor diff
 - schedules create/list/run-now/remove
-- schedules preset test: webhook + extraction summary
+- schedules preset test: webhook + extraction summary + monitor diff
 - observability dashboard/errors/jobs fetch
 
 4) Templates/diagnostics:

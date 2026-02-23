@@ -16,6 +16,7 @@ const {
   toggleSchedule,
   updateSchedule
 } = require("../services/schedules");
+const { requiresWebhookOptIn, validateJobPayloadByType } = require("../services/job-payload-validator");
 const { validateMetadataOnlyPayload } = require("../services/metadata-policy");
 
 const router = Router();
@@ -44,59 +45,6 @@ function parseBoolean(value, fallback = null) {
     if (normalized === "false") return false;
   }
   return fallback;
-}
-
-function isValidHttpUrl(value) {
-  const input = String(value || "").trim();
-  if (!input) return false;
-  try {
-    const parsed = new URL(input);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch (_error) {
-    return false;
-  }
-}
-
-function validateWebhookPayload(payload) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return "Webhook payload must be an object";
-  }
-  if (!isValidHttpUrl(payload.targetUrl)) {
-    return "Webhook payload targetUrl must be a valid http/https URL";
-  }
-  if (!payload.eventType || String(payload.eventType).trim().length < 2) {
-    return "Webhook payload eventType is required";
-  }
-  return null;
-}
-
-function validateExtractionSummaryPayload(payload) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return "Extraction payload must be an object";
-  }
-
-  const targetUrl = String(payload.targetUrl || "").trim();
-  const targetUrls = Array.isArray(payload.targetUrls) ? payload.targetUrls : [];
-  const hasSingle = Boolean(targetUrl);
-  const hasMany = targetUrls.some((item) => String(item || "").trim().length > 0);
-  if (!hasSingle && !hasMany) {
-    return "Extraction payload requires targetUrl or targetUrls";
-  }
-
-  const urlsToCheck = [];
-  if (hasSingle) urlsToCheck.push(targetUrl);
-  for (const item of targetUrls) {
-    const value = String(item || "").trim();
-    if (value) urlsToCheck.push(value);
-  }
-
-  for (const url of urlsToCheck.slice(0, 10)) {
-    if (!isValidHttpUrl(url)) {
-      return "Extraction payload URLs must be valid http/https URLs";
-    }
-  }
-
-  return null;
 }
 
 async function requireCloudPolicy(req, res, options = {}) {
@@ -155,10 +103,11 @@ router.post("/api/schedules/create", requireOptionalCloudFeatures, requireAuth, 
   const targetPayload = req.body?.targetPayload && typeof req.body.targetPayload === "object" ? req.body.targetPayload : {};
   const maxAttempts = req.body?.maxAttempts;
   const isActive = parseBoolean(req.body?.isActive, true);
+  const normalizedTargetJobType = String(targetJobType || "").trim().toLowerCase();
 
   try {
     const policy = await requireCloudPolicy(req, res, {
-      requireWebhook: String(targetJobType || "").trim().toLowerCase() === "integration.webhook.deliver"
+      requireWebhook: requiresWebhookOptIn(normalizedTargetJobType, targetPayload)
     });
     if (!policy) return;
 
@@ -171,24 +120,12 @@ router.post("/api/schedules/create", requireOptionalCloudFeatures, requireAuth, 
       });
     }
 
-    if (String(targetJobType || "").trim().toLowerCase() === "integration.webhook.deliver") {
-      const webhookError = validateWebhookPayload(targetPayload);
-      if (webhookError) {
-        return res.status(400).json({
-          errorType: "INVALID_WEBHOOK_PAYLOAD",
-          message: webhookError
-        });
-      }
-    }
-
-    if (String(targetJobType || "").trim().toLowerCase() === "extraction.page.summary") {
-      const extractionError = validateExtractionSummaryPayload(targetPayload);
-      if (extractionError) {
-        return res.status(400).json({
-          errorType: "INVALID_EXTRACTION_PAYLOAD",
-          message: extractionError
-        });
-      }
+    const payloadValidation = validateJobPayloadByType(normalizedTargetJobType, targetPayload);
+    if (!payloadValidation.ok) {
+      return res.status(400).json({
+        errorType: payloadValidation.errorType,
+        message: payloadValidation.message
+      });
     }
 
     const schedule = await createSchedule({
@@ -260,19 +197,17 @@ router.post("/api/schedules/update", requireOptionalCloudFeatures, requireAuth, 
   }
 
   try {
-    let existing = null;
     const hasTargetPayloadUpdate = Object.prototype.hasOwnProperty.call(updates, "targetPayload");
     const hasTargetJobTypeUpdate = Object.prototype.hasOwnProperty.call(updates, "targetJobType");
-    if (!hasTargetJobTypeUpdate || hasTargetPayloadUpdate) {
-      existing = await getScheduleById({
-        accountId: req.auth.accountId,
-        scheduleId
+
+    const existing = await getScheduleById({
+      accountId: req.auth.accountId,
+      scheduleId
+    });
+    if (!existing) {
+      return res.status(404).json({
+        error: "Schedule not found"
       });
-      if (!existing) {
-        return res.status(404).json({
-          error: "Schedule not found"
-        });
-      }
     }
 
     const effectiveTargetJobType = String(
@@ -280,14 +215,15 @@ router.post("/api/schedules/update", requireOptionalCloudFeatures, requireAuth, 
     )
       .trim()
       .toLowerCase();
+    const effectiveTargetPayload = hasTargetPayloadUpdate ? updates.targetPayload : existing.targetPayload;
 
     const policy = await requireCloudPolicy(req, res, {
-      requireWebhook: effectiveTargetJobType === "integration.webhook.deliver"
+      requireWebhook: requiresWebhookOptIn(effectiveTargetJobType, effectiveTargetPayload)
     });
     if (!policy) return;
 
-    if (hasTargetPayloadUpdate) {
-      const metadataCheck = validateTargetPayload(policy, updates.targetPayload);
+    if (hasTargetPayloadUpdate || hasTargetJobTypeUpdate) {
+      const metadataCheck = validateTargetPayload(policy, effectiveTargetPayload);
       if (!metadataCheck.ok) {
         return res.status(400).json({
           errorType: metadataCheck.code,
@@ -296,24 +232,12 @@ router.post("/api/schedules/update", requireOptionalCloudFeatures, requireAuth, 
         });
       }
 
-      if (effectiveTargetJobType === "integration.webhook.deliver") {
-        const webhookError = validateWebhookPayload(updates.targetPayload);
-        if (webhookError) {
-          return res.status(400).json({
-            errorType: "INVALID_WEBHOOK_PAYLOAD",
-            message: webhookError
-          });
-        }
-      }
-
-      if (effectiveTargetJobType === "extraction.page.summary") {
-        const extractionError = validateExtractionSummaryPayload(updates.targetPayload);
-        if (extractionError) {
-          return res.status(400).json({
-            errorType: "INVALID_EXTRACTION_PAYLOAD",
-            message: extractionError
-          });
-        }
+      const payloadValidation = validateJobPayloadByType(effectiveTargetJobType, effectiveTargetPayload);
+      if (!payloadValidation.ok) {
+        return res.status(400).json({
+          errorType: payloadValidation.errorType,
+          message: payloadValidation.message
+        });
       }
     }
 

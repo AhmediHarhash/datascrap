@@ -237,6 +237,7 @@ const elements = {
   jobsPayload: document.getElementById("jobs-payload"),
   jobsFillWebhookBtn: document.getElementById("jobs-fill-webhook-btn"),
   jobsFillExtractSummaryBtn: document.getElementById("jobs-fill-extract-summary-btn"),
+  jobsFillMonitorDiffBtn: document.getElementById("jobs-fill-monitor-diff-btn"),
   jobsCancelId: document.getElementById("jobs-cancel-id"),
   jobsEnqueueBtn: document.getElementById("jobs-enqueue-btn"),
   jobsListBtn: document.getElementById("jobs-list-btn"),
@@ -253,6 +254,7 @@ const elements = {
   scheduleTargetPayload: document.getElementById("schedule-target-payload"),
   scheduleFillWebhookBtn: document.getElementById("schedule-fill-webhook-btn"),
   scheduleFillExtractSummaryBtn: document.getElementById("schedule-fill-extract-summary-btn"),
+  scheduleFillMonitorDiffBtn: document.getElementById("schedule-fill-monitor-diff-btn"),
   scheduleCreateBtn: document.getElementById("schedule-create-btn"),
   scheduleListBtn: document.getElementById("schedule-list-btn"),
   scheduleListActiveBtn: document.getElementById("schedule-list-active-btn"),
@@ -3109,7 +3111,43 @@ function buildExtractionSummaryJobPayloadTemplate(source = "manual-test") {
   };
 }
 
+function buildMonitorDiffJobPayloadTemplate(source = "manual-test") {
+  return {
+    targetUrl: "https://example.com",
+    monitorKey: "example-homepage",
+    compare: {
+      includeTitle: true,
+      includeMetaDescription: true,
+      includeCanonical: true,
+      includeWordCount: true,
+      includeHeadings: true,
+      includeLinks: true,
+      includeLang: true,
+      includeStatusCode: true,
+      includeContentType: true
+    },
+    request: {
+      timeoutMs: 15000
+    },
+    notify: {
+      webhook: {
+        targetUrl: "https://httpbin.org/status/204",
+        eventType: "datascrap.monitor.page.changed"
+      }
+    },
+    metadata: {
+      source
+    }
+  };
+}
+
 function applyJobsPreset(presetKey) {
+  if (presetKey === "monitor_diff") {
+    elements.jobsJobType.value = "monitor.page.diff";
+    elements.jobsPayload.value = JSON.stringify(buildMonitorDiffJobPayloadTemplate("jobs-manual"), null, 2);
+    setCloudStatus("Jobs payload preset applied: monitor diff");
+    return;
+  }
   if (presetKey === "extract_summary") {
     elements.jobsJobType.value = "extraction.page.summary";
     elements.jobsPayload.value = JSON.stringify(buildExtractionSummaryJobPayloadTemplate("jobs-manual"), null, 2);
@@ -3122,6 +3160,12 @@ function applyJobsPreset(presetKey) {
 }
 
 function applySchedulePreset(presetKey) {
+  if (presetKey === "monitor_diff") {
+    elements.scheduleTargetJobType.value = "monitor.page.diff";
+    elements.scheduleTargetPayload.value = JSON.stringify(buildMonitorDiffJobPayloadTemplate("schedule"), null, 2);
+    setCloudStatus("Schedule payload preset applied: monitor diff");
+    return;
+  }
   if (presetKey === "extract_summary") {
     elements.scheduleTargetJobType.value = "extraction.page.summary";
     elements.scheduleTargetPayload.value = JSON.stringify(buildExtractionSummaryJobPayloadTemplate("schedule"), null, 2);
@@ -4626,6 +4670,9 @@ elements.jobsFillWebhookBtn.addEventListener("click", () => {
 elements.jobsFillExtractSummaryBtn.addEventListener("click", () => {
   applyJobsPreset("extract_summary");
 });
+elements.jobsFillMonitorDiffBtn.addEventListener("click", () => {
+  applyJobsPreset("monitor_diff");
+});
 
 elements.scheduleCreateBtn.addEventListener("click", () => {
   void onSchedulesCreate();
@@ -4635,6 +4682,9 @@ elements.scheduleFillWebhookBtn.addEventListener("click", () => {
 });
 elements.scheduleFillExtractSummaryBtn.addEventListener("click", () => {
   applySchedulePreset("extract_summary");
+});
+elements.scheduleFillMonitorDiffBtn.addEventListener("click", () => {
+  applySchedulePreset("monitor_diff");
 });
 elements.scheduleListBtn.addEventListener("click", () => {
   void onSchedulesList(false);

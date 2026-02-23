@@ -18,6 +18,7 @@ const {
   listDeadLetters,
   listJobs
 } = require("../services/jobs");
+const { requiresWebhookOptIn, validateJobPayloadByType } = require("../services/job-payload-validator");
 const { SUPPORTED_JOB_TYPES } = require("../services/job-processor");
 const { validateMetadataOnlyPayload } = require("../services/metadata-policy");
 
@@ -43,59 +44,6 @@ function validateJobType(value) {
   if (!jobType) return null;
   if (!/^[a-z0-9._-]{3,80}$/.test(jobType)) return null;
   return jobType;
-}
-
-function isValidHttpUrl(value) {
-  const input = String(value || "").trim();
-  if (!input) return false;
-  try {
-    const parsed = new URL(input);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch (_error) {
-    return false;
-  }
-}
-
-function validateWebhookPayload(payload) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return "Webhook payload must be an object";
-  }
-  if (!isValidHttpUrl(payload.targetUrl)) {
-    return "Webhook payload targetUrl must be a valid http/https URL";
-  }
-  if (!payload.eventType || String(payload.eventType).trim().length < 2) {
-    return "Webhook payload eventType is required";
-  }
-  return null;
-}
-
-function validateExtractionSummaryPayload(payload) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return "Extraction payload must be an object";
-  }
-
-  const targetUrl = String(payload.targetUrl || "").trim();
-  const targetUrls = Array.isArray(payload.targetUrls) ? payload.targetUrls : [];
-  const hasSingle = Boolean(targetUrl);
-  const hasMany = targetUrls.some((item) => String(item || "").trim().length > 0);
-  if (!hasSingle && !hasMany) {
-    return "Extraction payload requires targetUrl or targetUrls";
-  }
-
-  const urlsToCheck = [];
-  if (hasSingle) urlsToCheck.push(targetUrl);
-  for (const item of targetUrls) {
-    const value = String(item || "").trim();
-    if (value) urlsToCheck.push(value);
-  }
-
-  for (const url of urlsToCheck.slice(0, 10)) {
-    if (!isValidHttpUrl(url)) {
-      return "Extraction payload URLs must be valid http/https URLs";
-    }
-  }
-
-  return null;
 }
 
 async function requireCloudPolicy(req, res, options = {}) {
@@ -175,7 +123,7 @@ router.post("/api/jobs/enqueue", requireOptionalCloudFeatures, requireAuth, jobs
 
   try {
     const policy = await requireCloudPolicy(req, res, {
-      requireWebhook: jobType === "integration.webhook.deliver"
+      requireWebhook: requiresWebhookOptIn(jobType, payload)
     });
     if (!policy) return;
 
@@ -190,24 +138,12 @@ router.post("/api/jobs/enqueue", requireOptionalCloudFeatures, requireAuth, jobs
       }
     }
 
-    if (jobType === "integration.webhook.deliver") {
-      const webhookValidationError = validateWebhookPayload(payload);
-      if (webhookValidationError) {
-        return res.status(400).json({
-          errorType: "INVALID_WEBHOOK_PAYLOAD",
-          message: webhookValidationError
-        });
-      }
-    }
-
-    if (jobType === "extraction.page.summary") {
-      const extractionValidationError = validateExtractionSummaryPayload(payload);
-      if (extractionValidationError) {
-        return res.status(400).json({
-          errorType: "INVALID_EXTRACTION_PAYLOAD",
-          message: extractionValidationError
-        });
-      }
+    const payloadValidation = validateJobPayloadByType(jobType, payload);
+    if (!payloadValidation.ok) {
+      return res.status(400).json({
+        errorType: payloadValidation.errorType,
+        message: payloadValidation.message
+      });
     }
 
     const job = await enqueueJob({

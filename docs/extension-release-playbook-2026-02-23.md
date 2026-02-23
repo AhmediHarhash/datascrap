@@ -44,7 +44,9 @@ Pass criteria:
 3. Cloud smoke passes for:
 - `integration.webhook.deliver`
 - `extraction.page.summary`
+ - `monitor.page.diff`
 4. Schedule smoke passes for create/run/remove.
+5. Monitor behavior smoke passes for baseline/no-change/change/no-change.
 
 ## Manual UI Sign-Off (10-15 min)
 Run these checks in loaded unpacked extension (`packages/extension`):
@@ -57,8 +59,8 @@ Run these checks in loaded unpacked extension (`packages/extension`):
 7. Exports: CSV/XLSX/JSON download and row counts match table.
 8. Activation login/register/device list/remove/rename works.
 9. Cloud policy save/load works for authenticated account.
-10. Jobs enqueue/list/cancel works for webhook + extraction summary presets.
-11. Schedules create/run-now/remove works for webhook + extraction summary presets.
+10. Jobs enqueue/list/cancel works for webhook + extraction summary + monitor diff presets.
+11. Schedules create/run-now/remove works for webhook + extraction summary + monitor diff presets.
 12. Templates save/apply/run/delete and diagnostics report copy work.
 
 ## Release Checklist

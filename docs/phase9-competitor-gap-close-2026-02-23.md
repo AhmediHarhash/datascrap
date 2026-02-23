@@ -31,10 +31,17 @@ Target outcome:
   - integration provider presets in sidepanel
   - API-backed integration secret connection test
   - phase5 cloud smoke coverage for integration test
+- Workstream 4 slice 1 shipped:
+  - new `monitor.page.diff` job type with hash-based change detection
+  - persisted monitor state table + counters
+  - optional webhook notify on changed runs only
+  - sidepanel monitor payload presets for jobs and schedules
+  - monitor smoke coverage for no-change/change transitions
 - Tracking artifacts:
   - `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
   - `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
   - `docs/phase9-sprintB-integrations-pack-slice-2026-02-23.md`
+  - `docs/phase9-sprintC-monitoring-alerts-slice-2026-02-23.md`
 
 ## Priority Workstreams (Only What We Need Next)
 

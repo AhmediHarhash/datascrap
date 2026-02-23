@@ -14,9 +14,10 @@
 - `npm run smoke:extension` -> pass
 - `npm run test:local:hardening` -> pass (`hasDatabase=false`, cloud smoke intentionally skipped)
 - `npm run hardening:railway` -> pass (`hasDatabase=true`, `cloudSmoke=true`)
-- Cloud smoke verified both job types:
+- Cloud smoke verified all cloud job types:
   - `integration.webhook.deliver`
   - `extraction.page.summary`
+  - `monitor.page.diff`
 
 ## Verified Commands
 
@@ -30,7 +31,7 @@
 - Includes:
   - storage/runtime
   - advanced table merge/cleanup smoke
-  - epic5/epic6/epic7/epic8/epic9/epic10 UI+wiring checks
+  - epic5/epic6/epic7/epic8/epic9/epic10/epic11 UI+wiring checks
 
 2) Control API health/readiness smoke
 - `npm run smoke:control-api` (with API running)
@@ -49,8 +50,9 @@
 - `npm run hardening:railway`
 - Verified output includes:
   - migrations complete
-  - `phase5:smoke:control-api` pass (webhook + extraction job enqueue/list)
-  - `phase5:schedule:smoke:control-api` pass (webhook + extraction schedules run/remove)
+  - `phase5:smoke:control-api` pass (webhook + extraction + monitor job enqueue/list)
+  - `phase5:schedule:smoke:control-api` pass (webhook + extraction + monitor schedules run/remove)
+  - `phase9:monitor:smoke:control-api` pass (no-change/change/no-change monitor behavior)
 5) Extension release packaging
 - `npm run release:extension`
 - Runs:

@@ -145,6 +145,41 @@ async function main() {
     throw new Error("create extraction schedule did not return schedule id");
   }
 
+  const createMonitorSchedule = await request("/api/schedules/create", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      name: "Phase5 Monitor Schedule Smoke",
+      scheduleKind: "interval",
+      intervalMinutes,
+      timezone: "UTC",
+      targetJobType: "monitor.page.diff",
+      targetPayload: {
+        targetUrl: "https://example.com",
+        monitorKey: "phase5-monitor-example",
+        compare: {
+          includeTitle: true,
+          includeMetaDescription: true,
+          includeCanonical: true,
+          includeWordCount: true,
+          includeHeadings: true,
+          includeLinks: true,
+          includeLang: true
+        },
+        metadata: {
+          source: "phase5-schedule-smoke"
+        }
+      },
+      maxAttempts: 3,
+      isActive: true
+    })
+  });
+  assertStatus("create monitor schedule", createMonitorSchedule.response.status, [200]);
+  const monitorScheduleId = String(createMonitorSchedule.body?.schedule?.id || "");
+  if (!monitorScheduleId) {
+    throw new Error("create monitor schedule did not return schedule id");
+  }
+
   let autoJobId = null;
   if (waitAutoSeconds > 0) {
     const deadline = Date.now() + waitAutoSeconds * 1000;
@@ -189,6 +224,16 @@ async function main() {
   assertStatus("run extraction now", runExtractionNow.response.status, [200]);
   const extractionJobId = String(runExtractionNow.body?.job?.id || "");
 
+  const runMonitorNow = await request("/api/schedules/run-now", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      scheduleId: monitorScheduleId
+    })
+  });
+  assertStatus("run monitor now", runMonitorNow.response.status, [200]);
+  const monitorJobId = String(runMonitorNow.body?.job?.id || "");
+
   const listSchedules = await request("/api/schedules?activeOnly=true&limit=10", {
     headers: {
       authorization: `Bearer ${accessToken}`
@@ -214,6 +259,15 @@ async function main() {
   });
   assertStatus("remove extraction schedule", removeExtractionSchedule.response.status, [200]);
 
+  const removeMonitorSchedule = await request("/api/schedules/remove", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      scheduleId: monitorScheduleId
+    })
+  });
+  assertStatus("remove monitor schedule", removeMonitorSchedule.response.status, [200]);
+
   console.log(
     JSON.stringify(
       {
@@ -222,9 +276,11 @@ async function main() {
         accountId: login.body.account?.id || null,
         scheduleId,
         extractionScheduleId,
+        monitorScheduleId,
         autoJobId,
         jobId,
         extractionJobId,
+        monitorJobId,
         listedSchedules: Array.isArray(listSchedules.body?.items) ? listSchedules.body.items.length : 0
       },
       null,

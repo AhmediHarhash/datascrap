@@ -127,6 +127,12 @@ async function runCloudApiPass({ baseEnv, baseUrl }) {
       args: ["run", "phase5:schedule:smoke:control-api"],
       env: cloudEnv
     });
+    await runCommand({
+      label: "phase9 monitor smoke",
+      command: npmCommand(),
+      args: ["run", "phase9:monitor:smoke:control-api"],
+      env: cloudEnv
+    });
   } finally {
     await stopServer(server);
   }

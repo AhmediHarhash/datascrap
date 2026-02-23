@@ -157,6 +157,31 @@ async function main() {
   });
   assertStatus("enqueue extraction", enqueueExtraction.response.status, [200]);
 
+  const enqueueMonitor = await request("/api/jobs/enqueue", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      jobType: "monitor.page.diff",
+      payload: {
+        targetUrl: "https://example.com",
+        monitorKey: "phase5-monitor-example",
+        compare: {
+          includeTitle: true,
+          includeMetaDescription: true,
+          includeCanonical: true,
+          includeWordCount: true,
+          includeHeadings: true,
+          includeLinks: true,
+          includeLang: true
+        },
+        metadata: {
+          source: "phase5-smoke"
+        }
+      }
+    })
+  });
+  assertStatus("enqueue monitor", enqueueMonitor.response.status, [200]);
+
   const jobs = await request("/api/jobs", {
     headers: {
       authorization: `Bearer ${accessToken}`
@@ -174,6 +199,7 @@ async function main() {
         integrationTestStatusCode: Number(integrationTest.body?.result?.statusCode || 0),
         jobId: enqueue.body?.job?.id || null,
         extractionJobId: enqueueExtraction.body?.job?.id || null,
+        monitorJobId: enqueueMonitor.body?.job?.id || null,
         jobsListed: Array.isArray(jobs.body?.items) ? jobs.body.items.length : 0
       },
       null,

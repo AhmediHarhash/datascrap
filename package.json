@@ -20,7 +20,8 @@
     "smoke:extension:epic8": "node scripts/smoke-extension-epic8.mjs",
     "smoke:extension:epic9": "node scripts/smoke-extension-epic9.mjs",
     "smoke:extension:epic10": "node scripts/smoke-extension-epic10.mjs",
-    "smoke:extension": "npm run smoke:extension:storage && npm run smoke:extension:table-advanced && npm run smoke:extension:runtime && npm run smoke:extension:epic5 && npm run smoke:extension:epic6 && npm run smoke:extension:epic7 && npm run smoke:extension:epic8 && npm run smoke:extension:epic9 && npm run smoke:extension:epic10",
+    "smoke:extension:epic11": "node scripts/smoke-extension-epic11.mjs",
+    "smoke:extension": "npm run smoke:extension:storage && npm run smoke:extension:table-advanced && npm run smoke:extension:runtime && npm run smoke:extension:epic5 && npm run smoke:extension:epic6 && npm run smoke:extension:epic7 && npm run smoke:extension:epic8 && npm run smoke:extension:epic9 && npm run smoke:extension:epic10 && npm run smoke:extension:epic11",
     "test:local:hardening": "node scripts/local-hardening-pass.mjs",
     "hardening:railway": "node scripts/hardening-railway.mjs",
     "smoke:control-api": "node services/control-api/scripts/smoke.js",
@@ -34,6 +35,7 @@
     "jobs:worker:control-api": "node services/control-api/scripts/jobs-worker.js",
     "phase5:smoke:control-api": "node services/control-api/scripts/phase5-smoke.js",
     "phase5:schedule:smoke:control-api": "node services/control-api/scripts/phase5-schedule-smoke.js",
+    "phase9:monitor:smoke:control-api": "node services/control-api/scripts/phase9-monitor-smoke.js",
     "queue:monitor:control-api": "node services/control-api/scripts/job-queue-monitor.js"
   },
   "dependencies": {
