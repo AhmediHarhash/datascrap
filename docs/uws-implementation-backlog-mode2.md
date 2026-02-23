@@ -8,6 +8,14 @@
 - no cloud row storage for extracted datasets by default
 - local-first tables/exports and user-linked destinations only
 
+## Execution Snapshot (2026-02-23)
+1) Epic 0 bootstrap slice implemented:
+- package skeleton + contracts + storage migration model landed.
+2) Epic 1 bootstrap slice implemented:
+- runtime lifecycle + runner registry + permission gate + start/stop/rerun wiring landed.
+3) Tracking artifact:
+- `docs/phase0-1-extension-runtime-bootstrap-2026-02-23.md`
+
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.
 2) Message contracts and event types frozen.

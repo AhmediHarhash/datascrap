@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Datascrap Runtime</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Datascrap</p>
+          <h1>Automation Runtime</h1>
+        </div>
+        <span id="status-pill" class="status-pill">idle</span>
+      </header>
+
+      <section class="panel">
+        <label class="field">
+          <span>Runner</span>
+          <select id="runner-type"></select>
+        </label>
+
+        <label class="field">
+          <span>Start URL</span>
+          <input id="start-url" type="url" placeholder="https://example.com" />
+        </label>
+
+        <label class="field">
+          <span>Bulk URLs (one per line)</span>
+          <textarea id="bulk-urls" rows="3" placeholder="https://example.com/a&#10;https://example.com/b"></textarea>
+        </label>
+
+        <div class="actions">
+          <button id="start-btn" class="btn btn-primary">Start</button>
+          <button id="stop-btn" class="btn">Stop</button>
+          <button id="rerun-btn" class="btn">Rerun</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Live Events</h2>
+          <button id="clear-log-btn" class="btn btn-ghost">Clear</button>
+        </div>
+        <pre id="event-log" class="event-log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="./index.mjs"></script>
+  </body>
+</html>

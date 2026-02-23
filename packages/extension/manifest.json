@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Datascrap",
+  "version": "0.1.0",
+  "description": "Local-first web extraction runtime with sidepanel automation controls.",
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "optional_permissions": ["downloads", "clipboardWrite"],
+  "optional_host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Datascrap"
+  },
+  "background": {
+    "service_worker": "background/service-worker.mjs",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/index.html"
+  }
+}
