@@ -152,11 +152,11 @@
 - Repo secrets configured:
   - `OBSERVABILITY_KEY_STAGING`
   - `OBSERVABILITY_KEY_PRODUCTION`
+  - `BACKUP_DATABASE_URL_STAGING`
+  - `BACKUP_DATABASE_URL_PRODUCTION`
 - Optional additional secrets:
   - `ALERT_WEBHOOK_URL`
   - `ALERT_WEBHOOK_BEARER_TOKEN`
-  - `BACKUP_DATABASE_URL_STAGING`
-  - `BACKUP_DATABASE_URL_PRODUCTION`
 
 ## Error Tracking
 - API endpoint available:
@@ -167,8 +167,10 @@
 
 ## Ops Hardening Notes (2026-02-23)
 - JWT access token rotation is now no-downtime capable with `JWT_ACCESS_SECRETS` + `JWT_ACTIVE_KID`.
-- Daily backup verification workflow is committed and scheduled.
-- Remaining manual wiring:
-  - authenticate Railway CLI to fetch and wire backup DB URLs into GitHub secrets
-  - run first successful `Backup Verify` workflow run
-  - execute and log staging restart/failover chaos drill
+- Daily backup verification workflow is committed, scheduled, and verified.
+  - successful run id: `22289261523`
+  - both jobs (`verify-staging`, `verify-production`) passed.
+- Staging chaos drill completed without data loss.
+  - control-api redeploy id: `45e51365-b59e-4b70-97f6-b8da96080233`
+  - Postgres redeploy id: `3f764566-3912-4830-a89d-0d2d87c8a6fb`
+  - continuity preserved for account `a4f827e3-97d0-4149-885a-7dd86729c525`.

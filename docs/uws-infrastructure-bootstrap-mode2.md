@@ -72,11 +72,12 @@ Checklist:
 - [x] rate limits on auth and license endpoints
 - [x] idempotency on mutating device/license operations
 - [x] DB migrations with rollback plan
-- [ ] automated daily Postgres backups verified
+- [x] automated daily Postgres backups verified
 - [x] structured logs with correlation IDs
-Note: backup verification automation is implemented (`.github/workflows/backup-verify.yml`) and awaits DB secrets plus first successful run.
+Verification: `Backup Verify` workflow run `22289261523` succeeded for staging and production on `2026-02-23`.
 Exit gate:
 - chaos test (service restart + DB failover drill) completed without data loss.
+Verification: staged in `docs/ops-hardening-execution-2026-02-23.md` with control-api and Postgres redeploy continuity checks.
 
 ## Phase 3 - Observability + SLO Control
 Deliverables:

@@ -34,28 +34,51 @@
   - `listedDevices=1`
   - timestamp: `2026-02-23T00:35:57.677Z`
 
-## Blockers Encountered
-1. Railway CLI auth is currently not available in this non-interactive agent shell:
-- `railway login` returns `Cannot login in non-interactive mode`
-- impact:
-  - cannot run `railway restart` for the staging restart/failover drill
-  - cannot fetch Postgres URLs to set GitHub secrets for backup workflow
-
-## Pending To Fully Close Remaining Ops Gates
-1. Set GitHub secrets:
+## Backup Verification Closure
+1. GitHub backup secrets configured from Railway public Postgres URLs:
 - `BACKUP_DATABASE_URL_STAGING`
 - `BACKUP_DATABASE_URL_PRODUCTION`
 
-2. Trigger and verify `Backup Verify` workflow:
-- workflow file: `.github/workflows/backup-verify.yml`
-- success criteria:
-  - both staging and production jobs pass
-  - summary artifacts uploaded
+2. Backup workflow run (manual dispatch) succeeded:
+- workflow: `Backup Verify`
+- run: `22289261523`
+- URL: `https://github.com/AhmediHarhash/datascrap/actions/runs/22289261523`
+- `verify-staging`: success
+- `verify-production`: success
+- backup summary artifacts uploaded for both jobs
 
-3. Execute staging chaos restart drill:
-- run baseline chaos check
-- restart `control-api`
-- run chaos check again (no data loss)
-- restart `Postgres`
-- run chaos check again (no data loss)
-- record pass/fail and timestamps in this log
+3. Workflow fix applied:
+- root cause: GitHub runner had `pg_dump` v16 while Railway Postgres is v17
+- fix: install PostgreSQL 17 client in workflow and pin:
+  - `PG_DUMP_BIN=/usr/lib/postgresql/17/bin/pg_dump`
+  - `PG_RESTORE_BIN=/usr/lib/postgresql/17/bin/pg_restore`
+
+## Chaos Drill Closure (Staging)
+Drill identity:
+- `CHAOS_EMAIL=opsdrill+staging@datascrap.local`
+- `CHAOS_DEVICE_ID=chaos-drill-device`
+- `CHAOS_LICENSE_KEY=CHAOS-STAGING-LICENSE`
+- expected continuity key: `accountId=a4f827e3-97d0-4149-885a-7dd86729c525`
+
+Sequence and evidence:
+1. Baseline pre-restart check:
+- timestamp: `2026-02-23T01:04:23.405Z`
+- result: `ok=true`, `listedDevices=1`, `currentDevicesFromMe=1`
+
+2. Control API restart event (staging):
+- action: `railway redeploy --service control-api -y --json`
+- deployment id: `45e51365-b59e-4b70-97f6-b8da96080233`
+- readiness recovery: `healthz=200`, `readyz=200`
+- post-restart continuity check timestamp: `2026-02-23T01:43:26.146Z`
+- post-restart result: `ok=true`, same account id, no device loss
+
+3. Postgres failover event (staging):
+- action: `railway redeploy --service Postgres -y --json`
+- deployment id: `3f764566-3912-4830-a89d-0d2d87c8a6fb`
+- readiness recovery: `healthz=200`, `readyz=200`
+- final continuity check timestamp: `2026-02-23T02:02:51.731Z`
+- final result: `ok=true`, same account id, no device loss
+
+## Final Status
+- Ops hardening closure status: `DONE`
+- Remaining blockers for Phase 0/2 gates: `none`
