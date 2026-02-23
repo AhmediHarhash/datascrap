@@ -10,6 +10,32 @@ import {
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 
 const elements = {
+  navMenuBtn: document.getElementById("nav-menu-btn"),
+  navHistoryBtn: document.getElementById("nav-history-btn"),
+  navDataBtn: document.getElementById("nav-data-btn"),
+  navToolsBtn: document.getElementById("nav-tools-btn"),
+  navLatestBtn: document.getElementById("nav-latest-btn"),
+  shellNavButtons: Array.from(document.querySelectorAll(".shell-nav-btn[data-shell-view]")),
+  appViewPanels: Array.from(document.querySelectorAll(".app-view-panel")),
+  homeHubPanel: document.getElementById("home-hub-panel"),
+  toolCards: Array.from(document.querySelectorAll(".tool-card[data-tool]")),
+  roadmapSchedulingNotifyBtn: document.getElementById("roadmap-scheduling-notify-btn"),
+  roadmapIntegrationsNotifyBtn: document.getElementById("roadmap-integrations-notify-btn"),
+  roadmapStatusLine: document.getElementById("roadmap-status-line"),
+  toolWelcomePanel: document.getElementById("tool-welcome-panel"),
+  toolWelcomeLabel: document.getElementById("tool-welcome-label"),
+  toolWelcomeTitle: document.getElementById("tool-welcome-title"),
+  toolWelcomeSubtitle: document.getElementById("tool-welcome-subtitle"),
+  toolWelcomeVideoLabel: document.getElementById("tool-welcome-video-label"),
+  toolWelcomeBenefits: document.getElementById("tool-welcome-benefits"),
+  toolWelcomeSteps: document.getElementById("tool-welcome-steps"),
+  toolWelcomeExtra: document.getElementById("tool-welcome-extra"),
+  toolWelcomeStartBtn: document.getElementById("tool-welcome-start-btn"),
+  toolWelcomeSkipBtn: document.getElementById("tool-welcome-skip-btn"),
+  latestChangesPanel: document.getElementById("latest-changes-panel"),
+  openWelcomeBtn: document.getElementById("open-welcome-btn"),
+  activeToolHeading: document.getElementById("active-tool-heading"),
+  selectedToolName: document.getElementById("selected-tool-name"),
   runnerType: document.getElementById("runner-type"),
   startUrl: document.getElementById("start-url"),
   startBtn: document.getElementById("start-btn"),
@@ -28,6 +54,13 @@ const elements = {
   clearFieldsBtn: document.getElementById("clear-fields-btn"),
   loadMoreMethod: document.getElementById("load-more-method"),
   speedProfile: document.getElementById("speed-profile"),
+  speedProfileEditor: document.getElementById("speed-profile-editor"),
+  speedProfileEditAttempts: document.getElementById("speed-profile-edit-attempts"),
+  speedProfileEditDelayMs: document.getElementById("speed-profile-edit-delay-ms"),
+  speedProfileEditNoChangeThreshold: document.getElementById("speed-profile-edit-no-change-threshold"),
+  speedProfileSaveBtn: document.getElementById("speed-profile-save-btn"),
+  speedProfileResetBtn: document.getElementById("speed-profile-reset-btn"),
+  speedProfileStatusLine: document.getElementById("speed-profile-status-line"),
   loadMoreAttempts: document.getElementById("load-more-attempts"),
   loadMoreDelayMs: document.getElementById("load-more-delay-ms"),
   loadMoreScrollPx: document.getElementById("load-more-scroll-px"),
@@ -110,6 +143,20 @@ const elements = {
   tableRenameTo: document.getElementById("table-rename-to"),
   tableRenameBtn: document.getElementById("table-rename-btn"),
   tableDedupeBtn: document.getElementById("table-dedupe-btn"),
+  tableCleanupRemoveEmptyRows: document.getElementById("table-cleanup-remove-empty-rows"),
+  tableCleanupRemoveEmptyColumns: document.getElementById("table-cleanup-remove-empty-columns"),
+  tableCleanupRemoveRepeatingColumns: document.getElementById("table-cleanup-remove-repeating-columns"),
+  tableCleanupRemoveDuplicateColumns: document.getElementById("table-cleanup-remove-duplicate-columns"),
+  tableCleanupPrioritizeDensity: document.getElementById("table-cleanup-prioritize-density"),
+  tableCleanupHideMostlyEmptyColumns: document.getElementById("table-cleanup-hide-mostly-empty-columns"),
+  tableCleanupMostlyEmptyThreshold: document.getElementById("table-cleanup-mostly-empty-threshold"),
+  tableCleanupIncludeImages: document.getElementById("table-cleanup-include-images"),
+  tableCleanupBtn: document.getElementById("table-cleanup-btn"),
+  tableMergeColumns: document.getElementById("table-merge-columns"),
+  tableMergeTarget: document.getElementById("table-merge-target"),
+  tableMergeSeparator: document.getElementById("table-merge-separator"),
+  tableMergeRemoveSources: document.getElementById("table-merge-remove-sources"),
+  tableMergeBtn: document.getElementById("table-merge-btn"),
   tableStatusLine: document.getElementById("table-status-line"),
   tableGrid: document.getElementById("table-grid"),
 
@@ -154,7 +201,77 @@ const elements = {
   activationDevicesRefreshBtn: document.getElementById("activation-devices-refresh-btn"),
   activationStatusLine: document.getElementById("activation-status-line"),
   activationSessionSummary: document.getElementById("activation-session-summary"),
-  activationDeviceList: document.getElementById("activation-device-list")
+  activationDeviceList: document.getElementById("activation-device-list"),
+
+  cloudPolicyLoadBtn: document.getElementById("cloud-policy-load-btn"),
+  cloudFeaturesOptIn: document.getElementById("cloud-features-opt-in"),
+  cloudWebhookOptIn: document.getElementById("cloud-webhook-opt-in"),
+  cloudConsentVersion: document.getElementById("cloud-consent-version"),
+  cloudPolicySaveBtn: document.getElementById("cloud-policy-save-btn"),
+  jobsPolicyBtn: document.getElementById("jobs-policy-btn"),
+  cloudRefreshAllBtn: document.getElementById("cloud-refresh-all-btn"),
+  cloudStatusLine: document.getElementById("cloud-status-line"),
+
+  integrationProvider: document.getElementById("integration-provider"),
+  integrationSecretName: document.getElementById("integration-secret-name"),
+  integrationSecretValue: document.getElementById("integration-secret-value"),
+  integrationSecretLabel: document.getElementById("integration-secret-label"),
+  integrationsListBtn: document.getElementById("integrations-list-btn"),
+  integrationsUpsertBtn: document.getElementById("integrations-upsert-btn"),
+  integrationsRemoveBtn: document.getElementById("integrations-remove-btn"),
+  integrationsList: document.getElementById("integrations-list"),
+
+  jobsJobType: document.getElementById("jobs-job-type"),
+  jobsPayload: document.getElementById("jobs-payload"),
+  jobsFillWebhookBtn: document.getElementById("jobs-fill-webhook-btn"),
+  jobsFillExtractSummaryBtn: document.getElementById("jobs-fill-extract-summary-btn"),
+  jobsCancelId: document.getElementById("jobs-cancel-id"),
+  jobsEnqueueBtn: document.getElementById("jobs-enqueue-btn"),
+  jobsListBtn: document.getElementById("jobs-list-btn"),
+  jobsDeadBtn: document.getElementById("jobs-dead-btn"),
+  jobsCancelBtn: document.getElementById("jobs-cancel-btn"),
+  jobsList: document.getElementById("jobs-list"),
+
+  scheduleName: document.getElementById("schedule-name"),
+  scheduleKind: document.getElementById("schedule-kind"),
+  scheduleIntervalMinutes: document.getElementById("schedule-interval-minutes"),
+  scheduleCronExpr: document.getElementById("schedule-cron-expr"),
+  scheduleTimezone: document.getElementById("schedule-timezone"),
+  scheduleTargetJobType: document.getElementById("schedule-target-job-type"),
+  scheduleTargetPayload: document.getElementById("schedule-target-payload"),
+  scheduleFillWebhookBtn: document.getElementById("schedule-fill-webhook-btn"),
+  scheduleFillExtractSummaryBtn: document.getElementById("schedule-fill-extract-summary-btn"),
+  scheduleCreateBtn: document.getElementById("schedule-create-btn"),
+  scheduleListBtn: document.getElementById("schedule-list-btn"),
+  scheduleListActiveBtn: document.getElementById("schedule-list-active-btn"),
+  scheduleActionId: document.getElementById("schedule-action-id"),
+  scheduleToggleActive: document.getElementById("schedule-toggle-active"),
+  scheduleToggleBtn: document.getElementById("schedule-toggle-btn"),
+  scheduleRunNowBtn: document.getElementById("schedule-run-now-btn"),
+  scheduleRemoveBtn: document.getElementById("schedule-remove-btn"),
+  scheduleList: document.getElementById("schedule-list"),
+
+  observabilityApiKey: document.getElementById("observability-api-key"),
+  obsDashboardBtn: document.getElementById("obs-dashboard-btn"),
+  obsSloBtn: document.getElementById("obs-slo-btn"),
+  obsErrorsBtn: document.getElementById("obs-errors-btn"),
+  obsJobsBtn: document.getElementById("obs-jobs-btn"),
+  obsOutput: document.getElementById("obs-output"),
+
+  templateName: document.getElementById("template-name"),
+  templateSelect: document.getElementById("template-select"),
+  templateNotes: document.getElementById("template-notes"),
+  templateSaveBtn: document.getElementById("template-save-btn"),
+  templateApplyBtn: document.getElementById("template-apply-btn"),
+  templateRunBtn: document.getElementById("template-run-btn"),
+  templateDeleteBtn: document.getElementById("template-delete-btn"),
+  templateList: document.getElementById("template-list"),
+  templatesStatusLine: document.getElementById("templates-status-line"),
+
+  diagnosticsSnapshotBtn: document.getElementById("diagnostics-snapshot-btn"),
+  diagnosticsReportBtn: document.getElementById("diagnostics-report-btn"),
+  diagnosticsCopyBtn: document.getElementById("diagnostics-copy-btn"),
+  diagnosticsOutput: document.getElementById("diagnostics-output")
 };
 
 const state = {
@@ -176,8 +293,162 @@ const state = {
   imageScanResults: [],
   imageSelection: new Set(),
   activationSession: null,
-  activationDevices: []
+  activationDevices: [],
+  cloudPolicy: null,
+  integrationSecrets: [],
+  cloudJobs: [],
+  cloudDeadJobs: [],
+  cloudSchedules: [],
+  templates: [],
+  diagnosticsReport: null,
+  activeShellView: "menu",
+  activeTool: "list",
+  showWelcomeOverride: false,
+  sessionWelcomeCounted: new Set(),
+  dismissedWelcomeTools: new Set(),
+  welcomeVisits: {},
+  speedProfiles: {}
 };
+
+const SHELL_VIEWS = Object.freeze({
+  MENU: "menu",
+  HISTORY: "history",
+  DATA: "data",
+  TOOLS: "tools",
+  LATEST: "latest"
+});
+
+const WELCOME_VISIT_LIMIT = 3;
+const WELCOME_VISITS_STORAGE_KEY = "datascrap.sidepanel.welcome-visits.v1";
+const TEMPLATES_STORAGE_KEY = "datascrap.sidepanel.templates.v1";
+const SPEED_PROFILES_STORAGE_KEY = "datascrap.sidepanel.speed-profiles.v1";
+const TEMPLATE_LIMIT = 200;
+const DEFAULT_SPEED_PROFILES = Object.freeze({
+  slow: Object.freeze({
+    attempts: 8,
+    delayMs: 1600,
+    noChangeThreshold: 3
+  }),
+  normal: Object.freeze({
+    attempts: 5,
+    delayMs: 900,
+    noChangeThreshold: 2
+  }),
+  fast: Object.freeze({
+    attempts: 3,
+    delayMs: 450,
+    noChangeThreshold: 1
+  })
+});
+const ROADMAP_NOTIFY_URLS = Object.freeze({
+  scheduling: "https://datascrap.app/waitlist/scheduling",
+  integrations: "https://datascrap.app/waitlist/integrations"
+});
+
+const TOOL_PRESETS = Object.freeze({
+  list: {
+    label: "LIST EXTRACTOR",
+    title: "Extract Lists and Tables from any website",
+    subtitle: "Pull repeating data from lists, tables, and paginated content.",
+    videoLabel: "Watch: Extract Lists",
+    benefits: [
+      "Product listings, search results, and feeds",
+      "Tables, directories, and catalogs",
+      "Automatic pagination and load-more handling"
+    ],
+    quickStart: [
+      "Click on any list item or container",
+      "Configure pagination settings if needed",
+      "Run extraction and download your data"
+    ],
+    runnerType: RUNNER_TYPES.LIST_EXTRACTOR,
+    shellView: SHELL_VIEWS.TOOLS,
+    tablePanelView: SHELL_VIEWS.DATA
+  },
+  page_details: {
+    label: "PAGE DETAILS EXTRACTOR",
+    title: "Extract Page Details from any website",
+    subtitle: "Pull specific data from multiple pages at once.",
+    videoLabel: "Watch: Extract Page Details",
+    benefits: [
+      "Prices, titles, descriptions, and links",
+      "Images, ratings, and other visible fields",
+      "Same details extracted from hundreds of URLs"
+    ],
+    quickStart: [
+      "Add URLs to extract from",
+      "Click elements to select what to extract",
+      "Run extraction and download your data"
+    ],
+    runnerType: RUNNER_TYPES.PAGE_EXTRACTOR,
+    actionType: PAGE_ACTION_TYPES.EXTRACT_PAGES,
+    shellView: SHELL_VIEWS.TOOLS,
+    tablePanelView: SHELL_VIEWS.DATA
+  },
+  email: {
+    label: "EMAIL EXTRACTOR",
+    title: "Extract Email Addresses from any website",
+    subtitle: "Collect email addresses listed on pages with optional deep scanning.",
+    videoLabel: "Watch: Extract Emails",
+    benefits: [
+      "Find common and uncommon email formats",
+      "Deep scan internal pages for better coverage",
+      "Process many websites with progress tracking"
+    ],
+    quickStart: [
+      "Add URLs manually, via CSV, or data source",
+      "Configure deep scanning and post-processing",
+      "Run extraction and export cleaned email lists"
+    ],
+    extraLines: [
+      "URL sources: Manual Input, Upload CSV, Data Source",
+      "Optional: Deep Scanning",
+      "Pro path: Faster Extraction (upgrade flow)"
+    ],
+    runnerType: RUNNER_TYPES.PAGE_EXTRACTOR,
+    actionType: PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL,
+    shellView: SHELL_VIEWS.TOOLS,
+    tablePanelView: SHELL_VIEWS.DATA
+  },
+  image: {
+    label: "IMAGE DOWNLOADER",
+    title: "Download Images from current page",
+    subtitle: "Scan, filter, and bulk download page images with custom naming.",
+    videoLabel: "Watch: Download Images",
+    benefits: [
+      "Scan image URLs, dimensions, and alt text",
+      "Filter by size, extension, and metadata",
+      "Bulk download filtered or selected images"
+    ],
+    quickStart: [
+      "Open the DATA tab image panel",
+      "Scan the active page",
+      "Choose filters and download images"
+    ],
+    shellView: SHELL_VIEWS.DATA,
+    tablePanelView: SHELL_VIEWS.DATA
+  },
+  text: {
+    label: "PAGE TEXT EXTRACTOR",
+    title: "Extract Clean Text from any website",
+    subtitle: "Structured clean text ready for AI processing and analysis.",
+    videoLabel: "Watch: Extract Text",
+    benefits: [
+      "Main page content cleaned from noise",
+      "Title, author, publish date, and metadata",
+      "Output ready for GPT, Claude, and other models"
+    ],
+    quickStart: [
+      "Add URLs manually, from CSV, or data source",
+      "Set extraction settings (optional)",
+      "Run extraction and download clean text data"
+    ],
+    runnerType: RUNNER_TYPES.PAGE_EXTRACTOR,
+    actionType: PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT,
+    shellView: SHELL_VIEWS.TOOLS,
+    tablePanelView: SHELL_VIEWS.DATA
+  }
+});
 
 function randomId(prefix = "id") {
   if (globalThis.crypto?.randomUUID) {
@@ -419,24 +690,111 @@ function renderPageFields() {
   });
 }
 
-function applySpeedProfileDefaults(profileName) {
-  const profile = String(profileName || "normal").toLowerCase();
-  if (profile === "fast") {
-    elements.loadMoreAttempts.value = "3";
-    elements.loadMoreDelayMs.value = "450";
-    elements.loadMoreNoChangeThreshold.value = "1";
-    return;
+function setSpeedProfileStatus(text, { error = false } = {}) {
+  if (!elements.speedProfileStatusLine) return;
+  elements.speedProfileStatusLine.textContent = String(text || "");
+  elements.speedProfileStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function normalizeSpeedProfileInput(input, fallback = DEFAULT_SPEED_PROFILES.normal) {
+  const source = input && typeof input === "object" ? input : {};
+  const attempts = clamp(parseNumber(source.attempts, fallback.attempts), 1, 30);
+  const delayMs = clamp(parseNumber(source.delayMs, fallback.delayMs), 100, 10000);
+  const noChangeThreshold = clamp(parseNumber(source.noChangeThreshold, fallback.noChangeThreshold), 1, 10);
+  return {
+    attempts,
+    delayMs,
+    noChangeThreshold
+  };
+}
+
+function loadSpeedProfilesFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(SPEED_PROFILES_STORAGE_KEY);
+    if (!raw) {
+      return Object.fromEntries(Object.entries(DEFAULT_SPEED_PROFILES).map(([key, value]) => [key, { ...value }]));
+    }
+    const parsed = JSON.parse(raw);
+    const output = {};
+    for (const [name, defaults] of Object.entries(DEFAULT_SPEED_PROFILES)) {
+      output[name] = normalizeSpeedProfileInput(parsed?.[name], defaults);
+    }
+    return output;
+  } catch {
+    return Object.fromEntries(Object.entries(DEFAULT_SPEED_PROFILES).map(([key, value]) => [key, { ...value }]));
   }
-  if (profile === "slow") {
-    elements.loadMoreAttempts.value = "8";
-    elements.loadMoreDelayMs.value = "1600";
-    elements.loadMoreNoChangeThreshold.value = "3";
+}
+
+function saveSpeedProfilesToStorage() {
+  try {
+    globalThis.localStorage?.setItem(SPEED_PROFILES_STORAGE_KEY, JSON.stringify(state.speedProfiles || {}));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function getSpeedProfile(profileName) {
+  const key = String(profileName || "normal").trim().toLowerCase();
+  const defaults = DEFAULT_SPEED_PROFILES[key] || DEFAULT_SPEED_PROFILES.normal;
+  const candidate = state.speedProfiles?.[key];
+  return normalizeSpeedProfileInput(candidate, defaults);
+}
+
+function syncSpeedProfileEditorFromSelection() {
+  const profile = getSpeedProfile(elements.speedProfile.value);
+  elements.speedProfileEditAttempts.value = String(profile.attempts);
+  elements.speedProfileEditDelayMs.value = String(profile.delayMs);
+  elements.speedProfileEditNoChangeThreshold.value = String(profile.noChangeThreshold);
+}
+
+function applySpeedProfileDefaults(profileName, { preserveManualOverrides = false } = {}) {
+  const profile = getSpeedProfile(profileName);
+  if (!preserveManualOverrides) {
+    elements.loadMoreAttempts.value = String(profile.attempts);
+    elements.loadMoreDelayMs.value = String(profile.delayMs);
+    elements.loadMoreNoChangeThreshold.value = String(profile.noChangeThreshold);
+  }
+  syncSpeedProfileEditorFromSelection();
+}
+
+function onSpeedProfileSave() {
+  const profileName = String(elements.speedProfile.value || "normal").toLowerCase();
+  const defaults = DEFAULT_SPEED_PROFILES[profileName];
+  if (!defaults) {
+    setSpeedProfileStatus(`Unknown profile: ${profileName}`, {
+      error: true
+    });
     return;
   }
 
-  elements.loadMoreAttempts.value = "5";
-  elements.loadMoreDelayMs.value = "900";
-  elements.loadMoreNoChangeThreshold.value = "2";
+  const normalized = normalizeSpeedProfileInput(
+    {
+      attempts: elements.speedProfileEditAttempts.value,
+      delayMs: elements.speedProfileEditDelayMs.value,
+      noChangeThreshold: elements.speedProfileEditNoChangeThreshold.value
+    },
+    defaults
+  );
+
+  state.speedProfiles[profileName] = normalized;
+  saveSpeedProfilesToStorage();
+  applySpeedProfileDefaults(profileName);
+  setSpeedProfileStatus(`Saved profile "${profileName}"`);
+}
+
+function onSpeedProfileReset() {
+  const profileName = String(elements.speedProfile.value || "normal").toLowerCase();
+  const defaults = DEFAULT_SPEED_PROFILES[profileName];
+  if (!defaults) {
+    setSpeedProfileStatus(`Unknown profile: ${profileName}`, {
+      error: true
+    });
+    return;
+  }
+  state.speedProfiles[profileName] = { ...defaults };
+  saveSpeedProfilesToStorage();
+  applySpeedProfileDefaults(profileName);
+  setSpeedProfileStatus(`Reset profile "${profileName}" to defaults`);
 }
 
 function updateRunnerUi() {
@@ -445,6 +803,7 @@ function updateRunnerUi() {
   const isPageRunner = runnerType === RUNNER_TYPES.PAGE_EXTRACTOR;
   const isMetadataRunner = runnerType === RUNNER_TYPES.METADATA_EXTRACTOR;
   elements.listConfigPanel.style.display = isListRunner ? "grid" : "none";
+  elements.speedProfileEditor.style.display = isListRunner ? "grid" : "none";
   elements.pageConfigPanel.style.display = isPageRunner || isMetadataRunner ? "grid" : "none";
   elements.pageActionTypeField.style.display = isMetadataRunner ? "none" : "grid";
   updatePageActionUi();
@@ -474,6 +833,7 @@ function updatePageActionUi() {
   elements.pageMapsOptionsPanel.style.display =
     !isMetadataRunner && actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS ? "grid" : "none";
   elements.metadataOptionsPanel.style.display = isMetadataRunner ? "grid" : "none";
+  syncToolFromRunnerSelection();
 }
 
 function setResolvedUrlsPreview(urls) {
@@ -499,6 +859,407 @@ function setImageStatus(text, { error = false } = {}) {
 function setActivationStatus(text, { error = false } = {}) {
   elements.activationStatusLine.textContent = String(text || "");
   elements.activationStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function setRoadmapStatus(text, { error = false } = {}) {
+  if (!elements.roadmapStatusLine) return;
+  elements.roadmapStatusLine.textContent = String(text || "");
+  elements.roadmapStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function setCloudStatus(text, { error = false } = {}) {
+  elements.cloudStatusLine.textContent = String(text || "");
+  elements.cloudStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function setTemplatesStatus(text, { error = false } = {}) {
+  elements.templatesStatusLine.textContent = String(text || "");
+  elements.templatesStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function loadTemplatesFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(TEMPLATES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        id: String(item.id || randomId("tpl")),
+        name: String(item.name || "Untitled Template").trim() || "Untitled Template",
+        notes: String(item.notes || "").trim(),
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+        payload: item.payload && typeof item.payload === "object" ? item.payload : {}
+      }))
+      .slice(0, TEMPLATE_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function saveTemplatesToStorage() {
+  try {
+    globalThis.localStorage?.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(state.templates || []));
+  } catch {
+    // ignore storage write failures
+  }
+}
+
+function renderTextLines(target, lines, emptyText) {
+  target.innerHTML = "";
+  if (!Array.isArray(lines) || lines.length === 0) {
+    target.textContent = emptyText;
+    return;
+  }
+  for (const line of lines) {
+    const row = document.createElement("div");
+    row.className = "field-meta";
+    row.textContent = line;
+    target.append(row);
+  }
+}
+
+function summarizeJson(value, label = "payload") {
+  try {
+    return `${label}: ${JSON.stringify(value)}`;
+  } catch {
+    return `${label}: (unserializable)`;
+  }
+}
+
+function renderIntegrationSecrets() {
+  const lines = state.integrationSecrets.map((item) => {
+    const provider = String(item.provider || "unknown");
+    const secretName = String(item.secretName || "unknown");
+    const updatedAt = formatRelativeTimestamp(item.updatedAt || item.createdAt);
+    return `${provider}/${secretName} | ${item.label || "-"} | updated ${updatedAt}`;
+  });
+  renderTextLines(elements.integrationsList, lines, "No integration secrets loaded.");
+}
+
+function renderJobs(list, { deadLetter = false } = {}) {
+  const rows = Array.isArray(list) ? list : [];
+  const lines = rows.map((job) => {
+    const id = String(job.id || "unknown");
+    const status = String(job.status || (deadLetter ? "dead_letter" : "unknown"));
+    const type = String(job.jobType || "unknown");
+    const attempt = `${Number(job.attemptCount || 0)}/${Number(job.maxAttempts || 0)}`;
+    return `${id} | ${status} | ${type} | attempts ${attempt}`;
+  });
+  renderTextLines(elements.jobsList, lines, deadLetter ? "No dead-letter jobs." : "No jobs loaded.");
+}
+
+function renderSchedules() {
+  const lines = state.cloudSchedules.map((schedule) => {
+    const id = String(schedule.id || "unknown");
+    const mode = String(schedule.scheduleKind || "unknown");
+    const active = schedule.isActive ? "active" : "paused";
+    const nextRun = formatRelativeTimestamp(schedule.nextRunAt);
+    return `${id} | ${mode} | ${active} | next ${nextRun}`;
+  });
+  renderTextLines(elements.scheduleList, lines, "No schedules loaded.");
+}
+
+function renderTemplates() {
+  elements.templateSelect.innerHTML = "";
+  if (state.templates.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No saved templates";
+    elements.templateSelect.append(option);
+    elements.templateList.textContent = "No templates saved.";
+    return;
+  }
+
+  for (const template of state.templates) {
+    const option = document.createElement("option");
+    option.value = template.id;
+    option.textContent = `${template.name} (${formatRelativeTimestamp(template.updatedAt)})`;
+    elements.templateSelect.append(option);
+  }
+
+  const lines = state.templates.map((template) => {
+    const runnerType = String(template.payload?.runnerType || "unknown");
+    return `${template.id} | ${template.name} | ${runnerType} | ${template.notes || "-"}`;
+  });
+  renderTextLines(elements.templateList, lines, "No templates saved.");
+}
+
+function setObservabilityOutput(value) {
+  let text = "";
+  try {
+    text = JSON.stringify(value, null, 2);
+  } catch {
+    text = String(value || "");
+  }
+  elements.obsOutput.textContent = text;
+}
+
+function setDiagnosticsOutput(value) {
+  let text = "";
+  try {
+    text = JSON.stringify(value, null, 2);
+  } catch {
+    text = String(value || "");
+  }
+  elements.diagnosticsOutput.textContent = text;
+}
+
+function trackUiEvent(eventName, payload = {}) {
+  appendLog(`ui:${eventName}`, payload);
+}
+
+function loadWelcomeVisits() {
+  try {
+    const raw = globalThis.localStorage?.getItem(WELCOME_VISITS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed).map(([key, value]) => [key, Math.max(0, Number(value) || 0)])
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveWelcomeVisits() {
+  try {
+    globalThis.localStorage?.setItem(WELCOME_VISITS_STORAGE_KEY, JSON.stringify(state.welcomeVisits || {}));
+  } catch {
+    // no-op: localStorage may be unavailable in some contexts
+  }
+}
+
+function normalizeShellView(value) {
+  const next = String(value || "").trim();
+  if (Object.values(SHELL_VIEWS).includes(next)) return next;
+  return SHELL_VIEWS.MENU;
+}
+
+function setShellView(view) {
+  const next = normalizeShellView(view);
+  state.activeShellView = next;
+
+  for (const button of elements.shellNavButtons) {
+    button.classList.toggle("is-active", String(button.dataset.shellView || "") === next);
+  }
+
+  for (const panel of elements.appViewPanels) {
+    const allowedViews = String(panel.dataset.views || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    panel.hidden = !allowedViews.includes(next);
+  }
+
+  updateWelcomeVisibility();
+}
+
+function getToolPreset(toolId) {
+  const key = String(toolId || "").trim();
+  return TOOL_PRESETS[key] || TOOL_PRESETS.list;
+}
+
+function setToolHeadingText(label) {
+  const text = String(label || "LIST EXTRACTOR");
+  if (elements.activeToolHeading) {
+    elements.activeToolHeading.textContent = text;
+  }
+  if (elements.selectedToolName) {
+    elements.selectedToolName.value = text;
+  }
+}
+
+function renderToolCardState() {
+  for (const card of elements.toolCards) {
+    const toolId = String(card.dataset.tool || "").trim();
+    card.classList.toggle("is-active", toolId === state.activeTool);
+  }
+}
+
+function renderWelcomeLists(container, lines) {
+  container.innerHTML = "";
+  for (const line of lines) {
+    const item = document.createElement("li");
+    item.textContent = line;
+    container.append(item);
+  }
+}
+
+function renderWelcomeCard(toolId) {
+  const preset = getToolPreset(toolId);
+  elements.toolWelcomeLabel.textContent = preset.label;
+  elements.toolWelcomeTitle.textContent = preset.title;
+  elements.toolWelcomeSubtitle.textContent = preset.subtitle;
+  elements.toolWelcomeVideoLabel.textContent = preset.videoLabel;
+
+  renderWelcomeLists(elements.toolWelcomeBenefits, Array.isArray(preset.benefits) ? preset.benefits : []);
+  renderWelcomeLists(elements.toolWelcomeSteps, Array.isArray(preset.quickStart) ? preset.quickStart : []);
+
+  const extraLines = Array.isArray(preset.extraLines) ? preset.extraLines : [];
+  elements.toolWelcomeExtra.innerHTML = "";
+  if (extraLines.length > 0) {
+    const list = document.createElement("ul");
+    list.className = "roadmap-list";
+    for (const line of extraLines) {
+      const item = document.createElement("li");
+      item.textContent = line;
+      list.append(item);
+    }
+    elements.toolWelcomeExtra.classList.add("is-visible");
+    elements.toolWelcomeExtra.append(list);
+  } else {
+    elements.toolWelcomeExtra.classList.remove("is-visible");
+  }
+}
+
+function getWelcomeVisitCount(toolId) {
+  return Math.max(0, Number(state.welcomeVisits?.[toolId] || 0));
+}
+
+function shouldShowWelcome(toolId) {
+  if (state.showWelcomeOverride) return true;
+  if (state.dismissedWelcomeTools.has(toolId)) return false;
+  return getWelcomeVisitCount(toolId) < WELCOME_VISIT_LIMIT;
+}
+
+function registerWelcomeShown(toolId) {
+  if (state.showWelcomeOverride) return;
+  if (state.sessionWelcomeCounted.has(toolId)) return;
+  const current = getWelcomeVisitCount(toolId);
+  if (current >= WELCOME_VISIT_LIMIT) return;
+  const next = current + 1;
+  state.welcomeVisits[toolId] = next;
+  state.sessionWelcomeCounted.add(toolId);
+  saveWelcomeVisits();
+  trackUiEvent("welcome_shown", {
+    toolId,
+    visitCount: next
+  });
+}
+
+function updateWelcomeVisibility() {
+  const toolId = state.activeTool;
+  renderWelcomeCard(toolId);
+  setToolHeadingText(getToolPreset(toolId).label);
+  renderToolCardState();
+
+  const welcomeViews = String(elements.toolWelcomePanel?.dataset.views || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const inActiveView = welcomeViews.includes(state.activeShellView);
+  if (!inActiveView) {
+    elements.toolWelcomePanel.hidden = true;
+    return;
+  }
+
+  if (state.activeShellView === SHELL_VIEWS.DATA && state.activeTool !== "image") {
+    elements.toolWelcomePanel.hidden = true;
+    return;
+  }
+
+  const show = shouldShowWelcome(toolId);
+  elements.toolWelcomePanel.hidden = !show;
+  if (show) {
+    registerWelcomeShown(toolId);
+  }
+}
+
+function setRunnerTypeIfAvailable(runnerType) {
+  const target = String(runnerType || "").trim();
+  if (!target) return;
+  const hasOption = Array.from(elements.runnerType.options).some((option) => option.value === target);
+  if (!hasOption) return;
+  elements.runnerType.value = target;
+}
+
+function applyToolPreset(toolId, { navigate = true, forceWelcome = false, track = false } = {}) {
+  const key = TOOL_PRESETS[toolId] ? toolId : "list";
+  const preset = getToolPreset(key);
+  state.activeTool = key;
+  state.showWelcomeOverride = Boolean(forceWelcome);
+
+  if (preset.runnerType) {
+    setRunnerTypeIfAvailable(preset.runnerType);
+  }
+  if (preset.actionType) {
+    elements.pageActionType.value = preset.actionType;
+  }
+  updateRunnerUi();
+
+  if (navigate) {
+    setShellView(preset.shellView || SHELL_VIEWS.TOOLS);
+  } else {
+    updateWelcomeVisibility();
+  }
+
+  if (track) {
+    trackUiEvent("quick_start_opened", {
+      toolId: key
+    });
+  }
+}
+
+function inferToolFromRunnerSelection() {
+  const runnerType = String(elements.runnerType.value || "").trim();
+  if (runnerType === RUNNER_TYPES.LIST_EXTRACTOR) return "list";
+  if (runnerType === RUNNER_TYPES.PAGE_EXTRACTOR) {
+    const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
+    if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL) return "email";
+    if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) return "text";
+    return "page_details";
+  }
+  if (runnerType === RUNNER_TYPES.METADATA_EXTRACTOR) return "text";
+  return state.activeTool || "list";
+}
+
+function syncToolFromRunnerSelection() {
+  if (state.activeTool === "image") return;
+  const inferredTool = inferToolFromRunnerSelection();
+  if (!inferredTool || inferredTool === state.activeTool) return;
+  state.activeTool = inferredTool;
+  state.showWelcomeOverride = false;
+  updateWelcomeVisibility();
+}
+
+function dismissWelcomeForActiveTool() {
+  state.dismissedWelcomeTools.add(state.activeTool);
+  state.showWelcomeOverride = false;
+  updateWelcomeVisibility();
+}
+
+function showWelcomeForActiveTool() {
+  state.dismissedWelcomeTools.delete(state.activeTool);
+  state.showWelcomeOverride = true;
+  updateWelcomeVisibility();
+}
+
+function onRoadmapNotify(cardKey) {
+  const key = String(cardKey || "").trim().toLowerCase();
+  const targetUrl = ROADMAP_NOTIFY_URLS[key];
+  if (!targetUrl) {
+    setRoadmapStatus("Roadmap notify target is not configured", {
+      error: true
+    });
+    return;
+  }
+
+  trackUiEvent("roadmap_notify_clicked", {
+    card: key,
+    url: targetUrl
+  });
+  const opened = globalThis.open(targetUrl, "_blank", "noopener,noreferrer");
+  if (opened) {
+    setRoadmapStatus(`Notify form opened for ${key}`);
+    return;
+  }
+  setRoadmapStatus(`Unable to open notify form for ${key}`, {
+    error: true
+  });
 }
 
 function renderExportTableOptions(items, preferredValue = "") {
@@ -619,6 +1380,9 @@ function renderTableColumnOptions(columns) {
   const list = Array.isArray(columns) ? columns : [];
   const filterValue = String(elements.tableFilterColumn.value || "").trim();
   const renameValue = String(elements.tableRenameFrom.value || "").trim();
+  const mergeValues = new Set(
+    Array.from(elements.tableMergeColumns?.selectedOptions || []).map((option) => String(option.value || "").trim())
+  );
   state.tableColumns = list;
 
   elements.tableFilterColumn.innerHTML = "";
@@ -632,6 +1396,7 @@ function renderTableColumnOptions(columns) {
   renamePlaceholder.value = "";
   renamePlaceholder.textContent = "Select column";
   elements.tableRenameFrom.append(renamePlaceholder);
+  elements.tableMergeColumns.innerHTML = "";
 
   for (const columnName of list) {
     const filterOption = document.createElement("option");
@@ -643,6 +1408,14 @@ function renderTableColumnOptions(columns) {
     renameOption.value = columnName;
     renameOption.textContent = columnName;
     elements.tableRenameFrom.append(renameOption);
+
+    const mergeOption = document.createElement("option");
+    mergeOption.value = columnName;
+    mergeOption.textContent = columnName;
+    if (mergeValues.has(columnName)) {
+      mergeOption.selected = true;
+    }
+    elements.tableMergeColumns.append(mergeOption);
   }
 
   if (list.includes(filterValue)) {
@@ -929,6 +1702,121 @@ async function onDedupeTableRows() {
   }
 }
 
+function getSelectedMergeColumns() {
+  return Array.from(elements.tableMergeColumns?.selectedOptions || [])
+    .map((option) => String(option.value || "").trim())
+    .filter(Boolean);
+}
+
+function buildTableCleanupOptions() {
+  return {
+    removeEmptyRows: Boolean(elements.tableCleanupRemoveEmptyRows.checked),
+    removeEmptyColumns: Boolean(elements.tableCleanupRemoveEmptyColumns.checked),
+    removeRepeatingColumns: Boolean(elements.tableCleanupRemoveRepeatingColumns.checked),
+    removeDuplicateColumns: Boolean(elements.tableCleanupRemoveDuplicateColumns.checked),
+    prioritizeDataDensity: Boolean(elements.tableCleanupPrioritizeDensity.checked),
+    hideMostlyEmptyColumns: Boolean(elements.tableCleanupHideMostlyEmptyColumns.checked),
+    mostlyEmptyThreshold: clamp(parseNumber(elements.tableCleanupMostlyEmptyThreshold.value, 0.9), 0.5, 0.99),
+    includeImages: Boolean(elements.tableCleanupIncludeImages.checked)
+  };
+}
+
+async function onCleanupTableRows() {
+  const tableDataId = getSelectedTableDataId();
+  if (!tableDataId) {
+    setTableStatus("Pick a table before cleanup", {
+      error: true
+    });
+    return;
+  }
+
+  const options = buildTableCleanupOptions();
+  setTableStatus("Applying table cleanup...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_CLEANUP_REQUEST, {
+      tableDataId,
+      options
+    });
+    await hydrateDataSources();
+    await hydrateTableHistory({
+      preserveSelection: true
+    });
+    await loadSelectedTableRows({
+      silent: true
+    });
+    setTableStatus(
+      `Cleanup complete. Rows updated=${Number(response.updatedRows || 0)}, removed=${Number(response.removedRows || 0)}, columns removed=${Array.isArray(response.removedColumns) ? response.removedColumns.length : 0}`
+    );
+    appendLog("table cleanup complete", response);
+  } catch (error) {
+    setTableStatus(`Cleanup failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table cleanup failed", {
+      tableDataId,
+      options,
+      message: error.message
+    });
+  }
+}
+
+async function onMergeTableColumns() {
+  const tableDataId = getSelectedTableDataId();
+  if (!tableDataId) {
+    setTableStatus("Pick a table before merge", {
+      error: true
+    });
+    return;
+  }
+  const sourceColumns = getSelectedMergeColumns();
+  const mergedColumnName = normalizeColumnName(elements.tableMergeTarget.value, "");
+  const separator = String(elements.tableMergeSeparator.value || "");
+  const removeSourceColumns = Boolean(elements.tableMergeRemoveSources.checked);
+  if (sourceColumns.length < 2) {
+    setTableStatus("Select at least two columns to merge", {
+      error: true
+    });
+    return;
+  }
+  if (!mergedColumnName) {
+    setTableStatus("Merged column name is required", {
+      error: true
+    });
+    return;
+  }
+
+  setTableStatus(`Merging ${sourceColumns.length} columns...`);
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_MERGE_COLUMNS_REQUEST, {
+      tableDataId,
+      sourceColumns,
+      mergedColumnName,
+      separator,
+      removeSourceColumns
+    });
+    await hydrateDataSources();
+    await hydrateTableHistory({
+      preserveSelection: true
+    });
+    await loadSelectedTableRows({
+      silent: true
+    });
+    elements.tableMergeTarget.value = mergedColumnName;
+    setTableStatus(`Merge complete. Updated rows: ${Number(response.updatedRows || 0)}`);
+    appendLog("table merge complete", response);
+  } catch (error) {
+    setTableStatus(`Merge failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table merge failed", {
+      tableDataId,
+      sourceColumns,
+      mergedColumnName,
+      message: error.message
+    });
+  }
+}
+
 async function onExportFile() {
   const tableDataId = getSelectedExportTableDataId();
   if (!tableDataId) {
@@ -1124,6 +2012,9 @@ function resolveImagesForDownload() {
 
 async function onScanImages() {
   setImageStatus("Scanning active page...");
+  trackUiEvent("image_scan_started", {
+    toolId: state.activeTool
+  });
   try {
     const response = await sendMessage(MESSAGE_TYPES.IMAGE_SCAN_REQUEST);
     state.imageScanResults = Array.isArray(response.images) ? response.images : [];
@@ -1154,12 +2045,19 @@ async function onDownloadImages() {
   }
 
   setImageStatus(`Downloading ${images.length} images...`);
+  trackUiEvent("image_download_started", {
+    count: images.length
+  });
   try {
     const response = await sendMessage(MESSAGE_TYPES.IMAGE_DOWNLOAD_REQUEST, {
       images,
       namingPattern: String(elements.imageNamingPattern.value || "").trim()
     });
     setImageStatus(`Download complete: ${Number(response.completed || 0)} ok, ${Number(response.failed || 0)} failed`);
+    trackUiEvent("image_download_completed", {
+      completed: Number(response.completed || 0),
+      failed: Number(response.failed || 0)
+    });
     appendLog("image download complete", response);
   } catch (error) {
     setImageStatus(`Image download failed: ${error.message}`, {
@@ -1748,6 +2646,769 @@ function buildMetadataOptions() {
   };
 }
 
+function parseJsonInput(raw, label) {
+  const text = String(raw || "").trim();
+  if (!text) return {};
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("JSON must be an object");
+    }
+    return parsed;
+  } catch (error) {
+    throw new Error(`${label} JSON is invalid: ${error.message}`);
+  }
+}
+
+function getObservabilityApiKey() {
+  return String(elements.observabilityApiKey.value || "").trim();
+}
+
+function extractCommonTemplateControls() {
+  return {
+    runnerType: String(elements.runnerType.value || "").trim(),
+    startUrl: String(elements.startUrl.value || "").trim(),
+    activeTool: state.activeTool,
+    pageActionType: String(elements.pageActionType.value || "").trim(),
+    pageUrlSourceMode: String(elements.pageUrlSourceMode.value || "").trim(),
+    pageManualUrls: String(elements.pageManualUrls.value || ""),
+    listFields: state.listFields.map((item) => ({ ...item })),
+    pageFields: state.pageFields.map((item) => ({ ...item })),
+    controls: {
+      containerSelector: String(elements.containerSelector.value || ""),
+      loadMoreMethod: String(elements.loadMoreMethod.value || ""),
+      speedProfile: String(elements.speedProfile.value || ""),
+      loadMoreAttempts: String(elements.loadMoreAttempts.value || ""),
+      loadMoreDelayMs: String(elements.loadMoreDelayMs.value || ""),
+      loadMoreScrollPx: String(elements.loadMoreScrollPx.value || ""),
+      loadMoreNoChangeThreshold: String(elements.loadMoreNoChangeThreshold.value || ""),
+      loadMoreButtonSelector: String(elements.loadMoreButtonSelector.value || ""),
+      loadMoreNextSelector: String(elements.loadMoreNextSelector.value || ""),
+      queueConcurrency: String(elements.queueConcurrency.value || ""),
+      queueDelayMs: String(elements.queueDelayMs.value || ""),
+      queuePageTimeoutMs: String(elements.queuePageTimeoutMs.value || ""),
+      queueRetries: String(elements.queueRetries.value || ""),
+      queueRetryDelayMs: String(elements.queueRetryDelayMs.value || ""),
+      queueJitterMs: String(elements.queueJitterMs.value || ""),
+      queueWaitSelector: String(elements.queueWaitSelector.value || ""),
+      queueWaitSelectorTimeoutMs: String(elements.queueWaitSelectorTimeoutMs.value || ""),
+      queueWaitPageLoad: Boolean(elements.queueWaitPageLoad.checked),
+      emailDeepScanEnabled: Boolean(elements.emailDeepScanEnabled.checked),
+      emailDeepMaxDepth: String(elements.emailDeepMaxDepth.value || ""),
+      emailDeepMaxLinksPerPage: String(elements.emailDeepMaxLinksPerPage.value || ""),
+      emailDeepSameDomainOnly: Boolean(elements.emailDeepSameDomainOnly.checked),
+      emailDeepLinkSelector: String(elements.emailDeepLinkSelector.value || ""),
+      emailRemoveDuplicates: Boolean(elements.emailRemoveDuplicates.checked),
+      emailToLowercase: Boolean(elements.emailToLowercase.checked),
+      emailBasicValidation: Boolean(elements.emailBasicValidation.checked),
+      emailIncludeMailto: Boolean(elements.emailIncludeMailto.checked),
+      emailDomainFilters: String(elements.emailDomainFilters.value || ""),
+      phoneRemoveDuplicates: Boolean(elements.phoneRemoveDuplicates.checked),
+      phoneBasicValidation: Boolean(elements.phoneBasicValidation.checked),
+      phonePatterns: String(elements.phonePatterns.value || ""),
+      textIncludeMetadata: Boolean(elements.textIncludeMetadata.checked),
+      textMaxContentChars: String(elements.textMaxContentChars.value || ""),
+      mapsIncludeBasicInfo: Boolean(elements.mapsIncludeBasicInfo.checked),
+      mapsIncludeContactDetails: Boolean(elements.mapsIncludeContactDetails.checked),
+      mapsIncludeReviews: Boolean(elements.mapsIncludeReviews.checked),
+      mapsIncludeHours: Boolean(elements.mapsIncludeHours.checked),
+      mapsIncludeLocation: Boolean(elements.mapsIncludeLocation.checked),
+      mapsIncludeImages: Boolean(elements.mapsIncludeImages.checked),
+      metadataIncludeMetaTags: Boolean(elements.metadataIncludeMetaTags.checked),
+      metadataIncludeJsonLd: Boolean(elements.metadataIncludeJsonLd.checked),
+      metadataIncludeReviewSignals: Boolean(elements.metadataIncludeReviewSignals.checked),
+      metadataIncludeContactSignals: Boolean(elements.metadataIncludeContactSignals.checked),
+      metadataIncludeRawJsonLd: Boolean(elements.metadataIncludeRawJsonLd.checked),
+      cloudFeaturesOptIn: Boolean(elements.cloudFeaturesOptIn.checked),
+      cloudWebhookOptIn: Boolean(elements.cloudWebhookOptIn.checked),
+      cloudConsentVersion: String(elements.cloudConsentVersion.value || ""),
+      observabilityApiKey: String(elements.observabilityApiKey.value || "")
+    }
+  };
+}
+
+function applyTemplateControlValue(target, value) {
+  if (!target) return;
+  if (target.type === "checkbox") {
+    target.checked = Boolean(value);
+    return;
+  }
+  target.value = value === undefined || value === null ? "" : String(value);
+}
+
+function applyTemplatePayload(payload) {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const controls = data.controls && typeof data.controls === "object" ? data.controls : {};
+
+  const targetTool = String(data.activeTool || "").trim();
+  if (targetTool && TOOL_PRESETS[targetTool]) {
+    applyToolPreset(targetTool, {
+      navigate: false,
+      forceWelcome: false,
+      track: false
+    });
+  }
+
+  if (data.runnerType) {
+    setRunnerTypeIfAvailable(String(data.runnerType));
+  }
+  applyTemplateControlValue(elements.startUrl, data.startUrl);
+  applyTemplateControlValue(elements.pageActionType, data.pageActionType);
+  applyTemplateControlValue(elements.pageUrlSourceMode, data.pageUrlSourceMode);
+  applyTemplateControlValue(elements.pageManualUrls, data.pageManualUrls);
+
+  const controlBindings = {
+    containerSelector: elements.containerSelector,
+    loadMoreMethod: elements.loadMoreMethod,
+    speedProfile: elements.speedProfile,
+    loadMoreAttempts: elements.loadMoreAttempts,
+    loadMoreDelayMs: elements.loadMoreDelayMs,
+    loadMoreScrollPx: elements.loadMoreScrollPx,
+    loadMoreNoChangeThreshold: elements.loadMoreNoChangeThreshold,
+    loadMoreButtonSelector: elements.loadMoreButtonSelector,
+    loadMoreNextSelector: elements.loadMoreNextSelector,
+    queueConcurrency: elements.queueConcurrency,
+    queueDelayMs: elements.queueDelayMs,
+    queuePageTimeoutMs: elements.queuePageTimeoutMs,
+    queueRetries: elements.queueRetries,
+    queueRetryDelayMs: elements.queueRetryDelayMs,
+    queueJitterMs: elements.queueJitterMs,
+    queueWaitSelector: elements.queueWaitSelector,
+    queueWaitSelectorTimeoutMs: elements.queueWaitSelectorTimeoutMs,
+    queueWaitPageLoad: elements.queueWaitPageLoad,
+    emailDeepScanEnabled: elements.emailDeepScanEnabled,
+    emailDeepMaxDepth: elements.emailDeepMaxDepth,
+    emailDeepMaxLinksPerPage: elements.emailDeepMaxLinksPerPage,
+    emailDeepSameDomainOnly: elements.emailDeepSameDomainOnly,
+    emailDeepLinkSelector: elements.emailDeepLinkSelector,
+    emailRemoveDuplicates: elements.emailRemoveDuplicates,
+    emailToLowercase: elements.emailToLowercase,
+    emailBasicValidation: elements.emailBasicValidation,
+    emailIncludeMailto: elements.emailIncludeMailto,
+    emailDomainFilters: elements.emailDomainFilters,
+    phoneRemoveDuplicates: elements.phoneRemoveDuplicates,
+    phoneBasicValidation: elements.phoneBasicValidation,
+    phonePatterns: elements.phonePatterns,
+    textIncludeMetadata: elements.textIncludeMetadata,
+    textMaxContentChars: elements.textMaxContentChars,
+    mapsIncludeBasicInfo: elements.mapsIncludeBasicInfo,
+    mapsIncludeContactDetails: elements.mapsIncludeContactDetails,
+    mapsIncludeReviews: elements.mapsIncludeReviews,
+    mapsIncludeHours: elements.mapsIncludeHours,
+    mapsIncludeLocation: elements.mapsIncludeLocation,
+    mapsIncludeImages: elements.mapsIncludeImages,
+    metadataIncludeMetaTags: elements.metadataIncludeMetaTags,
+    metadataIncludeJsonLd: elements.metadataIncludeJsonLd,
+    metadataIncludeReviewSignals: elements.metadataIncludeReviewSignals,
+    metadataIncludeContactSignals: elements.metadataIncludeContactSignals,
+    metadataIncludeRawJsonLd: elements.metadataIncludeRawJsonLd,
+    cloudFeaturesOptIn: elements.cloudFeaturesOptIn,
+    cloudWebhookOptIn: elements.cloudWebhookOptIn,
+    cloudConsentVersion: elements.cloudConsentVersion,
+    observabilityApiKey: elements.observabilityApiKey
+  };
+
+  for (const [key, control] of Object.entries(controlBindings)) {
+    if (!Object.prototype.hasOwnProperty.call(controls, key)) continue;
+    applyTemplateControlValue(control, controls[key]);
+  }
+
+  state.listFields = Array.isArray(data.listFields) ? data.listFields.map((item) => ({ ...item })) : [];
+  state.pageFields = Array.isArray(data.pageFields) ? data.pageFields.map((item) => ({ ...item })) : [];
+  renderListFields();
+  renderPageFields();
+  applySpeedProfileDefaults(elements.speedProfile.value, {
+    preserveManualOverrides: true
+  });
+  updatePageSourceUi();
+  updatePageActionUi();
+}
+
+function findSelectedTemplate() {
+  const templateId = String(elements.templateSelect.value || "").trim();
+  if (!templateId) return null;
+  return state.templates.find((item) => item.id === templateId) || null;
+}
+
+function buildScheduleInputFromForm() {
+  const scheduleKind = String(elements.scheduleKind.value || "interval").trim();
+  const payload = {
+    name: String(elements.scheduleName.value || "").trim(),
+    scheduleKind,
+    intervalMinutes: Number(elements.scheduleIntervalMinutes.value || 0),
+    cronExpr: String(elements.scheduleCronExpr.value || "").trim(),
+    timezone: String(elements.scheduleTimezone.value || "").trim() || "UTC",
+    targetJobType: String(elements.scheduleTargetJobType.value || "").trim(),
+    targetPayload: parseJsonInput(elements.scheduleTargetPayload.value, "Schedule target payload"),
+    isActive: true
+  };
+  if (scheduleKind !== "interval") {
+    delete payload.intervalMinutes;
+  }
+  if (scheduleKind !== "cron") {
+    delete payload.cronExpr;
+  }
+  return payload;
+}
+
+function buildWebhookJobPayloadTemplate(source = "manual-test") {
+  return {
+    targetUrl: "https://httpbin.org/status/204",
+    eventType: "datascrap.test",
+    metadata: {
+      source
+    }
+  };
+}
+
+function buildExtractionSummaryJobPayloadTemplate(source = "manual-test") {
+  return {
+    targetUrl: "https://example.com",
+    extract: {
+      includeTitle: true,
+      includeMetaDescription: true,
+      includeWordCount: true,
+      includeHeadings: true,
+      includeLinks: true,
+      includeCanonical: true
+    },
+    request: {
+      timeoutMs: 15000
+    },
+    metadata: {
+      source
+    }
+  };
+}
+
+function applyJobsPreset(presetKey) {
+  if (presetKey === "extract_summary") {
+    elements.jobsJobType.value = "extraction.page.summary";
+    elements.jobsPayload.value = JSON.stringify(buildExtractionSummaryJobPayloadTemplate("jobs-manual"), null, 2);
+    setCloudStatus("Jobs payload preset applied: extraction summary");
+    return;
+  }
+  elements.jobsJobType.value = "integration.webhook.deliver";
+  elements.jobsPayload.value = JSON.stringify(buildWebhookJobPayloadTemplate("jobs-manual"), null, 2);
+  setCloudStatus("Jobs payload preset applied: webhook");
+}
+
+function applySchedulePreset(presetKey) {
+  if (presetKey === "extract_summary") {
+    elements.scheduleTargetJobType.value = "extraction.page.summary";
+    elements.scheduleTargetPayload.value = JSON.stringify(buildExtractionSummaryJobPayloadTemplate("schedule"), null, 2);
+    setCloudStatus("Schedule payload preset applied: extraction summary");
+    return;
+  }
+  elements.scheduleTargetJobType.value = "integration.webhook.deliver";
+  elements.scheduleTargetPayload.value = JSON.stringify(buildWebhookJobPayloadTemplate("schedule"), null, 2);
+  setCloudStatus("Schedule payload preset applied: webhook");
+}
+
+async function onCloudPolicyLoad() {
+  setCloudStatus("Loading cloud policy...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_CLOUD_POLICY_GET_REQUEST);
+    const policy = response.policy || null;
+    state.cloudPolicy = policy;
+    elements.cloudFeaturesOptIn.checked = Boolean(policy?.cloudFeaturesOptIn);
+    elements.cloudWebhookOptIn.checked = Boolean(policy?.webhookDeliveryOptIn);
+    if (policy?.consentVersion) {
+      elements.cloudConsentVersion.value = String(policy.consentVersion);
+    }
+    setCloudStatus("Cloud policy loaded");
+    trackUiEvent("cloud_policy_loaded", {
+      cloudFeaturesOptIn: Boolean(policy?.cloudFeaturesOptIn),
+      webhookDeliveryOptIn: Boolean(policy?.webhookDeliveryOptIn)
+    });
+  } catch (error) {
+    setCloudStatus(`Cloud policy load failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onCloudPolicySave() {
+  setCloudStatus("Saving cloud policy...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_CLOUD_POLICY_SET_REQUEST, {
+      cloudFeaturesOptIn: Boolean(elements.cloudFeaturesOptIn.checked),
+      webhookDeliveryOptIn: Boolean(elements.cloudWebhookOptIn.checked),
+      consentVersion: String(elements.cloudConsentVersion.value || "").trim()
+    });
+    state.cloudPolicy = response.policy || null;
+    setCloudStatus("Cloud policy saved");
+    trackUiEvent("cloud_policy_saved", {
+      cloudFeaturesOptIn: Boolean(state.cloudPolicy?.cloudFeaturesOptIn),
+      webhookDeliveryOptIn: Boolean(state.cloudPolicy?.webhookDeliveryOptIn)
+    });
+  } catch (error) {
+    setCloudStatus(`Cloud policy save failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onIntegrationsList() {
+  setCloudStatus("Loading integration secrets...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_LIST_REQUEST);
+    state.integrationSecrets = Array.isArray(response.items) ? response.items : [];
+    renderIntegrationSecrets();
+    setCloudStatus(`Loaded integration secrets: ${state.integrationSecrets.length}`);
+  } catch (error) {
+    setCloudStatus(`Integrations list failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onIntegrationsUpsert() {
+  setCloudStatus("Saving integration secret...");
+  try {
+    await sendMessage(MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_UPSERT_REQUEST, {
+      provider: String(elements.integrationProvider.value || "").trim(),
+      secretName: String(elements.integrationSecretName.value || "").trim(),
+      secretValue: String(elements.integrationSecretValue.value || ""),
+      label: String(elements.integrationSecretLabel.value || "").trim()
+    });
+    elements.integrationSecretValue.value = "";
+    await onIntegrationsList();
+    setCloudStatus("Integration secret saved");
+  } catch (error) {
+    setCloudStatus(`Integration upsert failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onIntegrationsRemove() {
+  const provider = String(elements.integrationProvider.value || "").trim();
+  const secretName = String(elements.integrationSecretName.value || "").trim();
+  if (!provider || !secretName) {
+    setCloudStatus("Provider and secret name are required to remove a secret", {
+      error: true
+    });
+    return;
+  }
+  setCloudStatus(`Removing secret ${provider}/${secretName}...`);
+  try {
+    await sendMessage(MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_REMOVE_REQUEST, {
+      provider,
+      secretName
+    });
+    await onIntegrationsList();
+    setCloudStatus("Integration secret removed");
+  } catch (error) {
+    setCloudStatus(`Integration remove failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onJobsPolicy() {
+  setCloudStatus("Loading jobs policy...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_JOBS_POLICY_REQUEST);
+    const summary = {
+      policy: response.policy || null,
+      queue: response.queue || null,
+      supportedJobTypes: Array.isArray(response.supportedJobTypes) ? response.supportedJobTypes : []
+    };
+    setObservabilityOutput(summary);
+    setCloudStatus("Jobs policy loaded");
+  } catch (error) {
+    setCloudStatus(`Jobs policy failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onJobsEnqueue() {
+  setCloudStatus("Enqueuing job...");
+  try {
+    const payload = parseJsonInput(elements.jobsPayload.value, "Jobs payload");
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_JOBS_ENQUEUE_REQUEST, {
+      jobType: String(elements.jobsJobType.value || "").trim(),
+      payload
+    });
+    setCloudStatus(`Job enqueued: ${response.job?.id || "unknown"}`);
+    await onJobsList();
+  } catch (error) {
+    setCloudStatus(`Job enqueue failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onJobsList() {
+  setCloudStatus("Loading jobs...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_JOBS_LIST_REQUEST, {
+      limit: 50
+    });
+    state.cloudJobs = Array.isArray(response.items) ? response.items : [];
+    renderJobs(state.cloudJobs);
+    setCloudStatus(`Jobs loaded: ${state.cloudJobs.length}`);
+  } catch (error) {
+    setCloudStatus(`Jobs list failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onJobsDeadList() {
+  setCloudStatus("Loading dead-letter jobs...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_JOBS_DEAD_LIST_REQUEST, {
+      limit: 50
+    });
+    state.cloudDeadJobs = Array.isArray(response.items) ? response.items : [];
+    renderJobs(state.cloudDeadJobs, {
+      deadLetter: true
+    });
+    setCloudStatus(`Dead-letter jobs loaded: ${state.cloudDeadJobs.length}`);
+  } catch (error) {
+    setCloudStatus(`Dead-letter list failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onJobsCancel() {
+  const jobId = String(elements.jobsCancelId.value || "").trim();
+  if (!jobId) {
+    setCloudStatus("jobId is required for cancel", {
+      error: true
+    });
+    return;
+  }
+  setCloudStatus(`Cancelling job ${jobId}...`);
+  try {
+    await sendMessage(MESSAGE_TYPES.ACTIVATION_JOBS_CANCEL_REQUEST, {
+      jobId
+    });
+    await onJobsList();
+    setCloudStatus(`Job cancel requested: ${jobId}`);
+  } catch (error) {
+    setCloudStatus(`Job cancel failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onSchedulesCreate() {
+  setCloudStatus("Creating schedule...");
+  try {
+    const input = buildScheduleInputFromForm();
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_SCHEDULES_CREATE_REQUEST, {
+      input
+    });
+    const createdId = response.schedule?.id || "unknown";
+    setCloudStatus(`Schedule created: ${createdId}`);
+    await onSchedulesList();
+  } catch (error) {
+    setCloudStatus(`Schedule create failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onSchedulesList(activeOnly = false) {
+  setCloudStatus(`Loading schedules (${activeOnly ? "active" : "all"})...`);
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_SCHEDULES_LIST_REQUEST, {
+      activeOnly,
+      limit: 50
+    });
+    state.cloudSchedules = Array.isArray(response.items) ? response.items : [];
+    renderSchedules();
+    setCloudStatus(`Schedules loaded: ${state.cloudSchedules.length}`);
+  } catch (error) {
+    setCloudStatus(`Schedules list failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onScheduleToggle() {
+  const scheduleId = String(elements.scheduleActionId.value || "").trim();
+  if (!scheduleId) {
+    setCloudStatus("scheduleId is required to toggle", {
+      error: true
+    });
+    return;
+  }
+  setCloudStatus(`Toggling schedule ${scheduleId}...`);
+  try {
+    await sendMessage(MESSAGE_TYPES.ACTIVATION_SCHEDULES_TOGGLE_REQUEST, {
+      scheduleId,
+      isActive: Boolean(elements.scheduleToggleActive.checked)
+    });
+    await onSchedulesList();
+    setCloudStatus(`Schedule toggled: ${scheduleId}`);
+  } catch (error) {
+    setCloudStatus(`Schedule toggle failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onScheduleRunNow() {
+  const scheduleId = String(elements.scheduleActionId.value || "").trim();
+  if (!scheduleId) {
+    setCloudStatus("scheduleId is required to run now", {
+      error: true
+    });
+    return;
+  }
+  setCloudStatus(`Running schedule ${scheduleId} now...`);
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_SCHEDULES_RUN_NOW_REQUEST, {
+      scheduleId
+    });
+    setCloudStatus(`Run-now enqueued: ${response.job?.id || "unknown"}`);
+    await onJobsList();
+  } catch (error) {
+    setCloudStatus(`Schedule run-now failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onScheduleRemove() {
+  const scheduleId = String(elements.scheduleActionId.value || "").trim();
+  if (!scheduleId) {
+    setCloudStatus("scheduleId is required to remove", {
+      error: true
+    });
+    return;
+  }
+  setCloudStatus(`Removing schedule ${scheduleId}...`);
+  try {
+    await sendMessage(MESSAGE_TYPES.ACTIVATION_SCHEDULES_REMOVE_REQUEST, {
+      scheduleId
+    });
+    await onSchedulesList();
+    setCloudStatus(`Schedule removed: ${scheduleId}`);
+  } catch (error) {
+    setCloudStatus(`Schedule remove failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onObservabilityDashboard() {
+  setCloudStatus("Loading observability dashboard...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_DASHBOARD_REQUEST, {
+      observabilityApiKey: getObservabilityApiKey()
+    });
+    setObservabilityOutput(response.dashboard || {});
+    setCloudStatus("Observability dashboard loaded");
+  } catch (error) {
+    setCloudStatus(`Observability dashboard failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onObservabilitySlo() {
+  setCloudStatus("Loading SLO snapshot...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_SLO_REQUEST, {
+      observabilityApiKey: getObservabilityApiKey()
+    });
+    setObservabilityOutput(response.slo || {});
+    setCloudStatus("SLO snapshot loaded");
+  } catch (error) {
+    setCloudStatus(`SLO request failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onObservabilityErrors() {
+  setCloudStatus("Loading recent errors...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_ERRORS_REQUEST, {
+      observabilityApiKey: getObservabilityApiKey(),
+      limit: 50
+    });
+    setObservabilityOutput({
+      summary: response.summary || null,
+      items: response.items || []
+    });
+    setCloudStatus("Recent errors loaded");
+  } catch (error) {
+    setCloudStatus(`Error stream request failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onObservabilityJobs() {
+  setCloudStatus("Loading observability jobs view...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_JOBS_REQUEST, {
+      observabilityApiKey: getObservabilityApiKey()
+    });
+    setObservabilityOutput(response.jobs || {});
+    setCloudStatus("Observability jobs loaded");
+  } catch (error) {
+    setCloudStatus(`Observability jobs request failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onCloudRefreshAll() {
+  await onCloudPolicyLoad();
+  await onIntegrationsList();
+  await onJobsList();
+  await onSchedulesList();
+}
+
+function onTemplateSave() {
+  const name = String(elements.templateName.value || "").trim();
+  if (!name) {
+    setTemplatesStatus("Template name is required", {
+      error: true
+    });
+    return;
+  }
+
+  const notes = String(elements.templateNotes.value || "").trim();
+  const payload = extractCommonTemplateControls();
+  const templateId = randomId("template");
+  const now = new Date().toISOString();
+
+  state.templates.unshift({
+    id: templateId,
+    name,
+    notes,
+    payload,
+    createdAt: now,
+    updatedAt: now
+  });
+  state.templates = state.templates.slice(0, TEMPLATE_LIMIT);
+  saveTemplatesToStorage();
+  renderTemplates();
+  elements.templateSelect.value = templateId;
+  setTemplatesStatus(`Template saved: ${name}`);
+}
+
+function onTemplateApply() {
+  const template = findSelectedTemplate();
+  if (!template) {
+    setTemplatesStatus("Choose a template to apply", {
+      error: true
+    });
+    return;
+  }
+  applyTemplatePayload(template.payload);
+  setTemplatesStatus(`Template applied: ${template.name}`);
+}
+
+async function onTemplateRun() {
+  const template = findSelectedTemplate();
+  if (!template) {
+    setTemplatesStatus("Choose a template to run", {
+      error: true
+    });
+    return;
+  }
+  applyTemplatePayload(template.payload);
+  setTemplatesStatus(`Running template: ${template.name}`);
+  await onStart();
+}
+
+function onTemplateDelete() {
+  const template = findSelectedTemplate();
+  if (!template) {
+    setTemplatesStatus("Choose a template to delete", {
+      error: true
+    });
+    return;
+  }
+  state.templates = state.templates.filter((item) => item.id !== template.id);
+  saveTemplatesToStorage();
+  renderTemplates();
+  setTemplatesStatus(`Template deleted: ${template.name}`);
+}
+
+async function onDiagnosticsSnapshot() {
+  setTemplatesStatus("Loading runtime snapshot...");
+  try {
+    const snapshot = await sendMessage(MESSAGE_TYPES.SNAPSHOT_REQUEST);
+    state.diagnosticsReport = {
+      generatedAt: new Date().toISOString(),
+      snapshot,
+      activation: await sendMessage(MESSAGE_TYPES.ACTIVATION_SESSION_GET_REQUEST),
+      context: {
+        activeTool: state.activeTool,
+        activeShellView: state.activeShellView,
+        currentStatus: state.currentStatus,
+        templateCount: state.templates.length
+      }
+    };
+    setDiagnosticsOutput(state.diagnosticsReport);
+    setTemplatesStatus("Runtime snapshot loaded");
+  } catch (error) {
+    setTemplatesStatus(`Snapshot failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onDiagnosticsReport() {
+  setTemplatesStatus("Generating diagnostics report...");
+  try {
+    const snapshot = await sendMessage(MESSAGE_TYPES.SNAPSHOT_REQUEST);
+    const activation = await sendMessage(MESSAGE_TYPES.ACTIVATION_SESSION_GET_REQUEST);
+    state.diagnosticsReport = {
+      generatedAt: new Date().toISOString(),
+      snapshot,
+      activation,
+      templatePayloadPreview: extractCommonTemplateControls(),
+      cloudSummary: {
+        policy: state.cloudPolicy,
+        integrationSecrets: state.integrationSecrets.length,
+        jobs: state.cloudJobs.length,
+        deadJobs: state.cloudDeadJobs.length,
+        schedules: state.cloudSchedules.length
+      },
+      eventLogLines: String(elements.eventLog.textContent || "")
+        .split("\n")
+        .filter(Boolean)
+        .slice(-200)
+    };
+    setDiagnosticsOutput(state.diagnosticsReport);
+    setTemplatesStatus("Diagnostics report generated");
+  } catch (error) {
+    setTemplatesStatus(`Report generation failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onDiagnosticsCopy() {
+  if (!state.diagnosticsReport) {
+    setTemplatesStatus("Generate a diagnostics report first", {
+      error: true
+    });
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(state.diagnosticsReport, null, 2));
+    setTemplatesStatus("Diagnostics report copied to clipboard");
+  } catch (error) {
+    setTemplatesStatus(`Clipboard copy failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
 async function hydrateSnapshot() {
   const snapshot = await sendMessage(MESSAGE_TYPES.SNAPSHOT_REQUEST);
   const events = Array.isArray(snapshot.recentEvents) ? snapshot.recentEvents : [];
@@ -1812,6 +3473,11 @@ function buildListAutomationConfig() {
   return {
     startUrl,
     speedProfile: String(elements.speedProfile.value || "normal"),
+    speedProfiles: {
+      slow: { ...getSpeedProfile("slow") },
+      normal: { ...getSpeedProfile("normal") },
+      fast: { ...getSpeedProfile("fast") }
+    },
     actions: [
       {
         type: "EXTRACT_LIST",
@@ -1946,9 +3612,20 @@ async function buildMetadataAutomationConfig() {
   };
 }
 
+function resolveToolStartEventName(runnerType, actionType) {
+  if (runnerType === RUNNER_TYPES.LIST_EXTRACTOR) return "list_extraction_started";
+  if (runnerType === RUNNER_TYPES.METADATA_EXTRACTOR) return "text_extraction_started";
+  if (runnerType !== RUNNER_TYPES.PAGE_EXTRACTOR) return "extraction_started";
+  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL) return "email_extraction_started";
+  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) return "text_extraction_started";
+  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) return "maps_extraction_started";
+  return "page_extraction_started";
+}
+
 async function onStart() {
   try {
     const runnerType = elements.runnerType.value;
+    const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
     const config =
       runnerType === RUNNER_TYPES.LIST_EXTRACTOR
         ? buildListAutomationConfig()
@@ -1961,6 +3638,16 @@ async function onStart() {
       config
     });
     state.currentAutomationId = payload.automationId || null;
+    trackUiEvent("extraction_started", {
+      toolId: state.activeTool,
+      runnerType,
+      actionType
+    });
+    trackUiEvent(resolveToolStartEventName(runnerType, actionType), {
+      toolId: state.activeTool,
+      runnerType,
+      actionType
+    });
     appendLog("start accepted", payload);
   } catch (error) {
     appendLog(`start failed: ${error.message}`);
@@ -1976,6 +3663,9 @@ async function onStop() {
 
   try {
     const payload = await sendMessage(MESSAGE_TYPES.STOP_REQUEST, {
+      automationId: state.currentAutomationId
+    });
+    trackUiEvent("extraction_stopped", {
       automationId: state.currentAutomationId
     });
     appendLog("stop requested", payload);
@@ -1997,6 +3687,10 @@ async function onRerun() {
       automationId
     });
     state.currentAutomationId = payload.automationId || null;
+    trackUiEvent("extraction_rerun_requested", {
+      previousAutomationId: automationId,
+      nextAutomationId: state.currentAutomationId
+    });
     appendLog("rerun accepted", payload);
   } catch (error) {
     appendLog(`rerun failed: ${error.message}`);
@@ -2004,9 +3698,68 @@ async function onRerun() {
   }
 }
 
+for (const button of elements.shellNavButtons) {
+  button.addEventListener("click", () => {
+    const view = String(button.dataset.shellView || "").trim();
+    setShellView(view);
+  });
+}
+
+for (const card of elements.toolCards) {
+  card.addEventListener("click", () => {
+    const toolId = String(card.dataset.tool || "").trim();
+    applyToolPreset(toolId, {
+      navigate: true,
+      forceWelcome: false,
+      track: true
+    });
+  });
+}
+
+elements.openWelcomeBtn.addEventListener("click", () => {
+  showWelcomeForActiveTool();
+  trackUiEvent("tutorial_opened", {
+    toolId: state.activeTool
+  });
+});
+
+elements.toolWelcomeSkipBtn.addEventListener("click", () => {
+  dismissWelcomeForActiveTool();
+});
+
+elements.toolWelcomeStartBtn.addEventListener("click", () => {
+  const preset = getToolPreset(state.activeTool);
+  dismissWelcomeForActiveTool();
+  setShellView(preset.shellView || SHELL_VIEWS.TOOLS);
+  trackUiEvent("quick_start_opened", {
+    toolId: state.activeTool,
+    action: "start_extracting"
+  });
+
+  if (state.activeTool === "image") {
+    void onScanImages();
+    return;
+  }
+
+  elements.startBtn.focus();
+});
+
+elements.roadmapSchedulingNotifyBtn.addEventListener("click", () => {
+  onRoadmapNotify("scheduling");
+});
+elements.roadmapIntegrationsNotifyBtn.addEventListener("click", () => {
+  onRoadmapNotify("integrations");
+});
+
 elements.runnerType.addEventListener("change", updateRunnerUi);
 elements.speedProfile.addEventListener("change", () => {
   applySpeedProfileDefaults(elements.speedProfile.value);
+});
+elements.speedProfileSaveBtn.addEventListener("click", () => {
+  onSpeedProfileSave();
+});
+elements.speedProfileResetBtn.addEventListener("click", () => {
+  onSpeedProfileReset();
 });
 elements.pageUrlSourceMode.addEventListener("change", updatePageSourceUi);
 elements.pageActionType.addEventListener("change", updatePageActionUi);
@@ -2122,6 +3875,12 @@ elements.tableRenameBtn.addEventListener("click", () => {
 elements.tableDedupeBtn.addEventListener("click", () => {
   void onDedupeTableRows();
 });
+elements.tableCleanupBtn.addEventListener("click", () => {
+  void onCleanupTableRows();
+});
+elements.tableMergeBtn.addEventListener("click", () => {
+  void onMergeTableColumns();
+});
 elements.tableFilterColumn.addEventListener("change", () => {
   void loadSelectedTableRows();
 });
@@ -2142,6 +3901,14 @@ elements.tableLimit.addEventListener("change", () => {
 });
 elements.tableRenameTo.addEventListener("blur", () => {
   elements.tableRenameTo.value = normalizeColumnName(elements.tableRenameTo.value, "");
+});
+elements.tableMergeTarget.addEventListener("blur", () => {
+  elements.tableMergeTarget.value = normalizeColumnName(elements.tableMergeTarget.value, "");
+});
+elements.tableCleanupMostlyEmptyThreshold.addEventListener("change", () => {
+  elements.tableCleanupMostlyEmptyThreshold.value = String(
+    clamp(parseNumber(elements.tableCleanupMostlyEmptyThreshold.value, 0.9), 0.5, 0.99)
+  );
 });
 
 elements.exportFileBtn.addEventListener("click", () => {
@@ -2220,6 +3987,109 @@ elements.activationDevicesRefreshBtn.addEventListener("click", () => {
   void onActivationListDevices();
 });
 
+elements.cloudPolicyLoadBtn.addEventListener("click", () => {
+  void onCloudPolicyLoad();
+});
+elements.cloudPolicySaveBtn.addEventListener("click", () => {
+  void onCloudPolicySave();
+});
+elements.jobsPolicyBtn.addEventListener("click", () => {
+  void onJobsPolicy();
+});
+elements.cloudRefreshAllBtn.addEventListener("click", () => {
+  void onCloudRefreshAll();
+});
+
+elements.integrationsListBtn.addEventListener("click", () => {
+  void onIntegrationsList();
+});
+elements.integrationsUpsertBtn.addEventListener("click", () => {
+  void onIntegrationsUpsert();
+});
+elements.integrationsRemoveBtn.addEventListener("click", () => {
+  void onIntegrationsRemove();
+});
+
+elements.jobsEnqueueBtn.addEventListener("click", () => {
+  void onJobsEnqueue();
+});
+elements.jobsListBtn.addEventListener("click", () => {
+  void onJobsList();
+});
+elements.jobsDeadBtn.addEventListener("click", () => {
+  void onJobsDeadList();
+});
+elements.jobsCancelBtn.addEventListener("click", () => {
+  void onJobsCancel();
+});
+elements.jobsFillWebhookBtn.addEventListener("click", () => {
+  applyJobsPreset("webhook");
+});
+elements.jobsFillExtractSummaryBtn.addEventListener("click", () => {
+  applyJobsPreset("extract_summary");
+});
+
+elements.scheduleCreateBtn.addEventListener("click", () => {
+  void onSchedulesCreate();
+});
+elements.scheduleFillWebhookBtn.addEventListener("click", () => {
+  applySchedulePreset("webhook");
+});
+elements.scheduleFillExtractSummaryBtn.addEventListener("click", () => {
+  applySchedulePreset("extract_summary");
+});
+elements.scheduleListBtn.addEventListener("click", () => {
+  void onSchedulesList(false);
+});
+elements.scheduleListActiveBtn.addEventListener("click", () => {
+  void onSchedulesList(true);
+});
+elements.scheduleToggleBtn.addEventListener("click", () => {
+  void onScheduleToggle();
+});
+elements.scheduleRunNowBtn.addEventListener("click", () => {
+  void onScheduleRunNow();
+});
+elements.scheduleRemoveBtn.addEventListener("click", () => {
+  void onScheduleRemove();
+});
+
+elements.obsDashboardBtn.addEventListener("click", () => {
+  void onObservabilityDashboard();
+});
+elements.obsSloBtn.addEventListener("click", () => {
+  void onObservabilitySlo();
+});
+elements.obsErrorsBtn.addEventListener("click", () => {
+  void onObservabilityErrors();
+});
+elements.obsJobsBtn.addEventListener("click", () => {
+  void onObservabilityJobs();
+});
+
+elements.templateSaveBtn.addEventListener("click", () => {
+  onTemplateSave();
+});
+elements.templateApplyBtn.addEventListener("click", () => {
+  onTemplateApply();
+});
+elements.templateRunBtn.addEventListener("click", () => {
+  void onTemplateRun();
+});
+elements.templateDeleteBtn.addEventListener("click", () => {
+  onTemplateDelete();
+});
+
+elements.diagnosticsSnapshotBtn.addEventListener("click", () => {
+  void onDiagnosticsSnapshot();
+});
+elements.diagnosticsReportBtn.addEventListener("click", () => {
+  void onDiagnosticsReport();
+});
+elements.diagnosticsCopyBtn.addEventListener("click", () => {
+  void onDiagnosticsCopy();
+});
+
 elements.pageCsvFile.addEventListener("change", () => {
   void (async () => {
     const file = elements.pageCsvFile.files?.[0] || null;
@@ -2277,16 +4147,35 @@ chrome.runtime.onMessage.addListener((message) => {
 
 renderListFields();
 renderPageFields();
+state.welcomeVisits = loadWelcomeVisits();
+state.templates = loadTemplatesFromStorage();
+state.speedProfiles = loadSpeedProfilesFromStorage();
+renderTemplates();
+renderIntegrationSecrets();
+renderJobs([]);
+renderSchedules();
+setObservabilityOutput({});
+setDiagnosticsOutput({});
 setPickerStatus("idle");
 setTableStatus("No table loaded");
 setExportStatus("Export ready");
 setImageStatus("Scan page to load images");
 setActivationStatus("Not connected");
+setRoadmapStatus("Roadmap notify actions ready");
+setCloudStatus("Cloud control ready");
+setTemplatesStatus("Templates & diagnostics ready");
+setSpeedProfileStatus("Profile editor ready");
 renderImagePreview();
-applySpeedProfileDefaults("normal");
+applySpeedProfileDefaults(elements.speedProfile.value || "normal");
 updatePageSourceUi();
 updatePageActionUi();
 await hydrateRunnerCatalog();
+applyToolPreset(state.activeTool, {
+  navigate: false,
+  forceWelcome: false,
+  track: false
+});
+setShellView(SHELL_VIEWS.MENU);
 await hydrateDataSources().catch(() => {
   appendLog("datasource list failed");
 });

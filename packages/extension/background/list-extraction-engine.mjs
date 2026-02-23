@@ -20,6 +20,27 @@ const SPEED_PROFILES = Object.freeze({
   }
 });
 
+function normalizeProfileEntry(input, fallback) {
+  const source = input && typeof input === "object" ? input : {};
+  const delayRaw = Number(source.delayMs);
+  const attemptsRaw = Number(source.attempts);
+  const noChangeRaw = Number(source.noChangeThreshold);
+  return {
+    delayMs: Math.max(100, Math.min(10_000, Number.isFinite(delayRaw) ? delayRaw : fallback.delayMs)),
+    attempts: Math.max(1, Math.min(30, Number.isFinite(attemptsRaw) ? attemptsRaw : fallback.attempts)),
+    noChangeThreshold: Math.max(1, Math.min(10, Number.isFinite(noChangeRaw) ? noChangeRaw : fallback.noChangeThreshold))
+  };
+}
+
+function normalizeSpeedProfiles(input) {
+  const source = input && typeof input === "object" ? input : {};
+  return {
+    slow: normalizeProfileEntry(source.slow, SPEED_PROFILES.slow),
+    normal: normalizeProfileEntry(source.normal, SPEED_PROFILES.normal),
+    fast: normalizeProfileEntry(source.fast, SPEED_PROFILES.fast)
+  };
+}
+
 function normalizeLoadMoreMethod(value) {
   const method = String(value || LOAD_MORE_METHODS.NONE).trim().toLowerCase();
   if (Object.values(LOAD_MORE_METHODS).includes(method)) {
@@ -33,8 +54,9 @@ function normalizeListConfig(config = {}) {
   const extractAction = actions.find((item) => String(item?.type || "").toUpperCase() === "EXTRACT_LIST");
   const loadMoreAction = actions.find((item) => String(item?.type || "").toUpperCase() === "LOAD_MORE");
 
+  const speedProfiles = normalizeSpeedProfiles(config.speedProfiles);
   const speedProfileName = String(config.speedProfile || "normal").toLowerCase();
-  const profile = SPEED_PROFILES[speedProfileName] || SPEED_PROFILES.normal;
+  const profile = speedProfiles[speedProfileName] || speedProfiles.normal;
 
   const extractConfig = extractAction || config.extractList || {};
   const fields = Array.isArray(extractConfig.fields) ? extractConfig.fields : [];

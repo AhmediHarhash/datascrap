@@ -33,6 +33,18 @@
 - email deep scan options + text/maps advanced options + metadata extractor engine.
 12) Tracking artifact:
 - `docs/phase6-tool-specific-advanced-flows-2026-02-23.md`
+13) Epic 7 baseline slice implemented:
+- home hub shell nav + tool cards + roadmap notify + per-tool welcome first-3-visits flow.
+14) Tracking artifact:
+- `docs/phase7-home-hub-welcome-roadmap-2026-02-23.md`
+15) Epic 8-11 wiring slice implemented:
+- cloud control API wiring + schedules/integrations/jobs/observability panel controls + template/diagnostics workflows + smoke expansion.
+16) Tracking artifact:
+- `docs/phase8-11-cloud-templates-diagnostics-qa-2026-02-23.md`
+17) Hardening verification completed:
+- `npm run smoke:extension` pass
+- `npm run test:local:hardening` pass
+- `npm run hardening:railway` pass (cloud smoke enabled)
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

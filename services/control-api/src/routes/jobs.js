@@ -18,6 +18,7 @@ const {
   listDeadLetters,
   listJobs
 } = require("../services/jobs");
+const { SUPPORTED_JOB_TYPES } = require("../services/job-processor");
 const { validateMetadataOnlyPayload } = require("../services/metadata-policy");
 
 const router = Router();
@@ -68,6 +69,35 @@ function validateWebhookPayload(payload) {
   return null;
 }
 
+function validateExtractionSummaryPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "Extraction payload must be an object";
+  }
+
+  const targetUrl = String(payload.targetUrl || "").trim();
+  const targetUrls = Array.isArray(payload.targetUrls) ? payload.targetUrls : [];
+  const hasSingle = Boolean(targetUrl);
+  const hasMany = targetUrls.some((item) => String(item || "").trim().length > 0);
+  if (!hasSingle && !hasMany) {
+    return "Extraction payload requires targetUrl or targetUrls";
+  }
+
+  const urlsToCheck = [];
+  if (hasSingle) urlsToCheck.push(targetUrl);
+  for (const item of targetUrls) {
+    const value = String(item || "").trim();
+    if (value) urlsToCheck.push(value);
+  }
+
+  for (const url of urlsToCheck.slice(0, 10)) {
+    if (!isValidHttpUrl(url)) {
+      return "Extraction payload URLs must be valid http/https URLs";
+    }
+  }
+
+  return null;
+}
+
 async function requireCloudPolicy(req, res, options = {}) {
   try {
     const policy = await getCloudPolicy(req.auth.accountId);
@@ -98,7 +128,8 @@ router.get("/api/jobs/policy", requireOptionalCloudFeatures, requireAuth, jobsRe
         backoffMaxSeconds: config.jobBackoffMaxSeconds,
         maxAttemptsDefault: config.jobMaxAttemptsDefault,
         lockTimeoutSeconds: config.jobLockTimeoutSeconds
-      }
+      },
+      supportedJobTypes: SUPPORTED_JOB_TYPES
     });
   } catch (_error) {
     return res.status(500).json({ error: "Failed to load jobs policy" });
@@ -165,6 +196,16 @@ router.post("/api/jobs/enqueue", requireOptionalCloudFeatures, requireAuth, jobs
         return res.status(400).json({
           errorType: "INVALID_WEBHOOK_PAYLOAD",
           message: webhookValidationError
+        });
+      }
+    }
+
+    if (jobType === "extraction.page.summary") {
+      const extractionValidationError = validateExtractionSummaryPayload(payload);
+      if (extractionValidationError) {
+        return res.status(400).json({
+          errorType: "INVALID_EXTRACTION_PAYLOAD",
+          message: extractionValidationError
         });
       }
     }

@@ -112,12 +112,21 @@ async function writeSession(chromeApi, session) {
   return payload;
 }
 
-function createHeaders(accessToken = "") {
+function createHeaders(accessToken = "", additionalHeaders = {}) {
   const headers = {
     "content-type": "application/json"
   };
   if (accessToken) {
     headers.authorization = `Bearer ${accessToken}`;
+  }
+  if (additionalHeaders && typeof additionalHeaders === "object") {
+    for (const [key, value] of Object.entries(additionalHeaders)) {
+      const headerName = String(key || "").trim();
+      if (!headerName) continue;
+      const headerValue = value === undefined || value === null ? "" : String(value);
+      if (!headerValue) continue;
+      headers[headerName] = headerValue;
+    }
   }
   return headers;
 }
@@ -127,12 +136,13 @@ async function requestJson({
   path,
   method = "GET",
   body = null,
-  accessToken = ""
+  accessToken = "",
+  additionalHeaders = {}
 }) {
   const url = `${baseUrl}${path}`;
   const response = await fetch(url, {
     method,
-    headers: createHeaders(accessToken),
+    headers: createHeaders(accessToken, additionalHeaders),
     body: body === null || body === undefined ? undefined : JSON.stringify(body)
   });
   const contentType = String(response.headers.get("content-type") || "").toLowerCase();
@@ -188,7 +198,8 @@ async function requestWithAuth({
   baseUrl,
   path,
   method = "GET",
-  body = null
+  body = null,
+  additionalHeaders = {}
 }) {
   let current = { ...session };
   let result = await requestJson({
@@ -196,7 +207,8 @@ async function requestWithAuth({
     path,
     method,
     body,
-    accessToken: current.accessToken
+    accessToken: current.accessToken,
+    additionalHeaders
   });
 
   if (result.status === 401 && current.refreshToken) {
@@ -225,7 +237,8 @@ async function requestWithAuth({
       path,
       method,
       body,
-      accessToken: current.accessToken
+      accessToken: current.accessToken,
+      additionalHeaders
     });
   }
 
@@ -634,5 +647,508 @@ export async function activationRenameDevice({
   return {
     session: toPublicSession(persisted),
     result: result.payload
+  };
+}
+
+function normalizeBoolean(value, fallback = false) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return fallback;
+}
+
+function normalizeObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value;
+}
+
+async function requireCloudSession({
+  chromeApi = chrome,
+  permissionManager
+}) {
+  const current = await readSession(chromeApi);
+  const baseUrl = requireApiBaseUrl(current, "");
+  await ensureApiAccess({
+    permissionManager,
+    apiBaseUrl: baseUrl
+  });
+  return {
+    current,
+    baseUrl
+  };
+}
+
+async function requestCloud({
+  chromeApi = chrome,
+  permissionManager,
+  path,
+  method = "GET",
+  body = null,
+  additionalHeaders = {}
+}) {
+  const { current, baseUrl } = await requireCloudSession({
+    chromeApi,
+    permissionManager
+  });
+
+  const { session, result } = await requestWithAuth({
+    chromeApi,
+    session: current,
+    baseUrl,
+    path,
+    method,
+    body,
+    additionalHeaders
+  });
+
+  return {
+    session: toPublicSession(session),
+    payload: result.payload
+  };
+}
+
+export async function activationGetCloudPolicy({
+  chromeApi = chrome,
+  permissionManager
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/data-handling/policy",
+    method: "GET"
+  });
+  return {
+    session: response.session,
+    policy: response.payload?.policy || null,
+    policyVersion: response.payload?.policyVersion || null
+  };
+}
+
+export async function activationSetCloudPolicy({
+  chromeApi = chrome,
+  permissionManager,
+  cloudFeaturesOptIn = false,
+  webhookDeliveryOptIn = false,
+  consentVersion = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/data-handling/policy",
+    method: "POST",
+    body: {
+      cloudFeaturesOptIn: normalizeBoolean(cloudFeaturesOptIn, false),
+      webhookDeliveryOptIn: normalizeBoolean(webhookDeliveryOptIn, false),
+      metadataOnlyEnforced: true,
+      consentVersion: toText(consentVersion).trim() || undefined
+    }
+  });
+  return {
+    session: response.session,
+    policy: response.payload?.policy || null
+  };
+}
+
+export async function activationListIntegrationSecrets({
+  chromeApi = chrome,
+  permissionManager
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/integrations/secrets",
+    method: "GET"
+  });
+  return {
+    session: response.session,
+    policy: response.payload?.policy || null,
+    items: Array.isArray(response.payload?.items) ? response.payload.items : []
+  };
+}
+
+export async function activationUpsertIntegrationSecret({
+  chromeApi = chrome,
+  permissionManager,
+  provider = "",
+  secretName = "",
+  secretValue = "",
+  label = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/integrations/secrets/upsert",
+    method: "POST",
+    body: {
+      provider: toText(provider).trim(),
+      secretName: toText(secretName).trim(),
+      secretValue: toText(secretValue),
+      label: toText(label).trim() || undefined
+    }
+  });
+  return {
+    session: response.session,
+    item: response.payload?.item || null,
+    success: Boolean(response.payload?.success)
+  };
+}
+
+export async function activationRemoveIntegrationSecret({
+  chromeApi = chrome,
+  permissionManager,
+  id = "",
+  provider = "",
+  secretName = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/integrations/secrets/remove",
+    method: "POST",
+    body: {
+      id: toText(id).trim() || undefined,
+      provider: toText(provider).trim() || undefined,
+      secretName: toText(secretName).trim() || undefined
+    }
+  });
+  return {
+    session: response.session,
+    removed: Boolean(response.payload?.removed),
+    success: Boolean(response.payload?.success)
+  };
+}
+
+export async function activationGetJobsPolicy({
+  chromeApi = chrome,
+  permissionManager
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/jobs/policy",
+    method: "GET"
+  });
+  return {
+    session: response.session,
+    policy: response.payload?.policy || null,
+    queue: response.payload?.queue || null,
+    supportedJobTypes: Array.isArray(response.payload?.supportedJobTypes) ? response.payload.supportedJobTypes : []
+  };
+}
+
+export async function activationEnqueueJob({
+  chromeApi = chrome,
+  permissionManager,
+  jobType = "",
+  payload = {},
+  maxAttempts = null
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/jobs/enqueue",
+    method: "POST",
+    body: {
+      jobType: toText(jobType).trim(),
+      payload: normalizeObject(payload),
+      maxAttempts: maxAttempts === null || maxAttempts === undefined ? undefined : Number(maxAttempts)
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    job: response.payload?.job || null
+  };
+}
+
+export async function activationListJobs({
+  chromeApi = chrome,
+  permissionManager,
+  status = "",
+  limit = 50
+}) {
+  const params = new URLSearchParams();
+  if (toText(status).trim()) params.set("status", toText(status).trim());
+  params.set("limit", String(Math.max(1, Number(limit || 50))));
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: `/api/jobs?${params.toString()}`,
+    method: "GET"
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    items: Array.isArray(response.payload?.items) ? response.payload.items : []
+  };
+}
+
+export async function activationListDeadLetterJobs({
+  chromeApi = chrome,
+  permissionManager,
+  limit = 50
+}) {
+  const params = new URLSearchParams();
+  params.set("limit", String(Math.max(1, Number(limit || 50))));
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: `/api/jobs/dead-letter?${params.toString()}`,
+    method: "GET"
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    items: Array.isArray(response.payload?.items) ? response.payload.items : []
+  };
+}
+
+export async function activationCancelJob({
+  chromeApi = chrome,
+  permissionManager,
+  jobId = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/jobs/cancel",
+    method: "POST",
+    body: {
+      jobId: toText(jobId).trim()
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    canceled: Boolean(response.payload?.canceled),
+    job: response.payload?.job || null
+  };
+}
+
+export async function activationListSchedules({
+  chromeApi = chrome,
+  permissionManager,
+  activeOnly = false,
+  limit = 50
+}) {
+  const params = new URLSearchParams();
+  params.set("activeOnly", String(Boolean(activeOnly)));
+  params.set("limit", String(Math.max(1, Number(limit || 50))));
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: `/api/schedules?${params.toString()}`,
+    method: "GET"
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    items: Array.isArray(response.payload?.items) ? response.payload.items : []
+  };
+}
+
+export async function activationCreateSchedule({
+  chromeApi = chrome,
+  permissionManager,
+  input = {}
+}) {
+  const payload = normalizeObject(input);
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/schedules/create",
+    method: "POST",
+    body: payload
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    schedule: response.payload?.schedule || null
+  };
+}
+
+export async function activationUpdateSchedule({
+  chromeApi = chrome,
+  permissionManager,
+  scheduleId = "",
+  updates = {}
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/schedules/update",
+    method: "POST",
+    body: {
+      scheduleId: toText(scheduleId).trim(),
+      ...normalizeObject(updates)
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    schedule: response.payload?.schedule || null
+  };
+}
+
+export async function activationToggleSchedule({
+  chromeApi = chrome,
+  permissionManager,
+  scheduleId = "",
+  isActive = false
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/schedules/toggle",
+    method: "POST",
+    body: {
+      scheduleId: toText(scheduleId).trim(),
+      isActive: Boolean(isActive)
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    schedule: response.payload?.schedule || null
+  };
+}
+
+export async function activationRemoveSchedule({
+  chromeApi = chrome,
+  permissionManager,
+  scheduleId = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/schedules/remove",
+    method: "POST",
+    body: {
+      scheduleId: toText(scheduleId).trim()
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    removed: Boolean(response.payload?.removed)
+  };
+}
+
+export async function activationRunScheduleNow({
+  chromeApi = chrome,
+  permissionManager,
+  scheduleId = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/schedules/run-now",
+    method: "POST",
+    body: {
+      scheduleId: toText(scheduleId).trim()
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    schedule: response.payload?.schedule || null,
+    job: response.payload?.job || null
+  };
+}
+
+async function requestObservability({
+  chromeApi = chrome,
+  permissionManager,
+  path,
+  observabilityApiKey = ""
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path,
+    method: "GET",
+    additionalHeaders: observabilityApiKey
+      ? {
+          "x-observability-key": toText(observabilityApiKey).trim()
+        }
+      : {}
+  });
+  return response;
+}
+
+export async function activationGetObservabilityDashboard({
+  chromeApi = chrome,
+  permissionManager,
+  observabilityApiKey = ""
+}) {
+  const response = await requestObservability({
+    chromeApi,
+    permissionManager,
+    path: "/api/observability/dashboard",
+    observabilityApiKey
+  });
+  return {
+    session: response.session,
+    dashboard: response.payload || null
+  };
+}
+
+export async function activationGetObservabilitySlo({
+  chromeApi = chrome,
+  permissionManager,
+  observabilityApiKey = ""
+}) {
+  const response = await requestObservability({
+    chromeApi,
+    permissionManager,
+    path: "/api/observability/slo",
+    observabilityApiKey
+  });
+  return {
+    session: response.session,
+    slo: response.payload || null
+  };
+}
+
+export async function activationListObservabilityErrors({
+  chromeApi = chrome,
+  permissionManager,
+  limit = 50,
+  observabilityApiKey = ""
+}) {
+  const params = new URLSearchParams();
+  params.set("limit", String(Math.max(1, Number(limit || 50))));
+  const response = await requestObservability({
+    chromeApi,
+    permissionManager,
+    path: `/api/observability/errors/recent?${params.toString()}`,
+    observabilityApiKey
+  });
+  return {
+    session: response.session,
+    summary: response.payload?.summary || null,
+    items: Array.isArray(response.payload?.items) ? response.payload.items : []
+  };
+}
+
+export async function activationGetObservabilityJobs({
+  chromeApi = chrome,
+  permissionManager,
+  observabilityApiKey = ""
+}) {
+  const response = await requestObservability({
+    chromeApi,
+    permissionManager,
+    path: "/api/observability/jobs",
+    observabilityApiKey
+  });
+  return {
+    session: response.session,
+    jobs: response.payload || null
   };
 }

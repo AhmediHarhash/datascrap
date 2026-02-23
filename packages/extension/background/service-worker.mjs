@@ -3,23 +3,45 @@ import { createPermissionManager } from "../vendor/core/src/permission-manager.m
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import { createStorageClient } from "../vendor/storage/src/storage-client.mjs";
 import {
+  activationCancelJob,
+  activationCreateSchedule,
+  activationEnqueueJob,
+  activationGetCloudPolicy,
+  activationGetJobsPolicy,
+  activationGetObservabilityDashboard,
+  activationGetObservabilityJobs,
+  activationGetObservabilitySlo,
   activationLicenseStatus,
   activationListDevices,
+  activationListIntegrationSecrets,
+  activationListJobs,
+  activationListObservabilityErrors,
+  activationListSchedules,
   activationLogin,
   activationLogout,
+  activationRemoveIntegrationSecret,
+  activationRemoveSchedule,
   activationRefreshProfile,
   activationRegister,
   activationRegisterLicense,
   activationRemoveDevice,
   activationRenameDevice,
+  activationRunScheduleNow,
+  activationSetCloudPolicy,
   activationValidateDevice,
+  activationUpsertIntegrationSecret,
+  activationUpdateSchedule,
+  activationListDeadLetterJobs,
+  activationToggleSchedule,
   getActivationSession,
   setActivationConfig
 } from "./activation-service.mjs";
 import {
+  cleanupTableRows,
   dedupeTableRows,
   getTableRows,
   listTableHistory,
+  mergeTableColumns,
   renameTableColumn,
   updateTableCell
 } from "./data-table-service.mjs";
@@ -274,6 +296,43 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return;
       }
 
+      if (type === MESSAGE_TYPES.TABLE_MERGE_COLUMNS_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await mergeTableColumns({
+          storageClient,
+          tableDataId,
+          sourceColumns: message?.payload?.sourceColumns,
+          mergedColumnName: message?.payload?.mergedColumnName,
+          separator: message?.payload?.separator,
+          removeSourceColumns: message?.payload?.removeSourceColumns
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_MERGE_COLUMNS_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_CLEANUP_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await cleanupTableRows({
+          storageClient,
+          tableDataId,
+          options: message?.payload?.options
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_CLEANUP_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
       if (type === MESSAGE_TYPES.TABLE_EXPORT_REQUEST) {
         const tableDataId = String(message?.payload?.tableDataId || "").trim();
         if (!tableDataId) {
@@ -506,6 +565,277 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         sendResponse({
           type: MESSAGE_TYPES.ACTIVATION_DEVICE_RENAME_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_CLOUD_POLICY_GET_REQUEST) {
+        const result = await activationGetCloudPolicy({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_CLOUD_POLICY_GET_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_CLOUD_POLICY_SET_REQUEST) {
+        const result = await activationSetCloudPolicy({
+          chromeApi: chrome,
+          permissionManager,
+          cloudFeaturesOptIn: message?.payload?.cloudFeaturesOptIn,
+          webhookDeliveryOptIn: message?.payload?.webhookDeliveryOptIn,
+          consentVersion: message?.payload?.consentVersion
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_CLOUD_POLICY_SET_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_LIST_REQUEST) {
+        const result = await activationListIntegrationSecrets({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_LIST_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_UPSERT_REQUEST) {
+        const result = await activationUpsertIntegrationSecret({
+          chromeApi: chrome,
+          permissionManager,
+          provider: message?.payload?.provider,
+          secretName: message?.payload?.secretName,
+          secretValue: message?.payload?.secretValue,
+          label: message?.payload?.label
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_UPSERT_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_REMOVE_REQUEST) {
+        const result = await activationRemoveIntegrationSecret({
+          chromeApi: chrome,
+          permissionManager,
+          id: message?.payload?.id,
+          provider: message?.payload?.provider,
+          secretName: message?.payload?.secretName
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_REMOVE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_JOBS_POLICY_REQUEST) {
+        const result = await activationGetJobsPolicy({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_JOBS_POLICY_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_JOBS_ENQUEUE_REQUEST) {
+        const result = await activationEnqueueJob({
+          chromeApi: chrome,
+          permissionManager,
+          jobType: message?.payload?.jobType,
+          payload: message?.payload?.payload,
+          maxAttempts: message?.payload?.maxAttempts
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_JOBS_ENQUEUE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_JOBS_LIST_REQUEST) {
+        const result = await activationListJobs({
+          chromeApi: chrome,
+          permissionManager,
+          status: message?.payload?.status,
+          limit: message?.payload?.limit
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_JOBS_LIST_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_JOBS_DEAD_LIST_REQUEST) {
+        const result = await activationListDeadLetterJobs({
+          chromeApi: chrome,
+          permissionManager,
+          limit: message?.payload?.limit
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_JOBS_DEAD_LIST_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_JOBS_CANCEL_REQUEST) {
+        const result = await activationCancelJob({
+          chromeApi: chrome,
+          permissionManager,
+          jobId: message?.payload?.jobId
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_JOBS_CANCEL_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SCHEDULES_LIST_REQUEST) {
+        const result = await activationListSchedules({
+          chromeApi: chrome,
+          permissionManager,
+          activeOnly: message?.payload?.activeOnly,
+          limit: message?.payload?.limit
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SCHEDULES_LIST_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SCHEDULES_CREATE_REQUEST) {
+        const result = await activationCreateSchedule({
+          chromeApi: chrome,
+          permissionManager,
+          input: message?.payload?.input
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SCHEDULES_CREATE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SCHEDULES_UPDATE_REQUEST) {
+        const result = await activationUpdateSchedule({
+          chromeApi: chrome,
+          permissionManager,
+          scheduleId: message?.payload?.scheduleId,
+          updates: message?.payload?.updates
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SCHEDULES_UPDATE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SCHEDULES_TOGGLE_REQUEST) {
+        const result = await activationToggleSchedule({
+          chromeApi: chrome,
+          permissionManager,
+          scheduleId: message?.payload?.scheduleId,
+          isActive: message?.payload?.isActive
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SCHEDULES_TOGGLE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SCHEDULES_REMOVE_REQUEST) {
+        const result = await activationRemoveSchedule({
+          chromeApi: chrome,
+          permissionManager,
+          scheduleId: message?.payload?.scheduleId
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SCHEDULES_REMOVE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SCHEDULES_RUN_NOW_REQUEST) {
+        const result = await activationRunScheduleNow({
+          chromeApi: chrome,
+          permissionManager,
+          scheduleId: message?.payload?.scheduleId
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SCHEDULES_RUN_NOW_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_DASHBOARD_REQUEST) {
+        const result = await activationGetObservabilityDashboard({
+          chromeApi: chrome,
+          permissionManager,
+          observabilityApiKey: message?.payload?.observabilityApiKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_DASHBOARD_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_SLO_REQUEST) {
+        const result = await activationGetObservabilitySlo({
+          chromeApi: chrome,
+          permissionManager,
+          observabilityApiKey: message?.payload?.observabilityApiKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_SLO_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_ERRORS_REQUEST) {
+        const result = await activationListObservabilityErrors({
+          chromeApi: chrome,
+          permissionManager,
+          limit: message?.payload?.limit,
+          observabilityApiKey: message?.payload?.observabilityApiKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_ERRORS_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_JOBS_REQUEST) {
+        const result = await activationGetObservabilityJobs({
+          chromeApi: chrome,
+          permissionManager,
+          observabilityApiKey: message?.payload?.observabilityApiKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_OBSERVABILITY_JOBS_RESPONSE,
           payload: result
         });
         return;

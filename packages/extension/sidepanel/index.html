@@ -8,15 +8,123 @@
   </head>
   <body>
     <main class="app">
-      <header class="app-header">
-        <div>
-          <p class="eyebrow">Datascrap</p>
-          <h1>Automation Control</h1>
+      <header class="shell-header">
+        <div class="brand-block">
+          <div class="brand-logo">DS</div>
+          <div>
+            <p class="eyebrow">Datascrap</p>
+            <h1>Data extraction, simplified</h1>
+          </div>
         </div>
         <span id="status-pill" class="status-pill">idle</span>
       </header>
 
-      <section class="panel">
+      <nav class="shell-nav">
+        <button id="nav-menu-btn" class="shell-nav-btn" type="button" data-shell-view="menu">MENU</button>
+        <button id="nav-history-btn" class="shell-nav-btn" type="button" data-shell-view="history">HISTORY</button>
+        <button id="nav-data-btn" class="shell-nav-btn" type="button" data-shell-view="data">DATA</button>
+        <button id="nav-tools-btn" class="shell-nav-btn" type="button" data-shell-view="tools">Tools</button>
+        <button id="nav-latest-btn" class="shell-nav-btn shell-nav-btn-muted" type="button" data-shell-view="latest">
+          latest changes
+        </button>
+      </nav>
+
+      <section id="home-hub-panel" class="panel app-view-panel" data-views="menu">
+        <div class="panel-title-row">
+          <h2>Tools</h2>
+          <span class="table-status">Mode 2 parity shell</span>
+        </div>
+
+        <div class="tool-grid">
+          <button class="tool-card" type="button" data-tool="list">
+            <span class="tool-card-title">LIST EXTRACTOR</span>
+            <span class="tool-card-copy">Extract data from lists, tables, and paginated content</span>
+          </button>
+          <button class="tool-card" type="button" data-tool="page_details">
+            <span class="tool-card-title">PAGE DETAILS EXTRACTOR</span>
+            <span class="tool-card-copy">Extract specific data from a collection of pages, in bulk</span>
+          </button>
+          <button class="tool-card" type="button" data-tool="email">
+            <span class="tool-card-title">EMAIL EXTRACTOR</span>
+            <span class="tool-card-copy">Find and extract email addresses from multiple pages</span>
+          </button>
+          <button class="tool-card" type="button" data-tool="image">
+            <span class="tool-card-title">IMAGE DOWNLOADER</span>
+            <span class="tool-card-copy">Bulk download images from current page</span>
+          </button>
+          <button class="tool-card" type="button" data-tool="text">
+            <span class="tool-card-title">PAGE TEXT EXTRACTOR</span>
+            <span class="tool-card-copy">Extract clean text content and metadata from pages</span>
+          </button>
+        </div>
+
+        <div class="roadmap-block">
+          <h2>Roadmap 2026</h2>
+          <div class="roadmap-grid">
+            <article class="roadmap-card">
+              <div class="roadmap-card-head">
+                <strong>Scheduling</strong>
+                <button id="roadmap-scheduling-notify-btn" class="btn btn-ghost" type="button" data-roadmap-notify="scheduling">
+                  Notify
+                </button>
+              </div>
+              <p class="field-meta">In progress - Launching Q1 2026</p>
+              <ul class="roadmap-list">
+                <li>Set custom intervals</li>
+                <li>Cloud-based execution</li>
+              </ul>
+            </article>
+            <article class="roadmap-card">
+              <div class="roadmap-card-head">
+                <strong>Integrations</strong>
+                <button id="roadmap-integrations-notify-btn" class="btn btn-ghost" type="button" data-roadmap-notify="integrations">
+                  Notify
+                </button>
+              </div>
+              <p class="field-meta">In progress - Launching Q1 2026</p>
+              <ul class="roadmap-list">
+                <li>n8n workflow integration</li>
+                <li>Custom webhooks</li>
+                <li>API endpoints</li>
+              </ul>
+            </article>
+          </div>
+          <span id="roadmap-status-line" class="table-status">Roadmap notify actions ready</span>
+        </div>
+      </section>
+
+      <section id="tool-welcome-panel" class="panel app-view-panel" data-views="tools data">
+        <div class="welcome-head">
+          <h2 id="tool-welcome-label">LIST EXTRACTOR</h2>
+          <button id="tool-welcome-skip-btn" class="btn btn-ghost" type="button">Skip</button>
+        </div>
+        <h3 id="tool-welcome-title" class="welcome-title">Extract Lists and Tables from any website</h3>
+        <p id="tool-welcome-subtitle" class="welcome-copy">Pull repeating data from lists, tables, and paginated content.</p>
+
+        <div class="welcome-grid">
+          <article class="welcome-card">
+            <p class="field-meta">What you can extract:</p>
+            <ul id="tool-welcome-benefits" class="roadmap-list"></ul>
+          </article>
+          <article class="welcome-card">
+            <p id="tool-welcome-video-label" class="field-meta">Watch: Extract Lists</p>
+            <p class="welcome-copy">Quick demo to get you started</p>
+            <p class="welcome-quick-label">QUICK START</p>
+            <ol id="tool-welcome-steps" class="quick-start-list"></ol>
+          </article>
+        </div>
+
+        <div id="tool-welcome-extra" class="welcome-extra"></div>
+        <button id="tool-welcome-start-btn" class="btn btn-primary" type="button">START EXTRACTING</button>
+        <p class="field-meta">This welcome screen will show for your first 3 visits</p>
+      </section>
+
+      <section id="control-panel" class="panel app-view-panel" data-views="tools">
+        <div class="panel-title-row">
+          <h2 id="active-tool-heading">LIST EXTRACTOR</h2>
+          <button id="open-welcome-btn" class="btn btn-ghost" type="button">Show tutorial</button>
+        </div>
+
         <label class="field">
           <span>Runner</span>
           <select id="runner-type"></select>
@@ -25,6 +133,11 @@
         <label class="field">
           <span>Start URL</span>
           <input id="start-url" type="url" placeholder="https://example.com" />
+        </label>
+
+        <label class="field">
+          <span>Selected Tool</span>
+          <input id="selected-tool-name" type="text" readonly value="LIST EXTRACTOR" />
         </label>
 
         <div id="list-config-panel" class="subpanel">
@@ -67,6 +180,29 @@
                 <option value="slow">slow</option>
               </select>
             </label>
+          </div>
+
+          <div id="speed-profile-editor" class="subpanel">
+            <h2>Speed Profile Editor</h2>
+            <div class="grid-two">
+              <label class="field">
+                <span>Profile Attempts</span>
+                <input id="speed-profile-edit-attempts" type="number" min="1" max="30" value="5" />
+              </label>
+              <label class="field">
+                <span>Profile Delay (ms)</span>
+                <input id="speed-profile-edit-delay-ms" type="number" min="100" max="10000" value="900" />
+              </label>
+              <label class="field">
+                <span>No-change Threshold</span>
+                <input id="speed-profile-edit-no-change-threshold" type="number" min="1" max="10" value="2" />
+              </label>
+            </div>
+            <div class="actions">
+              <button id="speed-profile-save-btn" class="btn" type="button">Save Profile</button>
+              <button id="speed-profile-reset-btn" class="btn btn-ghost" type="button">Reset Defaults</button>
+            </div>
+            <span id="speed-profile-status-line" class="table-status">Profile editor ready</span>
           </div>
 
           <div class="grid-two">
@@ -367,7 +503,7 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section id="data-table-panel" class="panel app-view-panel" data-views="data">
         <div class="panel-title-row">
           <h2>Data Table</h2>
           <button id="table-refresh-btn" class="btn btn-ghost">Refresh</button>
@@ -423,12 +559,80 @@
           <span id="table-status-line" class="table-status">No table loaded</span>
         </div>
 
+        <div class="subpanel">
+          <h2>Cleanup & Density</h2>
+          <div class="queue-grid">
+            <label class="checkbox-row">
+              <input id="table-cleanup-remove-empty-rows" type="checkbox" />
+              <span>Remove empty rows</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="table-cleanup-remove-empty-columns" type="checkbox" />
+              <span>Remove empty columns</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="table-cleanup-remove-repeating-columns" type="checkbox" />
+              <span>Remove repeating columns</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="table-cleanup-remove-duplicate-columns" type="checkbox" />
+              <span>Remove duplicate columns</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="table-cleanup-prioritize-density" type="checkbox" />
+              <span>Prioritize data density</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="table-cleanup-hide-mostly-empty-columns" type="checkbox" />
+              <span>Hide mostly empty columns</span>
+            </label>
+          </div>
+          <div class="grid-two">
+            <label class="field">
+              <span>Mostly-empty threshold (0.50-0.99)</span>
+              <input id="table-cleanup-mostly-empty-threshold" type="number" min="0.5" max="0.99" step="0.01" value="0.90" />
+            </label>
+            <label class="checkbox-row">
+              <input id="table-cleanup-include-images" type="checkbox" checked />
+              <span>Include image columns</span>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="table-cleanup-btn" class="btn" type="button">Apply Cleanup</button>
+          </div>
+        </div>
+
+        <div class="subpanel">
+          <h2>Merge Columns</h2>
+          <label class="field">
+            <span>Source Columns (multi-select)</span>
+            <select id="table-merge-columns" multiple size="6"></select>
+          </label>
+          <div class="grid-two">
+            <label class="field">
+              <span>Merged Column Name</span>
+              <input id="table-merge-target" type="text" placeholder="merged_column" />
+            </label>
+            <label class="field">
+              <span>Separator</span>
+              <input id="table-merge-separator" type="text" value=" | " />
+            </label>
+          </div>
+          <label class="checkbox-row">
+            <input id="table-merge-remove-sources" type="checkbox" />
+            <span>Remove source columns after merge</span>
+          </label>
+          <div class="actions">
+            <button id="table-merge-btn" class="btn" type="button">Merge Selected Columns</button>
+          </div>
+        </div>
+
         <div id="table-grid-wrap" class="table-grid-wrap">
           <div id="table-grid" class="table-grid-empty">Load a table to view rows.</div>
         </div>
       </section>
 
-      <section class="panel">
+      <section id="export-panel" class="panel app-view-panel" data-views="data">
         <div class="panel-title-row">
           <h2>Export & Output</h2>
         </div>
@@ -462,7 +666,7 @@
         <span id="export-status-line" class="table-status">Export ready</span>
       </section>
 
-      <section class="panel">
+      <section id="image-panel" class="panel app-view-panel" data-views="data">
         <div class="panel-title-row">
           <h2>Image Downloader</h2>
           <button id="image-scan-btn" class="btn btn-ghost">Scan Page</button>
@@ -541,7 +745,7 @@
         <div id="image-preview" class="list-preview">No images scanned yet.</div>
       </section>
 
-      <section class="panel">
+      <section id="activation-panel" class="panel app-view-panel" data-views="tools">
         <div class="panel-title-row">
           <h2>Activation</h2>
         </div>
@@ -602,7 +806,242 @@
         <div id="activation-device-list" class="list-preview">No devices loaded.</div>
       </section>
 
-      <section class="panel">
+      <section id="cloud-control-panel" class="panel app-view-panel" data-views="tools">
+        <div class="panel-title-row">
+          <h2>Cloud Control</h2>
+          <button id="cloud-policy-load-btn" class="btn btn-ghost" type="button">Load Policy</button>
+        </div>
+
+        <div class="grid-two">
+          <label class="checkbox-row">
+            <input id="cloud-features-opt-in" type="checkbox" />
+            <span>Cloud features opt-in</span>
+          </label>
+          <label class="checkbox-row">
+            <input id="cloud-webhook-opt-in" type="checkbox" />
+            <span>Webhook delivery opt-in</span>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Consent Version</span>
+          <input id="cloud-consent-version" type="text" value="2026-02-23" />
+        </label>
+
+        <div class="actions">
+          <button id="cloud-policy-save-btn" class="btn">Save Policy</button>
+          <button id="jobs-policy-btn" class="btn btn-ghost">Jobs Policy</button>
+          <button id="cloud-refresh-all-btn" class="btn btn-ghost">Refresh All</button>
+        </div>
+
+        <div class="subpanel">
+          <h2>Integration Secrets</h2>
+          <div class="grid-two">
+            <label class="field">
+              <span>Provider</span>
+              <input id="integration-provider" type="text" placeholder="webhook" value="webhook" />
+            </label>
+            <label class="field">
+              <span>Secret Name</span>
+              <input id="integration-secret-name" type="text" placeholder="n8n_signing_key" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Secret Value</span>
+            <input id="integration-secret-value" type="text" placeholder="paste secret value" />
+          </label>
+          <label class="field">
+            <span>Label (optional)</span>
+            <input id="integration-secret-label" type="text" placeholder="N8N Prod Webhook" />
+          </label>
+          <div class="actions">
+            <button id="integrations-list-btn" class="btn btn-ghost">List</button>
+            <button id="integrations-upsert-btn" class="btn">Upsert</button>
+            <button id="integrations-remove-btn" class="btn btn-ghost">Remove</button>
+          </div>
+          <div id="integrations-list" class="list-preview">No integration secrets loaded.</div>
+        </div>
+
+        <div class="subpanel">
+          <h2>Jobs Queue</h2>
+          <div class="grid-two">
+            <label class="field">
+              <span>Job Type</span>
+              <input id="jobs-job-type" type="text" value="integration.webhook.deliver" list="cloud-job-type-options" />
+            </label>
+            <label class="field">
+              <span>Cancel Job ID</span>
+              <input id="jobs-cancel-id" type="text" placeholder="job UUID" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Payload (JSON)</span>
+            <textarea id="jobs-payload" rows="4">
+{"targetUrl":"https://httpbin.org/status/204","eventType":"datascrap.test","metadata":{"source":"manual-test"}}
+            </textarea>
+          </label>
+          <div class="actions">
+            <button id="jobs-fill-webhook-btn" class="btn btn-ghost" type="button">Webhook Payload</button>
+            <button id="jobs-fill-extract-summary-btn" class="btn btn-ghost" type="button">Extraction Payload</button>
+          </div>
+          <div class="actions actions-4">
+            <button id="jobs-enqueue-btn" class="btn">Enqueue</button>
+            <button id="jobs-list-btn" class="btn btn-ghost">List</button>
+            <button id="jobs-dead-btn" class="btn btn-ghost">Dead</button>
+            <button id="jobs-cancel-btn" class="btn btn-ghost">Cancel</button>
+          </div>
+          <div id="jobs-list" class="list-preview">No jobs loaded.</div>
+        </div>
+
+        <div class="subpanel">
+          <h2>Schedules</h2>
+          <div class="grid-two">
+            <label class="field">
+              <span>Name</span>
+              <input id="schedule-name" type="text" placeholder="Daily supplier scan" />
+            </label>
+            <label class="field">
+              <span>Schedule Kind</span>
+              <select id="schedule-kind">
+                <option value="interval">interval</option>
+                <option value="cron">cron</option>
+              </select>
+            </label>
+          </div>
+          <div class="grid-two">
+            <label class="field">
+              <span>Interval Minutes</span>
+              <input id="schedule-interval-minutes" type="number" min="1" value="60" />
+            </label>
+            <label class="field">
+              <span>Cron Expression</span>
+              <input id="schedule-cron-expr" type="text" placeholder="0 * * * *" />
+            </label>
+          </div>
+          <div class="grid-two">
+            <label class="field">
+              <span>Timezone</span>
+              <input id="schedule-timezone" type="text" value="UTC" />
+            </label>
+            <label class="field">
+              <span>Target Job Type</span>
+              <input id="schedule-target-job-type" type="text" value="integration.webhook.deliver" list="cloud-job-type-options" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Target Payload (JSON)</span>
+            <textarea id="schedule-target-payload" rows="3">
+{"targetUrl":"https://httpbin.org/status/204","eventType":"datascrap.schedule.test","metadata":{"source":"schedule"}}
+            </textarea>
+          </label>
+          <div class="actions">
+            <button id="schedule-fill-webhook-btn" class="btn btn-ghost" type="button">Webhook Payload</button>
+            <button id="schedule-fill-extract-summary-btn" class="btn btn-ghost" type="button">Extraction Payload</button>
+          </div>
+          <div class="actions">
+            <button id="schedule-create-btn" class="btn">Create</button>
+            <button id="schedule-list-btn" class="btn btn-ghost">List</button>
+            <button id="schedule-list-active-btn" class="btn btn-ghost">List Active</button>
+          </div>
+          <div class="grid-two">
+            <label class="field">
+              <span>Toggle/Run/Remove Schedule ID</span>
+              <input id="schedule-action-id" type="text" placeholder="schedule UUID" />
+            </label>
+            <label class="checkbox-row">
+              <input id="schedule-toggle-active" type="checkbox" checked />
+              <span>Set active on toggle</span>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="schedule-toggle-btn" class="btn btn-ghost">Toggle</button>
+            <button id="schedule-run-now-btn" class="btn btn-ghost">Run Now</button>
+            <button id="schedule-remove-btn" class="btn btn-ghost">Remove</button>
+          </div>
+          <div id="schedule-list" class="list-preview">No schedules loaded.</div>
+        </div>
+
+        <div class="subpanel">
+          <h2>Observability</h2>
+          <label class="field">
+            <span>Observability API Key (optional)</span>
+            <input id="observability-api-key" type="text" placeholder="X-Observability-Key value" />
+          </label>
+          <div class="actions actions-4">
+            <button id="obs-dashboard-btn" class="btn btn-ghost">Dashboard</button>
+            <button id="obs-slo-btn" class="btn btn-ghost">SLO</button>
+            <button id="obs-errors-btn" class="btn btn-ghost">Errors</button>
+            <button id="obs-jobs-btn" class="btn btn-ghost">Jobs</button>
+          </div>
+          <pre id="obs-output" class="event-log"></pre>
+        </div>
+
+        <span id="cloud-status-line" class="table-status">Cloud control ready</span>
+      </section>
+
+      <datalist id="cloud-job-type-options">
+        <option value="integration.webhook.deliver"></option>
+        <option value="extraction.page.summary"></option>
+      </datalist>
+
+      <section id="templates-diagnostics-panel" class="panel app-view-panel" data-views="tools history">
+        <div class="panel-title-row">
+          <h2>Templates & Diagnostics</h2>
+        </div>
+
+        <div class="subpanel">
+          <h2>Templates</h2>
+          <label class="field">
+            <span>Template Name</span>
+            <input id="template-name" type="text" placeholder="My lead generation run" />
+          </label>
+          <div class="grid-two">
+            <label class="field">
+              <span>Saved Templates</span>
+              <select id="template-select"></select>
+            </label>
+            <label class="field">
+              <span>Template Notes (optional)</span>
+              <input id="template-notes" type="text" placeholder="country=US, niche=plumbers" />
+            </label>
+          </div>
+          <div class="actions actions-4">
+            <button id="template-save-btn" class="btn">Save Current</button>
+            <button id="template-apply-btn" class="btn btn-ghost">Apply</button>
+            <button id="template-run-btn" class="btn btn-ghost">Run</button>
+            <button id="template-delete-btn" class="btn btn-ghost">Delete</button>
+          </div>
+          <div id="template-list" class="list-preview">No templates saved.</div>
+        </div>
+
+        <div class="subpanel">
+          <h2>Diagnostics</h2>
+          <div class="actions">
+            <button id="diagnostics-snapshot-btn" class="btn btn-ghost">Runtime Snapshot</button>
+            <button id="diagnostics-report-btn" class="btn btn-ghost">Generate Report</button>
+            <button id="diagnostics-copy-btn" class="btn btn-ghost">Copy Report</button>
+          </div>
+          <pre id="diagnostics-output" class="event-log"></pre>
+        </div>
+
+        <span id="templates-status-line" class="table-status">Templates & diagnostics ready</span>
+      </section>
+
+      <section id="latest-changes-panel" class="panel app-view-panel" data-views="latest">
+        <div class="panel-title-row">
+          <h2>latest changes</h2>
+        </div>
+        <div class="welcome-card">
+          <p class="field-meta">Release track</p>
+          <ul class="roadmap-list">
+            <li>Epic 5: Export, image downloader, activation controls shipped</li>
+            <li>Epic 6: Email deep scan, text/maps controls, metadata engine shipped</li>
+            <li>Epic 7: Home hub, roadmap cards, and guided welcome flow in progress</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="history-panel" class="panel app-view-panel" data-views="history">
         <div class="panel-title-row">
           <h2>Live Events</h2>
           <div class="panel-actions">

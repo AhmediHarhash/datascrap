@@ -70,6 +70,35 @@ function validateWebhookPayload(payload) {
   return null;
 }
 
+function validateExtractionSummaryPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "Extraction payload must be an object";
+  }
+
+  const targetUrl = String(payload.targetUrl || "").trim();
+  const targetUrls = Array.isArray(payload.targetUrls) ? payload.targetUrls : [];
+  const hasSingle = Boolean(targetUrl);
+  const hasMany = targetUrls.some((item) => String(item || "").trim().length > 0);
+  if (!hasSingle && !hasMany) {
+    return "Extraction payload requires targetUrl or targetUrls";
+  }
+
+  const urlsToCheck = [];
+  if (hasSingle) urlsToCheck.push(targetUrl);
+  for (const item of targetUrls) {
+    const value = String(item || "").trim();
+    if (value) urlsToCheck.push(value);
+  }
+
+  for (const url of urlsToCheck.slice(0, 10)) {
+    if (!isValidHttpUrl(url)) {
+      return "Extraction payload URLs must be valid http/https URLs";
+    }
+  }
+
+  return null;
+}
+
 async function requireCloudPolicy(req, res, options = {}) {
   try {
     const policy = await getCloudPolicy(req.auth.accountId);
@@ -148,6 +177,16 @@ router.post("/api/schedules/create", requireOptionalCloudFeatures, requireAuth, 
         return res.status(400).json({
           errorType: "INVALID_WEBHOOK_PAYLOAD",
           message: webhookError
+        });
+      }
+    }
+
+    if (String(targetJobType || "").trim().toLowerCase() === "extraction.page.summary") {
+      const extractionError = validateExtractionSummaryPayload(targetPayload);
+      if (extractionError) {
+        return res.status(400).json({
+          errorType: "INVALID_EXTRACTION_PAYLOAD",
+          message: extractionError
         });
       }
     }
@@ -263,6 +302,16 @@ router.post("/api/schedules/update", requireOptionalCloudFeatures, requireAuth, 
           return res.status(400).json({
             errorType: "INVALID_WEBHOOK_PAYLOAD",
             message: webhookError
+          });
+        }
+      }
+
+      if (effectiveTargetJobType === "extraction.page.summary") {
+        const extractionError = validateExtractionSummaryPayload(updates.targetPayload);
+        if (extractionError) {
+          return res.status(400).json({
+            errorType: "INVALID_EXTRACTION_PAYLOAD",
+            message: extractionError
           });
         }
       }

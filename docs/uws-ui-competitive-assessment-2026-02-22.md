@@ -5,7 +5,7 @@ Compare current UWS extension UI quality with our target and define where we sho
 
 ## Realistic Baseline
 - UWS current UI quality: **strong** (roughly 8/10 for power users).
-- Our current repo UI state: **not implemented yet** (planning/docs stage).
+- Our current repo UI state: **implemented and smoke-verified** (parity shell + tool cards + welcome flows + cloud/test panels wired).
 - Practical strategy:
   1) Match familiar layout first (parity confidence).
   2) Improve usability and clarity second (premium differentiation).

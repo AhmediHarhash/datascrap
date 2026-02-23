@@ -112,6 +112,39 @@ async function main() {
     throw new Error("create schedule did not return schedule id");
   }
 
+  const createExtractionSchedule = await request("/api/schedules/create", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      name: "Phase5 Extraction Schedule Smoke",
+      scheduleKind: "interval",
+      intervalMinutes,
+      timezone: "UTC",
+      targetJobType: "extraction.page.summary",
+      targetPayload: {
+        targetUrl: "https://example.com",
+        extract: {
+          includeTitle: true,
+          includeMetaDescription: true,
+          includeWordCount: true,
+          includeHeadings: true,
+          includeLinks: true,
+          includeCanonical: true
+        },
+        metadata: {
+          source: "phase5-schedule-smoke"
+        }
+      },
+      maxAttempts: 3,
+      isActive: true
+    })
+  });
+  assertStatus("create extraction schedule", createExtractionSchedule.response.status, [200]);
+  const extractionScheduleId = String(createExtractionSchedule.body?.schedule?.id || "");
+  if (!extractionScheduleId) {
+    throw new Error("create extraction schedule did not return schedule id");
+  }
+
   let autoJobId = null;
   if (waitAutoSeconds > 0) {
     const deadline = Date.now() + waitAutoSeconds * 1000;
@@ -146,6 +179,16 @@ async function main() {
   assertStatus("run now", runNow.response.status, [200]);
   const jobId = String(runNow.body?.job?.id || "");
 
+  const runExtractionNow = await request("/api/schedules/run-now", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      scheduleId: extractionScheduleId
+    })
+  });
+  assertStatus("run extraction now", runExtractionNow.response.status, [200]);
+  const extractionJobId = String(runExtractionNow.body?.job?.id || "");
+
   const listSchedules = await request("/api/schedules?activeOnly=true&limit=10", {
     headers: {
       authorization: `Bearer ${accessToken}`
@@ -162,6 +205,15 @@ async function main() {
   });
   assertStatus("remove schedule", removeSchedule.response.status, [200]);
 
+  const removeExtractionSchedule = await request("/api/schedules/remove", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      scheduleId: extractionScheduleId
+    })
+  });
+  assertStatus("remove extraction schedule", removeExtractionSchedule.response.status, [200]);
+
   console.log(
     JSON.stringify(
       {
@@ -169,8 +221,10 @@ async function main() {
         baseUrl,
         accountId: login.body.account?.id || null,
         scheduleId,
+        extractionScheduleId,
         autoJobId,
         jobId,
+        extractionJobId,
         listedSchedules: Array.isArray(listSchedules.body?.items) ? listSchedules.body.items.length : 0
       },
       null,

@@ -115,6 +115,29 @@ async function main() {
   });
   assertStatus("enqueue", enqueue.response.status, [200]);
 
+  const enqueueExtraction = await request("/api/jobs/enqueue", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      jobType: "extraction.page.summary",
+      payload: {
+        targetUrl: "https://example.com",
+        extract: {
+          includeTitle: true,
+          includeMetaDescription: true,
+          includeWordCount: true,
+          includeHeadings: true,
+          includeLinks: true,
+          includeCanonical: true
+        },
+        metadata: {
+          source: "phase5-smoke"
+        }
+      }
+    })
+  });
+  assertStatus("enqueue extraction", enqueueExtraction.response.status, [200]);
+
   const jobs = await request("/api/jobs", {
     headers: {
       authorization: `Bearer ${accessToken}`
@@ -129,6 +152,7 @@ async function main() {
         baseUrl,
         accountId: login.body.account?.id || null,
         jobId: enqueue.body?.job?.id || null,
+        extractionJobId: enqueueExtraction.body?.job?.id || null,
         jobsListed: Array.isArray(jobs.body?.items) ? jobs.body.items.length : 0
       },
       null,
