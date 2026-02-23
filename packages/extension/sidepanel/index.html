@@ -11,7 +11,7 @@
       <header class="app-header">
         <div>
           <p class="eyebrow">Datascrap</p>
-          <h1>Automation Runtime</h1>
+          <h1>Automation Control</h1>
         </div>
         <span id="status-pill" class="status-pill">idle</span>
       </header>
@@ -27,7 +27,85 @@
           <input id="start-url" type="url" placeholder="https://example.com" />
         </label>
 
-        <label class="field">
+        <div id="list-config-panel" class="subpanel">
+          <h2>List Extractor Config</h2>
+
+          <div class="inline-row">
+            <label class="field">
+              <span>Container Selector</span>
+              <input id="container-selector" type="text" placeholder="body > div:nth-of-type(2) > ..." />
+            </label>
+            <button id="pick-container-btn" class="btn">Pick Container</button>
+          </div>
+
+          <div class="inline-row">
+            <div class="field">
+              <span>Selected Fields</span>
+              <div id="field-list" class="field-list"></div>
+            </div>
+            <div class="button-stack">
+              <button id="pick-fields-btn" class="btn">Pick Fields</button>
+              <button id="clear-fields-btn" class="btn btn-ghost">Clear Fields</button>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Load More Method</span>
+              <select id="load-more-method">
+                <option value="none">none</option>
+                <option value="scroll">scroll</option>
+                <option value="click_button">click_button</option>
+                <option value="navigate">navigate</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Speed Profile</span>
+              <select id="speed-profile">
+                <option value="normal">normal</option>
+                <option value="fast">fast</option>
+                <option value="slow">slow</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Load Attempts</span>
+              <input id="load-more-attempts" type="number" min="0" max="30" value="5" />
+            </label>
+            <label class="field">
+              <span>Delay (ms)</span>
+              <input id="load-more-delay-ms" type="number" min="100" max="10000" value="900" />
+            </label>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Scroll Pixels</span>
+              <input id="load-more-scroll-px" type="number" min="200" max="10000" value="1800" />
+            </label>
+            <label class="field">
+              <span>No-change Threshold</span>
+              <input id="load-more-no-change-threshold" type="number" min="1" max="10" value="2" />
+            </label>
+          </div>
+
+          <div class="inline-row">
+            <label class="field">
+              <span>Load More Button Selector</span>
+              <input id="load-more-button-selector" type="text" placeholder=".load-more-button" />
+            </label>
+            <button id="pick-load-more-btn" class="btn">Pick Button</button>
+          </div>
+
+          <label class="field">
+            <span>Next Page Selector (navigate)</span>
+            <input id="load-more-next-selector" type="text" placeholder="a.next" />
+          </label>
+        </div>
+
+        <label id="bulk-urls-field" class="field">
           <span>Bulk URLs (one per line)</span>
           <textarea id="bulk-urls" rows="3" placeholder="https://example.com/a&#10;https://example.com/b"></textarea>
         </label>
@@ -42,7 +120,10 @@
       <section class="panel">
         <div class="panel-title-row">
           <h2>Live Events</h2>
-          <button id="clear-log-btn" class="btn btn-ghost">Clear</button>
+          <div class="panel-actions">
+            <span id="picker-status" class="picker-status">picker: idle</span>
+            <button id="clear-log-btn" class="btn btn-ghost">Clear</button>
+          </div>
         </div>
         <pre id="event-log" class="event-log"></pre>
       </section>

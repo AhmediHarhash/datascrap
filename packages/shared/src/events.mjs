@@ -4,6 +4,20 @@ export const RUNNER_TYPES = Object.freeze({
   METADATA_EXTRACTOR: "metadataExtractor"
 });
 
+export const PICKER_MODES = Object.freeze({
+  CONTAINER: "container",
+  FIELD: "field",
+  LOAD_MORE_BUTTON: "load_more_button",
+  CLICK_ACTION: "click_action"
+});
+
+export const LOAD_MORE_METHODS = Object.freeze({
+  NONE: "none",
+  SCROLL: "scroll",
+  NAVIGATE: "navigate",
+  CLICK_BUTTON: "click_button"
+});
+
 export const AUTOMATION_STATES = Object.freeze({
   IDLE: "idle",
   RUNNING: "running",
@@ -39,3 +53,10 @@ export function isAutomationState(value) {
   return Object.values(AUTOMATION_STATES).includes(value);
 }
 
+export function isPickerMode(value) {
+  return Object.values(PICKER_MODES).includes(value);
+}
+
+export function isLoadMoreMethod(value) {
+  return Object.values(LOAD_MORE_METHODS).includes(value);
+}

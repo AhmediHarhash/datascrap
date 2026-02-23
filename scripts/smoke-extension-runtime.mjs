@@ -25,6 +25,7 @@ async function waitForEvent(events, predicate, timeoutMs = 4000) {
 
 async function main() {
   const events = [];
+  let mockListEngineCalls = 0;
 
   const storageClient = await createStorageClient({
     driver: "memory"
@@ -36,6 +37,34 @@ async function main() {
       chromeApi: null,
       assumeAllowedIfUnavailable: true
     }),
+    capabilities: {
+      listExtractionEngine: {
+        async extractList({ config, signal, emitProgress }) {
+          void signal;
+          mockListEngineCalls += 1;
+          emitProgress({
+            progress: 35,
+            phase: "mock list engine scanning"
+          });
+          emitProgress({
+            progress: 85,
+            phase: "mock list engine finalizing"
+          });
+          return {
+            rows: [
+              {
+                name: "Alpha",
+                url: config.startUrl || "https://example.com"
+              }
+            ],
+            summary: {
+              rowCount: 1,
+              method: config?.actions?.[1]?.method || null
+            }
+          };
+        }
+      }
+    },
     onEvent(event) {
       events.push(event);
     }
@@ -46,7 +75,17 @@ async function main() {
     runnerType: "listExtractor",
     config: {
       startUrl: "https://example.com/products",
-      stepDelayMs: 35
+      actions: [
+        {
+          type: "EXTRACT_LIST",
+          containerSelector: ".row",
+          fields: [{ name: "name", selector: ".title", relativeSelector: ".title", extractMode: "text" }]
+        },
+        {
+          type: "LOAD_MORE",
+          method: "scroll"
+        }
+      ]
     }
   });
   assert(Boolean(started.automationId), "start automation failed");
@@ -84,6 +123,7 @@ async function main() {
 
   const snapshot = await runtime.getSnapshot();
   assert(Array.isArray(snapshot.automations) && snapshot.automations.length >= 3, "snapshot automations missing");
+  assert(mockListEngineCalls >= 2, "list extraction engine capability path was not exercised");
 
   await storageClient.destroy();
 
@@ -93,7 +133,8 @@ async function main() {
         ok: true,
         automationCount: snapshot.automations.length,
         eventsCaptured: events.length,
-        stoppedAutomationId: stoppable.automationId
+        stoppedAutomationId: stoppable.automationId,
+        mockListEngineCalls
       },
       null,
       2

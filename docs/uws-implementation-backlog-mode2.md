@@ -15,6 +15,10 @@
 - runtime lifecycle + runner registry + permission gate + start/stop/rerun wiring landed.
 3) Tracking artifact:
 - `docs/phase0-1-extension-runtime-bootstrap-2026-02-23.md`
+4) Epic 2 baseline slice implemented:
+- picker session flow + sidepanel controls + list extractor `EXTRACT_LIST` + `LOAD_MORE` method loop.
+5) Tracking artifact:
+- `docs/phase2-picker-list-extractor-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

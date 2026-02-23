@@ -28,7 +28,17 @@ export const listExtractorRunner = Object.freeze({
   type: RUNNER_TYPES.LIST_EXTRACTOR,
   label: "List Extractor",
   permissionOperation: "extract.list",
-  async run({ automation, signal, emitProgress }) {
+  async run({ automation, signal, emitProgress, capabilities = {} }) {
+    const listExtractionEngine = capabilities?.listExtractionEngine;
+    if (listExtractionEngine && typeof listExtractionEngine.extractList === "function") {
+      return listExtractionEngine.extractList({
+        automation,
+        config: automation?.config || {},
+        signal,
+        emitProgress
+      });
+    }
+
     const stepDelayMs = Number(automation?.config?.stepDelayMs || 250);
     const steps = Array.isArray(automation?.config?.steps) && automation.config.steps.length > 0 ? automation.config.steps : DEFAULT_STEPS;
 

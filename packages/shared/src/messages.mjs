@@ -3,6 +3,13 @@ import { AUTOMATION_EVENT_TYPES } from "./events.mjs";
 export const MESSAGE_TYPES = Object.freeze({
   LIST_RUNNERS_REQUEST: "automation.list_runners.request",
   LIST_RUNNERS_RESPONSE: "automation.list_runners.response",
+  PICKER_START_REQUEST: "picker.start.request",
+  PICKER_START_RESPONSE: "picker.start.response",
+  PICKER_GET_SESSION_REQUEST: "picker.get_session.request",
+  PICKER_GET_SESSION_RESPONSE: "picker.get_session.response",
+  PICKER_CANCEL_REQUEST: "picker.cancel.request",
+  PICKER_CANCEL_RESPONSE: "picker.cancel.response",
+  PICKER_EVENT: "picker.event",
   START_REQUEST: "automation.start.request",
   START_RESPONSE: "automation.start.response",
   STOP_REQUEST: "automation.stop.request",
@@ -43,4 +50,3 @@ export function createEvent(eventType, payload = {}) {
 export function isKnownMessageType(value) {
   return KNOWN_MESSAGE_TYPES.has(value);
 }
-

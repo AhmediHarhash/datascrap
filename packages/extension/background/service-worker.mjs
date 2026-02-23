@@ -2,6 +2,8 @@ import { createAutomationRuntime } from "../vendor/core/src/automation-runtime.m
 import { createPermissionManager } from "../vendor/core/src/permission-manager.mjs";
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import { createStorageClient } from "../vendor/storage/src/storage-client.mjs";
+import { createListExtractionEngine } from "./list-extraction-engine.mjs";
+import { createPickerSessionManager } from "./picker-session-manager.mjs";
 
 function noop() {}
 
@@ -15,9 +17,26 @@ function safeSendRuntimeMessage(message) {
   }
 }
 
-const runtimeReady = (async () => {
+const controllersReady = (async () => {
   const storageClient = await createStorageClient({
     driver: "auto"
+  });
+
+  const pickerSessionManager = createPickerSessionManager({
+    chromeApi: chrome,
+    onSessionEvent(eventType, session) {
+      safeSendRuntimeMessage({
+        type: MESSAGE_TYPES.PICKER_EVENT,
+        payload: {
+          eventType,
+          session
+        }
+      });
+    }
+  });
+
+  const listExtractionEngine = createListExtractionEngine({
+    chromeApi: chrome
   });
 
   const runtime = createAutomationRuntime({
@@ -26,6 +45,9 @@ const runtimeReady = (async () => {
       chromeApi: chrome,
       assumeAllowedIfUnavailable: false
     }),
+    capabilities: {
+      listExtractionEngine
+    },
     onEvent(event) {
       safeSendRuntimeMessage({
         type: MESSAGE_TYPES.EVENT,
@@ -35,7 +57,10 @@ const runtimeReady = (async () => {
   });
 
   await runtime.init();
-  return runtime;
+  return {
+    runtime,
+    pickerSessionManager
+  };
 })();
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -62,7 +87,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   void (async () => {
     try {
-      const runtime = await runtimeReady;
+      const controllers = await controllersReady;
+      const { runtime, pickerSessionManager } = controllers;
+
+      const pickerInbound = pickerSessionManager.handleIncomingMessage(message);
+      if (pickerInbound.handled) {
+        sendResponse({
+          ok: true
+        });
+        return;
+      }
 
       if (type === MESSAGE_TYPES.LIST_RUNNERS_REQUEST) {
         sendResponse({
@@ -78,6 +112,46 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({
           type: MESSAGE_TYPES.SNAPSHOT_RESPONSE,
           payload: await runtime.getSnapshot()
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.PICKER_START_REQUEST) {
+        const started = await pickerSessionManager.startSession({
+          mode: message?.payload?.mode,
+          multiSelect: message?.payload?.multiSelect,
+          anchorSelector: message?.payload?.anchorSelector,
+          prompt: message?.payload?.prompt
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.PICKER_START_RESPONSE,
+          payload: {
+            session: started
+          }
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.PICKER_GET_SESSION_REQUEST) {
+        const sessionId = String(message?.payload?.sessionId || "");
+        const session = pickerSessionManager.getSession(sessionId);
+        sendResponse({
+          type: MESSAGE_TYPES.PICKER_GET_SESSION_RESPONSE,
+          payload: {
+            session
+          }
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.PICKER_CANCEL_REQUEST) {
+        const sessionId = String(message?.payload?.sessionId || "");
+        const session = await pickerSessionManager.cancelSession(sessionId);
+        sendResponse({
+          type: MESSAGE_TYPES.PICKER_CANCEL_RESPONSE,
+          payload: {
+            session
+          }
         });
         return;
       }

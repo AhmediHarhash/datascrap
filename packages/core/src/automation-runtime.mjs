@@ -68,6 +68,7 @@ export function createAutomationRuntime(options = {}) {
   const storageClient = options.storageClient || createNoopStorageClient();
   const runnerRegistry = options.runnerRegistry || createDefaultRunnerRegistry();
   const permissionManager = options.permissionManager || createPermissionManager();
+  const capabilities = options.capabilities || {};
   const onEvent = typeof options.onEvent === "function" ? options.onEvent : () => {};
 
   const activeRuns = new Map();
@@ -200,6 +201,7 @@ export function createAutomationRuntime(options = {}) {
         const result = await runner.run({
           automation: automationRecord,
           signal: abortController.signal,
+          capabilities,
           emitProgress: (progressPayload) => {
             pushEvent(AUTOMATION_EVENT_TYPES.PROGRESS, {
               automationId,

@@ -78,6 +78,33 @@ h2 {
   gap: 10px;
 }
 
+.subpanel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(121, 146, 219, 0.33);
+  border-radius: 10px;
+  background: rgba(6, 12, 29, 0.74);
+}
+
+.inline-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.grid-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.button-stack {
+  display: grid;
+  gap: 8px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -139,6 +166,69 @@ textarea {
   justify-content: space-between;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.picker-status {
+  font-size: 11px;
+  color: #98c5ff;
+  border: 1px dashed rgba(119, 146, 232, 0.5);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.field-list {
+  border: 1px solid rgba(111, 140, 222, 0.3);
+  border-radius: 10px;
+  min-height: 52px;
+  max-height: 190px;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(4, 10, 22, 0.88);
+}
+
+.field-item {
+  border: 1px solid rgba(97, 124, 206, 0.35);
+  border-radius: 8px;
+  padding: 7px;
+  display: grid;
+  gap: 6px;
+}
+
+.field-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-name-input {
+  border: 1px solid rgba(111, 140, 222, 0.3);
+  border-radius: 7px;
+  background: rgba(8, 15, 34, 0.76);
+  color: var(--text);
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.field-meta {
+  font-size: 11px;
+  color: #9ab6eb;
+  line-height: 1.25;
+  word-break: break-all;
+}
+
+.field-empty {
+  color: #7f98c7;
+  font-size: 12px;
+  font-style: italic;
+}
+
 .event-log {
   margin: 0;
   border: 1px solid rgba(116, 143, 218, 0.23);
@@ -161,4 +251,11 @@ textarea {
 .status-error {
   border-color: rgba(255, 122, 139, 0.82);
   color: #ffd2d8;
+}
+
+@media (max-width: 520px) {
+  .inline-row,
+  .grid-two {
+    grid-template-columns: 1fr;
+  }
 }
