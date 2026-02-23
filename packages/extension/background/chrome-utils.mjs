@@ -19,7 +19,16 @@ export async function getActiveTab(chromeApi = chrome) {
   return Array.isArray(tabs) && tabs.length > 0 ? tabs[0] : null;
 }
 
+export async function getTab(tabId, chromeApi = chrome) {
+  return callChromeApi(chromeApi.tabs.get.bind(chromeApi.tabs), tabId);
+}
+
 export async function waitForTabComplete({ tabId, timeoutMs = 20_000, chromeApi = chrome }) {
+  const existing = await getTab(tabId, chromeApi).catch(() => null);
+  if (existing?.status === "complete") {
+    return true;
+  }
+
   return new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
@@ -46,6 +55,14 @@ export async function waitForTabComplete({ tabId, timeoutMs = 20_000, chromeApi 
 
 export async function updateTab({ tabId, updateProperties, chromeApi = chrome }) {
   return callChromeApi(chromeApi.tabs.update.bind(chromeApi.tabs), tabId, updateProperties);
+}
+
+export async function createTab({ createProperties, chromeApi = chrome }) {
+  return callChromeApi(chromeApi.tabs.create.bind(chromeApi.tabs), createProperties);
+}
+
+export async function removeTab({ tabId, chromeApi = chrome }) {
+  return callChromeApi(chromeApi.tabs.remove.bind(chromeApi.tabs), tabId).catch(() => null);
 }
 
 export async function executeInTab({

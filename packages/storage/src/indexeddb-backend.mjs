@@ -234,6 +234,13 @@ export async function createIndexedDbBackend(options = {}) {
       getById(tableDataId) {
         return getRecord(db, STORE_NAMES.TABLE_DATA, tableDataId);
       },
+      list({ limit = 100 } = {}) {
+        return listRecords(db, STORE_NAMES.TABLE_DATA, {
+          indexName: "by_created_at",
+          direction: "prev",
+          limit
+        });
+      },
       listByAutomationId(automationId, { limit = 100 } = {}) {
         return listRecords(db, STORE_NAMES.TABLE_DATA, {
           indexName: "by_automation_id",

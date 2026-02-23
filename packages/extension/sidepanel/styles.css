@@ -100,6 +100,12 @@ h2 {
   gap: 8px;
 }
 
+.queue-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .button-stack {
   display: grid;
   gap: 8px;
@@ -229,6 +235,20 @@ textarea {
   font-style: italic;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #51b4ff;
+}
+
 .event-log {
   margin: 0;
   border: 1px solid rgba(116, 143, 218, 0.23);
@@ -255,7 +275,8 @@ textarea {
 
 @media (max-width: 520px) {
   .inline-row,
-  .grid-two {
+  .grid-two,
+  .queue-grid {
     grid-template-columns: 1fr;
   }
 }

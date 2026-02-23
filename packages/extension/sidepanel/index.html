@@ -105,10 +105,124 @@
           </label>
         </div>
 
-        <label id="bulk-urls-field" class="field">
-          <span>Bulk URLs (one per line)</span>
-          <textarea id="bulk-urls" rows="3" placeholder="https://example.com/a&#10;https://example.com/b"></textarea>
-        </label>
+        <div id="page-config-panel" class="subpanel">
+          <h2>Page Extractor Config</h2>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>URL Source Mode</span>
+              <select id="page-url-source-mode">
+                <option value="manual">manual</option>
+                <option value="csv">csv</option>
+                <option value="datasource">datasource</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Action Type</span>
+              <select id="page-action-type">
+                <option value="EXTRACT_PAGES">EXTRACT_PAGES</option>
+                <option value="EXTRACT_PAGES_EMAIL">EXTRACT_PAGES_EMAIL</option>
+                <option value="EXTRACT_PAGES_PHONE">EXTRACT_PAGES_PHONE</option>
+                <option value="EXTRACT_PAGES_TEXT">EXTRACT_PAGES_TEXT</option>
+                <option value="EXTRACT_PAGES_GOOGLE_MAPS">EXTRACT_PAGES_GOOGLE_MAPS</option>
+              </select>
+            </label>
+          </div>
+
+          <label id="page-manual-urls-field" class="field">
+            <span>Manual URLs (one per line)</span>
+            <textarea id="page-manual-urls" rows="4" placeholder="https://example.com/a&#10;https://example.com/b"></textarea>
+          </label>
+
+          <div id="page-csv-field" class="grid-two">
+            <label class="field">
+              <span>Upload CSV File</span>
+              <input id="page-csv-file" type="file" accept=".csv,text/csv" />
+            </label>
+            <label class="field">
+              <span>CSV URLs Parsed</span>
+              <input id="page-csv-count" type="text" value="0" readonly />
+            </label>
+          </div>
+
+          <div id="page-datasource-field" class="grid-two">
+            <label class="field">
+              <span>Data Source Table</span>
+              <select id="page-datasource-select"></select>
+            </label>
+            <div class="button-stack">
+              <button id="refresh-datasources-btn" class="btn">Refresh Sources</button>
+              <button id="load-datasource-urls-btn" class="btn">Load URLs</button>
+            </div>
+          </div>
+
+          <div id="page-datasource-column-row" class="grid-two">
+            <label class="field">
+              <span>Data Source URL Column</span>
+              <select id="page-datasource-column"></select>
+            </label>
+            <label class="field">
+              <span>Data Source URLs Parsed</span>
+              <input id="page-datasource-count" type="text" value="0" readonly />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Resolved URLs Preview</span>
+            <textarea id="page-resolved-urls-preview" rows="3" readonly></textarea>
+          </label>
+
+          <div id="page-fields-panel" class="inline-row">
+            <div class="field">
+              <span>Custom Page Fields</span>
+              <div id="page-field-list" class="field-list"></div>
+            </div>
+            <div class="button-stack">
+              <button id="pick-page-fields-btn" class="btn">Pick Fields</button>
+              <button id="clear-page-fields-btn" class="btn btn-ghost">Clear Fields</button>
+            </div>
+          </div>
+
+          <div class="queue-grid">
+            <label class="field">
+              <span>Concurrency</span>
+              <input id="queue-concurrency" type="number" min="1" max="8" value="3" />
+            </label>
+            <label class="field">
+              <span>Delay Between Requests (ms)</span>
+              <input id="queue-delay-ms" type="number" min="0" max="30000" value="400" />
+            </label>
+            <label class="field">
+              <span>Page Timeout (ms)</span>
+              <input id="queue-page-timeout-ms" type="number" min="2000" max="120000" value="25000" />
+            </label>
+            <label class="field">
+              <span>Retries</span>
+              <input id="queue-retries" type="number" min="0" max="5" value="1" />
+            </label>
+            <label class="field">
+              <span>Retry Delay (ms)</span>
+              <input id="queue-retry-delay-ms" type="number" min="0" max="30000" value="1200" />
+            </label>
+            <label class="field">
+              <span>Jitter (ms)</span>
+              <input id="queue-jitter-ms" type="number" min="0" max="10000" value="220" />
+            </label>
+            <label class="field">
+              <span>Wait For Selector (optional)</span>
+              <input id="queue-wait-selector" type="text" placeholder=".product-card" />
+            </label>
+            <label class="field">
+              <span>Wait Selector Timeout (ms)</span>
+              <input id="queue-wait-selector-timeout-ms" type="number" min="200" max="60000" value="4000" />
+            </label>
+          </div>
+
+          <label class="checkbox-row">
+            <input id="queue-wait-page-load" type="checkbox" checked />
+            <span>Wait for page load complete</span>
+          </label>
+        </div>
 
         <div class="actions">
           <button id="start-btn" class="btn btn-primary">Start</button>

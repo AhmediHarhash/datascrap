@@ -41,6 +41,9 @@ export async function createMemoryBackend() {
       async getById(tableDataId) {
         return tableData.get(tableDataId) || null;
       },
+      async list({ limit = 100 } = {}) {
+        return sortByDateDesc(Array.from(tableData.values())).slice(0, limit);
+      },
       async listByAutomationId(automationId, { limit = 100 } = {}) {
         const items = Array.from(tableData.values()).filter((item) => item.automationId === automationId);
         return sortByDateDesc(items).slice(0, limit);

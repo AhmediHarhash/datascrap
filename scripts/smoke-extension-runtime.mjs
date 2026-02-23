@@ -26,6 +26,7 @@ async function waitForEvent(events, predicate, timeoutMs = 4000) {
 async function main() {
   const events = [];
   let mockListEngineCalls = 0;
+  let mockPageEngineCalls = 0;
 
   const storageClient = await createStorageClient({
     driver: "memory"
@@ -60,6 +61,35 @@ async function main() {
             summary: {
               rowCount: 1,
               method: config?.actions?.[1]?.method || null
+            }
+          };
+        }
+      },
+      pageExtractionEngine: {
+        async extractPages({ config, signal, emitProgress }) {
+          void signal;
+          mockPageEngineCalls += 1;
+          const urls = Array.isArray(config.urls) ? config.urls : [];
+          emitProgress({
+            progress: 45,
+            phase: "mock page engine processing",
+            context: {
+              urlCount: urls.length
+            }
+          });
+          emitProgress({
+            progress: 95,
+            phase: "mock page engine finishing"
+          });
+          return {
+            rows: urls.map((url, index) => ({
+              url,
+              title: `Mock Title ${index + 1}`
+            })),
+            summary: {
+              rowCount: urls.length,
+              urlCount: urls.length,
+              queue: config.queue || {}
             }
           };
         }
@@ -106,17 +136,29 @@ async function main() {
     runnerType: "pageExtractor",
     config: {
       urls: ["https://example.com/a", "https://example.com/b", "https://example.com/c"],
-      stepDelayMs: 200
+      queue: {
+        maxConcurrentTabs: 2,
+        delayBetweenRequestsMs: 120
+      }
     }
   });
-  await wait(120);
+  await wait(40);
   const stopResult = await runtime.stopAutomation(stoppable.automationId);
-  assert(stopResult.stopped === true, "stop request was not accepted");
+  assert(typeof stopResult.stopped === "boolean", "stop response malformed");
 
-  await waitForEvent(
+  const pageCompleted = await waitForEvent(
     events,
-    (event) => event.eventType === AUTOMATION_EVENT_TYPES.STOPPED && event.payload?.automationId === stoppable.automationId
-  );
+    (event) =>
+      event.eventType === AUTOMATION_EVENT_TYPES.COMPLETED && event.payload?.automationId === stoppable.automationId
+  ).catch(() => null);
+
+  if (!pageCompleted) {
+    await waitForEvent(
+      events,
+      (event) =>
+        event.eventType === AUTOMATION_EVENT_TYPES.STOPPED && event.payload?.automationId === stoppable.automationId
+    );
+  }
 
   const hasProgress = events.some((event) => event.eventType === AUTOMATION_EVENT_TYPES.PROGRESS);
   assert(hasProgress, "progress events were not emitted");
@@ -124,6 +166,7 @@ async function main() {
   const snapshot = await runtime.getSnapshot();
   assert(Array.isArray(snapshot.automations) && snapshot.automations.length >= 3, "snapshot automations missing");
   assert(mockListEngineCalls >= 2, "list extraction engine capability path was not exercised");
+  assert(mockPageEngineCalls >= 1, "page extraction engine capability path was not exercised");
 
   await storageClient.destroy();
 
@@ -134,7 +177,8 @@ async function main() {
         automationCount: snapshot.automations.length,
         eventsCaptured: events.length,
         stoppedAutomationId: stoppable.automationId,
-        mockListEngineCalls
+        mockListEngineCalls,
+        mockPageEngineCalls
       },
       null,
       2

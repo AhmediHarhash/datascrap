@@ -2,7 +2,9 @@ import { createAutomationRuntime } from "../vendor/core/src/automation-runtime.m
 import { createPermissionManager } from "../vendor/core/src/permission-manager.mjs";
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import { createStorageClient } from "../vendor/storage/src/storage-client.mjs";
+import { listDataSources, resolveDataSourceUrls } from "./datasource-service.mjs";
 import { createListExtractionEngine } from "./list-extraction-engine.mjs";
+import { createPageExtractionEngine } from "./page-extraction-engine.mjs";
 import { createPickerSessionManager } from "./picker-session-manager.mjs";
 
 function noop() {}
@@ -38,6 +40,9 @@ const controllersReady = (async () => {
   const listExtractionEngine = createListExtractionEngine({
     chromeApi: chrome
   });
+  const pageExtractionEngine = createPageExtractionEngine({
+    chromeApi: chrome
+  });
 
   const runtime = createAutomationRuntime({
     storageClient,
@@ -46,7 +51,8 @@ const controllersReady = (async () => {
       assumeAllowedIfUnavailable: false
     }),
     capabilities: {
-      listExtractionEngine
+      listExtractionEngine,
+      pageExtractionEngine
     },
     onEvent(event) {
       safeSendRuntimeMessage({
@@ -58,6 +64,7 @@ const controllersReady = (async () => {
 
   await runtime.init();
   return {
+    storageClient,
     runtime,
     pickerSessionManager
   };
@@ -88,7 +95,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void (async () => {
     try {
       const controllers = await controllersReady;
-      const { runtime, pickerSessionManager } = controllers;
+      const { runtime, pickerSessionManager, storageClient } = controllers;
 
       const pickerInbound = pickerSessionManager.handleIncomingMessage(message);
       if (pickerInbound.handled) {
@@ -112,6 +119,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({
           type: MESSAGE_TYPES.SNAPSHOT_RESPONSE,
           payload: await runtime.getSnapshot()
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.DATA_SOURCE_LIST_REQUEST) {
+        const items = await listDataSources({
+          storageClient,
+          limit: Number(message?.payload?.limit || 50)
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.DATA_SOURCE_LIST_RESPONSE,
+          payload: {
+            items
+          }
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.DATA_SOURCE_URLS_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await resolveDataSourceUrls({
+          storageClient,
+          tableDataId,
+          selectedColumn: message?.payload?.selectedColumn,
+          limit: Number(message?.payload?.limit || 2000)
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.DATA_SOURCE_URLS_RESPONSE,
+          payload: result
         });
         return;
       }

@@ -19,6 +19,10 @@
 - picker session flow + sidepanel controls + list extractor `EXTRACT_LIST` + `LOAD_MORE` method loop.
 5) Tracking artifact:
 - `docs/phase2-picker-list-extractor-2026-02-23.md`
+6) Epic 3 baseline slice implemented:
+- page/bulk extraction engine + URL source modes + queue controls + datasource integration.
+7) Tracking artifact:
+- `docs/phase3-page-bulk-extractor-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

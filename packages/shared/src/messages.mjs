@@ -3,6 +3,10 @@ import { AUTOMATION_EVENT_TYPES } from "./events.mjs";
 export const MESSAGE_TYPES = Object.freeze({
   LIST_RUNNERS_REQUEST: "automation.list_runners.request",
   LIST_RUNNERS_RESPONSE: "automation.list_runners.response",
+  DATA_SOURCE_LIST_REQUEST: "datasource.list.request",
+  DATA_SOURCE_LIST_RESPONSE: "datasource.list.response",
+  DATA_SOURCE_URLS_REQUEST: "datasource.urls.request",
+  DATA_SOURCE_URLS_RESPONSE: "datasource.urls.response",
   PICKER_START_REQUEST: "picker.start.request",
   PICKER_START_RESPONSE: "picker.start.response",
   PICKER_GET_SESSION_REQUEST: "picker.get_session.request",

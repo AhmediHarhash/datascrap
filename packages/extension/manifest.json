@@ -3,7 +3,7 @@
   "name": "Datascrap",
   "version": "0.1.0",
   "description": "Local-first web extraction runtime with sidepanel automation controls.",
-  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel", "tabs"],
   "optional_permissions": ["downloads", "clipboardWrite"],
   "optional_host_permissions": ["<all_urls>"],
   "action": {

@@ -15,7 +15,17 @@ export const pageExtractorRunner = Object.freeze({
   type: RUNNER_TYPES.PAGE_EXTRACTOR,
   label: "Page Details Extractor",
   permissionOperation: "extract.page",
-  async run({ automation, signal, emitProgress }) {
+  async run({ automation, signal, emitProgress, capabilities = {} }) {
+    const pageExtractionEngine = capabilities?.pageExtractionEngine;
+    if (pageExtractionEngine && typeof pageExtractionEngine.extractPages === "function") {
+      return pageExtractionEngine.extractPages({
+        automation,
+        config: automation?.config || {},
+        signal,
+        emitProgress
+      });
+    }
+
     const urls = normalizeUrls(automation?.config || {});
     if (urls.length === 0) {
       return {

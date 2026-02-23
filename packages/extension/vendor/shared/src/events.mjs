@@ -18,6 +18,20 @@ export const LOAD_MORE_METHODS = Object.freeze({
   CLICK_BUTTON: "click_button"
 });
 
+export const URL_SOURCE_MODES = Object.freeze({
+  MANUAL: "manual",
+  CSV: "csv",
+  DATASOURCE: "datasource"
+});
+
+export const PAGE_ACTION_TYPES = Object.freeze({
+  EXTRACT_PAGES: "EXTRACT_PAGES",
+  EXTRACT_PAGES_EMAIL: "EXTRACT_PAGES_EMAIL",
+  EXTRACT_PAGES_PHONE: "EXTRACT_PAGES_PHONE",
+  EXTRACT_PAGES_TEXT: "EXTRACT_PAGES_TEXT",
+  EXTRACT_PAGES_GOOGLE_MAPS: "EXTRACT_PAGES_GOOGLE_MAPS"
+});
+
 export const AUTOMATION_STATES = Object.freeze({
   IDLE: "idle",
   RUNNING: "running",
@@ -59,4 +73,8 @@ export function isPickerMode(value) {
 
 export function isLoadMoreMethod(value) {
   return Object.values(LOAD_MORE_METHODS).includes(value);
+}
+
+export function isUrlSourceMode(value) {
+  return Object.values(URL_SOURCE_MODES).includes(value);
 }

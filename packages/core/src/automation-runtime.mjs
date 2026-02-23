@@ -178,7 +178,10 @@ export function createAutomationRuntime(options = {}) {
 
     const permissionContext = {
       startUrl: automationRecord.config?.startUrl || null,
-      url: automationRecord.config?.startUrl || null
+      url:
+        automationRecord.config?.startUrl ||
+        (Array.isArray(automationRecord.config?.urls) ? automationRecord.config.urls[0] : null) ||
+        null
     };
     const permissionResult = await permissionManager.ensureOperation(runner.permissionOperation, permissionContext);
     if (!permissionResult.allowed) {
