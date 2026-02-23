@@ -107,6 +107,10 @@ const config = {
   jobLockTimeoutSeconds: int(process.env.JOB_LOCK_TIMEOUT_SECONDS, 300),
   jobListMaxLimit: int(process.env.JOB_LIST_MAX_LIMIT, 100),
   jobWorkerId: process.env.JOB_WORKER_ID || "",
+  scheduleSweepIntervalMs: int(process.env.SCHEDULE_SWEEP_INTERVAL_MS, 5_000),
+  scheduleSweepMaxBatch: int(process.env.SCHEDULE_SWEEP_MAX_BATCH, 10),
+  scheduleListMaxLimit: int(process.env.SCHEDULE_LIST_MAX_LIMIT, 100),
+  cronMaxLookAheadMinutes: int(process.env.CRON_MAX_LOOKAHEAD_MINUTES, 525_600),
   vaultMasterKey: process.env.VAULT_MASTER_KEY || "",
   vaultRequireKey: bool(process.env.VAULT_REQUIRE_KEY, nodeEnv === "production")
 };

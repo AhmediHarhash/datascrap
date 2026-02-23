@@ -42,7 +42,7 @@
 - severity: medium
 
 5) Job queue pressure alert:
-- condition: queue due-now or dead-letter thresholds exceeded
+- condition: queue due-now, due schedules, or dead-letter thresholds exceeded
 - source: `GET /api/observability/jobs`
 - severity: medium (high if dead-letter growth is sustained)
 

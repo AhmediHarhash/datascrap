@@ -13,6 +13,7 @@ const { integrationsRouter } = require("./routes/integrations");
 const { jobsRouter } = require("./routes/jobs");
 const { licenseRouter } = require("./routes/license");
 const { observabilityRouter } = require("./routes/observability");
+const { schedulesRouter } = require("./routes/schedules");
 const { config } = require("./config");
 const { closePool, runDbProbe } = require("./db/pool");
 const { corsPolicy } = require("./middleware/cors");
@@ -84,6 +85,7 @@ app.use(devicesRouter);
 app.use(dataHandlingRouter);
 app.use(integrationsRouter);
 app.use(jobsRouter);
+app.use(schedulesRouter);
 app.use(observabilityRouter);
 
 app.use((_req, res) => {

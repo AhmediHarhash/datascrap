@@ -12,6 +12,7 @@ const {
   markJobSucceeded,
   recoverExpiredLocks
 } = require("../src/services/jobs");
+const { triggerDueSchedules } = require("../src/services/schedules");
 const { logError, logInfo, logWarn } = require("../src/utils/logger");
 
 const workerId = config.jobWorkerId || `jobs-worker-${randomUUID().slice(0, 8)}`;
@@ -19,6 +20,7 @@ const pollIntervalMs = Math.max(250, Number(config.jobPollIntervalMs || 2000));
 
 let stopping = false;
 let lockRecoveryAt = 0;
+let scheduleSweepAt = 0;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,6 +33,39 @@ function shouldRunLockRecovery() {
   }
   lockRecoveryAt = now;
   return true;
+}
+
+function shouldRunScheduleSweep() {
+  const now = Date.now();
+  const cadenceMs = Math.max(1_000, Number(config.scheduleSweepIntervalMs || 5_000));
+  if (now - scheduleSweepAt < cadenceMs) {
+    return false;
+  }
+  scheduleSweepAt = now;
+  return true;
+}
+
+async function sweepSchedules() {
+  const result = await triggerDueSchedules({
+    workerId,
+    limit: config.scheduleSweepMaxBatch
+  });
+
+  if ((result.triggered || []).length > 0) {
+    logInfo("jobs.worker.schedules.triggered", {
+      workerId,
+      scanned: result.scanned,
+      triggered: result.triggered.length
+    });
+  }
+
+  if ((result.errors || []).length > 0) {
+    logWarn("jobs.worker.schedules.errors", {
+      workerId,
+      scanned: result.scanned,
+      errors: result.errors
+    });
+  }
 }
 
 async function processOneJob() {
@@ -104,6 +139,10 @@ async function runLoop() {
             deadLettered: recovered.deadLettered
           });
         }
+      }
+
+      if (shouldRunScheduleSweep()) {
+        await sweepSchedules();
       }
 
       const processed = await processOneJob();

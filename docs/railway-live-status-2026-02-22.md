@@ -17,6 +17,7 @@
 - Phase 3 migration `0002_idempotency_keys.sql` applied in both environments.
 - Phase 4 migration `0003_perf_indexes.sql` applied in both environments.
 - Phase 5 migration `0004_phase5_optional_cloud.sql` applied in both environments.
+- Phase 5 migration `0005_phase5_scheduler.sql` applied in both environments.
 
 2) `control-api`
 - Service ID: `955c58a3-9816-41d7-a963-68c6bcfe024a`
@@ -41,6 +42,10 @@
   - `ENABLE_OPTIONAL_CLOUD_FEATURES=true`
   - `OPT_IN_POLICY_VERSION=2026-02-23`
   - `MAX_METADATA_PAYLOAD_BYTES=32768`
+  - `SCHEDULE_SWEEP_INTERVAL_MS=5000`
+  - `SCHEDULE_SWEEP_MAX_BATCH=10`
+  - `SCHEDULE_LIST_MAX_LIMIT=100`
+  - `CRON_MAX_LOOKAHEAD_MINUTES=525600`
   - `VAULT_MASTER_KEY` configured per environment
   - `VAULT_REQUIRE_KEY=true`
 
@@ -53,6 +58,7 @@
   - `ENABLE_OPTIONAL_CLOUD_FEATURES=true`
   - `DATABASE_URL=${{Postgres.DATABASE_URL}}` (env-specific internal URL set)
   - `JOB_*` policy variables set
+  - `SCHEDULE_*` and `CRON_MAX_LOOKAHEAD_MINUTES` policy variables set
   - `VAULT_MASTER_KEY` configured per environment
   - `VAULT_REQUIRE_KEY=true`
 
@@ -110,9 +116,21 @@
   - command: `npm run phase5:smoke:control-api`
   - result: success (`jobId=72861f2e-c0c0-43bc-bd81-4369c2bc4bcc`)
   - account: `1fcdfafb-eb39-42ba-bdf3-b634c3c62523`
+- Staging schedule smoke run:
+  - command: `npm run phase5:schedule:smoke:control-api`
+  - result: success
+  - account: `6ce234cb-6d92-4567-9330-c0e9f6efc8e2`
+  - schedule: `da67e599-b698-474a-9de1-74e073311431`
+  - auto-trigger job: `c66af8f0-0089-407a-bbbc-f3bec016481f`
+  - run-now job: `f017cd6d-e78e-437f-b799-a4fa758fc8e5`
 - Worker execution proof (staging `jobs-worker` logs):
   - `jobs.worker.claimed` for smoke job id
   - `jobs.worker.succeeded` for smoke job id
+- Queue/schedule observability monitor:
+  - command: `npm run queue:monitor:control-api`
+  - result: passed on staging and production
+  - queue: `dueNow=0`, `deadLetters=0`
+  - schedules: `dueNow=0`
 
 ## Repository Status
 - GitHub repo:
@@ -192,6 +210,7 @@
   - cost thresholds and budget vars (`MONTHLY_BUDGET_USD`, `MONTH_TO_DATE_COST_USD`, `COST_*`, `DAILY_COST_SERIES_USD`)
   - backup verification vars (`MIN_BACKUP_BYTES`, `MIN_BACKUP_ENTRIES`)
   - queue monitor thresholds (`MAX_DUE_JOBS`, `MAX_DEAD_LETTER_JOBS`)
+  - queue monitor schedule threshold (`MAX_DUE_SCHEDULES`)
 - Failure fallback enabled:
   - workflow auto-creates/updates issue `Uptime Monitor Incident`
   - workflow auto-creates/updates issue `SLO Monitor Incident`
@@ -228,3 +247,5 @@
 - Optional cloud features are enabled in staging and production with explicit opt-in enforcement.
 - Integration secrets are encrypted at rest using per-environment `VAULT_MASTER_KEY`.
 - Jobs are processed by dedicated `jobs-worker` service, isolated from `control-api` request path.
+- Scheduler endpoints (`/api/schedules/*`) are live with interval/cron/timezone support.
+- `jobs-worker` now performs periodic due-schedule sweeps and enqueues jobs with schedule metadata.

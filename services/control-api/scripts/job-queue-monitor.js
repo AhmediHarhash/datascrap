@@ -30,7 +30,8 @@ function getTargets() {
 
 const thresholds = {
   maxDueJobs: numberEnv("MAX_DUE_JOBS", 200),
-  maxDeadLetterJobs: numberEnv("MAX_DEAD_LETTER_JOBS", 0)
+  maxDeadLetterJobs: numberEnv("MAX_DEAD_LETTER_JOBS", 0),
+  maxDueSchedules: numberEnv("MAX_DUE_SCHEDULES", 200)
 };
 
 async function fetchJson(url, headers = {}) {
@@ -99,9 +100,12 @@ async function main() {
     }
 
     const queue = response.body?.queue || {};
+    const schedules = response.body?.schedules || {};
     const dueNow = Number(queue.dueNow || 0);
     const deadLetters = Number(queue.deadLetters || 0);
     const enabled = Boolean(queue.enabled);
+    const schedulesEnabled = Boolean(schedules.enabled);
+    const dueSchedules = Number(schedules.dueNow || 0);
 
     if (enabled) {
       if (dueNow > thresholds.maxDueJobs) {
@@ -112,11 +116,16 @@ async function main() {
       }
     }
 
+    if (schedulesEnabled && dueSchedules > thresholds.maxDueSchedules) {
+      failures.push(`${target.name}: dueSchedules=${dueSchedules} > ${thresholds.maxDueSchedules}`);
+    }
+
     results.push({
       target: target.name,
       ok: true,
       status: response.status,
-      queue
+      queue,
+      schedules
     });
   }
 

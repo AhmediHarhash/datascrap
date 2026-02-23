@@ -36,6 +36,12 @@ npm run start:control-api
 - `GET /api/jobs` (Bearer token)
 - `GET /api/jobs/dead-letter` (Bearer token)
 - `POST /api/jobs/cancel` (Bearer token)
+- `GET /api/schedules` (Bearer token)
+- `POST /api/schedules/create` (Bearer token)
+- `POST /api/schedules/update` (Bearer token)
+- `POST /api/schedules/toggle` (Bearer token)
+- `POST /api/schedules/remove` (Bearer token)
+- `POST /api/schedules/run-now` (Bearer token)
 - `GET /api/observability/slo`
 - `GET /api/observability/dashboard`
 - `GET /api/observability/errors/recent`
@@ -144,6 +150,18 @@ Environment variables:
 - `SMOKE_WEBHOOK_URL`
 - `SMOKE_SECRET_NAME` / `SMOKE_SECRET_VALUE`
 
+## Phase 5 Schedule Smoke Script
+
+```bash
+node services/control-api/scripts/phase5-schedule-smoke.js
+```
+
+Environment variables:
+- `API_BASE_URL`
+- `SCHEDULE_SMOKE_EMAIL` / `SCHEDULE_SMOKE_PASSWORD`
+- `SCHEDULE_SMOKE_DEVICE_ID`
+- `SCHEDULE_SMOKE_WEBHOOK_URL`
+
 ## Job Queue Monitor Script
 
 ```bash
@@ -155,6 +173,7 @@ Environment variables:
 - `OBSERVABILITY_KEY_STAGING` / `OBSERVABILITY_KEY_PRODUCTION`
 - `MAX_DUE_JOBS` (default `200`)
 - `MAX_DEAD_LETTER_JOBS` (default `0`)
+- `MAX_DUE_SCHEDULES` (default `200`)
 - `ALERT_WEBHOOK_URL` / `ALERT_WEBHOOK_BEARER_TOKEN` (optional)
 
 ## Notes
@@ -185,6 +204,9 @@ Environment variables:
 - Shared `npm start` supports runtime mode selection:
   - API mode (default): `CONTROL_API_RUNTIME_MODE=api`
   - worker mode: `CONTROL_API_RUNTIME_MODE=jobs-worker`
+- Scheduler supports:
+  - `interval` schedules (`intervalMinutes`)
+  - `cron` schedules (`cronExpr`, 5-field expression) with `timezone`
 
 ## Rollback Notes
 
@@ -212,4 +234,10 @@ DROP TABLE IF EXISTS cloud_job_dead_letters;
 DROP TABLE IF EXISTS cloud_jobs;
 DROP TABLE IF EXISTS integration_secrets;
 DROP TABLE IF EXISTS account_cloud_policies;
+```
+
+- Migration `0005_phase5_scheduler.sql` can be reverted safely with:
+
+```sql
+DROP TABLE IF EXISTS cloud_schedules;
 ```

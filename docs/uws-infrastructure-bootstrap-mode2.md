@@ -129,6 +129,10 @@ Exit gate:
 Verification:
 - API health/readiness still returns `200` in staging and production after Phase 5 rollout.
 - Staging Phase 5 smoke run passed (`phase5:smoke:control-api`) with queue job executed to success by isolated worker.
+- Staging scheduler smoke run passed (`phase5:schedule:smoke:control-api`) with:
+  - interval auto-trigger path validated
+  - manual run-now path validated
+- Queue monitor (`queue:monitor:control-api`) passed with `dueNow=0`, `deadLetters=0`, and `dueSchedules=0`.
 
 ## Environment Layout
 1) `local`

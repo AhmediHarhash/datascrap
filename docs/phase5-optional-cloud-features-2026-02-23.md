@@ -66,6 +66,24 @@ Enable optional scheduling/integration infrastructure without impacting core aut
   - metadata-only payload validation blocks row/raw content keys
   - payload size cap via `MAX_METADATA_PAYLOAD_BYTES`
 
+5. Scheduler core (interval + cron + timezone)
+- Migration:
+  - `services/control-api/migrations/0005_phase5_scheduler.sql`
+- Scheduler table:
+  - `cloud_schedules`
+- Scheduler services:
+  - `services/control-api/src/services/cron.js`
+  - `services/control-api/src/services/schedules.js`
+- Scheduler API:
+  - `GET /api/schedules`
+  - `POST /api/schedules/create`
+  - `POST /api/schedules/update`
+  - `POST /api/schedules/toggle`
+  - `POST /api/schedules/remove`
+  - `POST /api/schedules/run-now`
+- Worker integration:
+  - `jobs-worker` sweeps due schedules and enqueues jobs with schedule metadata.
+
 ## Isolation Model
 1. Core API remains stateless auth/license/device control-plane.
 2. Optional cloud features are behind `ENABLE_OPTIONAL_CLOUD_FEATURES`.
@@ -75,12 +93,13 @@ Enable optional scheduling/integration infrastructure without impacting core aut
 - New endpoint:
   - `GET /api/observability/jobs`
 - Dashboard now includes queue summary block.
+- Dashboard includes queue + schedule summary.
 - Monitor script/workflow:
   - `services/control-api/scripts/job-queue-monitor.js`
   - `.github/workflows/job-queue-monitor.yml`
 
 ## Rollout Notes
-1. Apply migration `0004` before enabling feature flag.
+1. Apply migrations `0004` and `0005` before enabling feature flag.
 2. Keep `ENABLE_OPTIONAL_CLOUD_FEATURES=false` until worker service is deployed.
 3. Set `VAULT_MASTER_KEY` and `VAULT_REQUIRE_KEY=true` before storing secrets in production.
 4. Launch worker as dedicated deployment with:
@@ -89,6 +108,7 @@ Enable optional scheduling/integration infrastructure without impacting core aut
 ## Verification Snapshot
 1. Database migration:
 - `0004_phase5_optional_cloud.sql` applied on staging and production.
+- `0005_phase5_scheduler.sql` applied on staging and production.
 
 2. API status:
 - `GET /healthz` and `GET /readyz` returned `200` on staging and production after rollout.
@@ -111,3 +131,9 @@ Enable optional scheduling/integration infrastructure without impacting core aut
 - `npm run queue:monitor:control-api` passed with:
   - `dueNow=0`
   - `deadLetters=0`
+  - `dueSchedules=0`
+
+6. Scheduler API smoke:
+- command: `npm run phase5:schedule:smoke:control-api`
+- result: success
+- created schedule and executed `run-now` enqueue path

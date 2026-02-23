@@ -7,6 +7,7 @@ const { cacheStats } = require("../services/cache");
 const { listRecentErrors, getErrorSummary } = require("../services/error-store");
 const { getQueueStats } = require("../services/jobs");
 const { currentWindowSnapshot, toPrometheus } = require("../services/metrics");
+const { getScheduleStats } = require("../services/schedules");
 
 const router = Router();
 
@@ -40,6 +41,7 @@ router.get("/api/observability/dashboard", requireObservabilityKey, async (_req,
 
   const snapshot = currentWindowSnapshot();
   const queue = await getQueueStats();
+  const schedules = await getScheduleStats();
   return res.status(200).json({
     generatedAt: snapshot.generatedAt,
     windowMinutes: snapshot.windowMinutes,
@@ -48,7 +50,8 @@ router.get("/api/observability/dashboard", requireObservabilityKey, async (_req,
     topRoutes: snapshot.topRoutes,
     rateLimits: getRateLimiterStats(),
     cache: cacheStats(),
-    queue
+    queue,
+    schedules
   });
 });
 
@@ -82,9 +85,11 @@ router.get("/api/observability/jobs", requireObservabilityKey, async (_req, res)
   }
 
   const queue = await getQueueStats();
+  const schedules = await getScheduleStats();
   return res.status(200).json({
     generatedAt: new Date().toISOString(),
-    queue
+    queue,
+    schedules
   });
 });
 

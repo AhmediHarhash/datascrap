@@ -17,6 +17,7 @@
     "jwt:generate:control-api": "node services/control-api/scripts/generate-jwt-secret.js",
     "jobs:worker:control-api": "node services/control-api/scripts/jobs-worker.js",
     "phase5:smoke:control-api": "node services/control-api/scripts/phase5-smoke.js",
+    "phase5:schedule:smoke:control-api": "node services/control-api/scripts/phase5-schedule-smoke.js",
     "queue:monitor:control-api": "node services/control-api/scripts/job-queue-monitor.js"
   },
   "dependencies": {
