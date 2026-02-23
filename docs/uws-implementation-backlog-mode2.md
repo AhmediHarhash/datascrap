@@ -23,6 +23,12 @@
 - page/bulk extraction engine + URL source modes + queue controls + datasource integration.
 7) Tracking artifact:
 - `docs/phase3-page-bulk-extractor-2026-02-23.md`
+8) Epic 4 baseline slice implemented:
+- data table history/filters/inline edits/column rename/dedupe.
+9) Epic 5 baseline slice implemented:
+- file export (`csv/xlsx/json`) + clipboard/sheets + image downloader + activation wiring.
+10) Tracking artifact:
+- `docs/phase5-exports-activation-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

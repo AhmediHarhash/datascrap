@@ -79,7 +79,50 @@ const elements = {
   tableRenameBtn: document.getElementById("table-rename-btn"),
   tableDedupeBtn: document.getElementById("table-dedupe-btn"),
   tableStatusLine: document.getElementById("table-status-line"),
-  tableGrid: document.getElementById("table-grid")
+  tableGrid: document.getElementById("table-grid"),
+
+  exportTableSelect: document.getElementById("export-table-select"),
+  exportFormat: document.getElementById("export-format"),
+  exportUseCurrentFilters: document.getElementById("export-use-current-filters"),
+  exportFileBtn: document.getElementById("export-file-btn"),
+  exportClipboardBtn: document.getElementById("export-clipboard-btn"),
+  exportSheetsBtn: document.getElementById("export-sheets-btn"),
+  exportStatusLine: document.getElementById("export-status-line"),
+
+  imageScanBtn: document.getElementById("image-scan-btn"),
+  imageSearch: document.getElementById("image-search"),
+  imageMinWidth: document.getElementById("image-min-width"),
+  imageMinHeight: document.getElementById("image-min-height"),
+  imageExtFilter: document.getElementById("image-ext-filter"),
+  imageSizeFilter: document.getElementById("image-size-filter"),
+  imageAltFilter: document.getElementById("image-alt-filter"),
+  imageDownloadMode: document.getElementById("image-download-mode"),
+  imageNamingPattern: document.getElementById("image-naming-pattern"),
+  imageDownloadBtn: document.getElementById("image-download-btn"),
+  imageSelectAllBtn: document.getElementById("image-select-all-btn"),
+  imageClearSelectionBtn: document.getElementById("image-clear-selection-btn"),
+  imageStatusLine: document.getElementById("image-status-line"),
+  imagePreview: document.getElementById("image-preview"),
+
+  activationApiBase: document.getElementById("activation-api-base"),
+  activationDeviceName: document.getElementById("activation-device-name"),
+  activationLicenseKey: document.getElementById("activation-license-key"),
+  activationSaveConfigBtn: document.getElementById("activation-save-config-btn"),
+  activationRefreshSessionBtn: document.getElementById("activation-refresh-session-btn"),
+  activationProfileBtn: document.getElementById("activation-profile-btn"),
+  activationEmail: document.getElementById("activation-email"),
+  activationPassword: document.getElementById("activation-password"),
+  activationDisplayName: document.getElementById("activation-display-name"),
+  activationRegisterBtn: document.getElementById("activation-register-btn"),
+  activationLoginBtn: document.getElementById("activation-login-btn"),
+  activationLogoutBtn: document.getElementById("activation-logout-btn"),
+  activationLicenseRegisterBtn: document.getElementById("activation-license-register-btn"),
+  activationLicenseStatusBtn: document.getElementById("activation-license-status-btn"),
+  activationDeviceValidateBtn: document.getElementById("activation-device-validate-btn"),
+  activationDevicesRefreshBtn: document.getElementById("activation-devices-refresh-btn"),
+  activationStatusLine: document.getElementById("activation-status-line"),
+  activationSessionSummary: document.getElementById("activation-session-summary"),
+  activationDeviceList: document.getElementById("activation-device-list")
 };
 
 const state = {
@@ -97,7 +140,11 @@ const state = {
   tableHistory: [],
   tableColumns: [],
   tableRows: [],
-  activeTableDataId: null
+  activeTableDataId: null,
+  imageScanResults: [],
+  imageSelection: new Set(),
+  activationSession: null,
+  activationDevices: []
 };
 
 function randomId(prefix = "id") {
@@ -393,6 +440,92 @@ function setTableStatus(text, { error = false } = {}) {
   elements.tableStatusLine.classList.toggle("status-error", Boolean(error));
 }
 
+function setExportStatus(text, { error = false } = {}) {
+  elements.exportStatusLine.textContent = String(text || "");
+  elements.exportStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function setImageStatus(text, { error = false } = {}) {
+  elements.imageStatusLine.textContent = String(text || "");
+  elements.imageStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function setActivationStatus(text, { error = false } = {}) {
+  elements.activationStatusLine.textContent = String(text || "");
+  elements.activationStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function renderExportTableOptions(items, preferredValue = "") {
+  const list = Array.isArray(items) ? items : [];
+  const preferred = String(preferredValue || elements.exportTableSelect.value || "").trim();
+  elements.exportTableSelect.innerHTML = "";
+
+  if (list.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No tables available";
+    elements.exportTableSelect.append(option);
+    return;
+  }
+
+  for (const item of list) {
+    const tableDataId = String(item?.tableDataId || "").trim();
+    if (!tableDataId) continue;
+    const option = document.createElement("option");
+    option.value = tableDataId;
+    option.textContent = `${tableDataId.slice(0, 8)}... (${Number(item?.rowCount || 0)} rows)`;
+    elements.exportTableSelect.append(option);
+  }
+
+  if (preferred && list.some((item) => String(item?.tableDataId || "").trim() === preferred)) {
+    elements.exportTableSelect.value = preferred;
+  }
+}
+
+function getSelectedExportTableDataId() {
+  return String(elements.exportTableSelect.value || "").trim();
+}
+
+function buildExportFilterPayload() {
+  if (!elements.exportUseCurrentFilters.checked) {
+    return {
+      search: "",
+      filterColumn: "",
+      filterValue: "",
+      limit: 20000
+    };
+  }
+  return {
+    search: String(elements.tableSearch.value || "").trim(),
+    filterColumn: String(elements.tableFilterColumn.value || "").trim(),
+    filterValue: String(elements.tableFilterValue.value || "").trim(),
+    limit: parseTableLimit()
+  };
+}
+
+function callChromePermissions(method, details) {
+  return new Promise((resolve, reject) => {
+    chrome.permissions[method](details, (result) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
+        reject(new Error(lastError.message || "Permission API failed"));
+        return;
+      }
+      resolve(Boolean(result));
+    });
+  });
+}
+
+async function ensureClipboardPermission() {
+  if (!chrome.permissions) return true;
+  const details = {
+    permissions: ["clipboardWrite"]
+  };
+  const hasAccess = await callChromePermissions("contains", details).catch(() => false);
+  if (hasAccess) return true;
+  return callChromePermissions("request", details);
+}
+
 function getSelectedTableDataId() {
   return String(elements.tableHistorySelect.value || "").trim();
 }
@@ -596,12 +729,14 @@ function renderTableGrid(rows, columns) {
 
 async function hydrateTableHistory({ preserveSelection = true } = {}) {
   const preferredTableDataId = preserveSelection ? getSelectedTableDataId() || String(state.activeTableDataId || "") : "";
+  const preferredExportTableId = preserveSelection ? getSelectedExportTableDataId() : "";
   const response = await sendMessage(MESSAGE_TYPES.TABLE_HISTORY_LIST_REQUEST, {
     limit: 160
   });
   const items = Array.isArray(response.items) ? response.items : [];
   state.tableHistory = items;
   renderTableHistoryOptions(items, preferredTableDataId);
+  renderExportTableOptions(items, preferredExportTableId || preferredTableDataId);
 }
 
 async function loadSelectedTableRows({ silent = false } = {}) {
@@ -744,6 +879,527 @@ async function onDedupeTableRows() {
     appendLog("table dedupe failed", {
       tableDataId,
       message: error.message
+    });
+  }
+}
+
+async function onExportFile() {
+  const tableDataId = getSelectedExportTableDataId();
+  if (!tableDataId) {
+    setExportStatus("Select a table to export", {
+      error: true
+    });
+    return;
+  }
+
+  setExportStatus("Preparing export...");
+  const format = String(elements.exportFormat.value || "csv").trim().toLowerCase();
+  const filterPayload = buildExportFilterPayload();
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_EXPORT_REQUEST, {
+      tableDataId,
+      format,
+      ...filterPayload
+    });
+    setExportStatus(
+      `Export queued: ${response.filename} (${Number(response.rowCount || 0)} rows, ${Number(response.columnCount || 0)} columns)`
+    );
+    appendLog("table export created", response);
+  } catch (error) {
+    setExportStatus(`Export failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table export failed", {
+      tableDataId,
+      format,
+      message: error.message
+    });
+  }
+}
+
+async function fetchClipboardExport() {
+  const tableDataId = getSelectedExportTableDataId();
+  if (!tableDataId) {
+    throw new Error("Select a table first");
+  }
+  const filterPayload = buildExportFilterPayload();
+  return sendMessage(MESSAGE_TYPES.TABLE_EXPORT_CLIPBOARD_REQUEST, {
+    tableDataId,
+    ...filterPayload
+  });
+}
+
+async function onCopyClipboard({ openSheets = false } = {}) {
+  setExportStatus("Building clipboard payload...");
+  try {
+    const hasPermission = await ensureClipboardPermission();
+    if (!hasPermission) {
+      throw new Error("Clipboard permission denied by user");
+    }
+    const response = await fetchClipboardExport();
+    await navigator.clipboard.writeText(String(response.text || ""));
+
+    if (openSheets) {
+      await chrome.tabs.create({
+        url: "https://docs.google.com/spreadsheets/create"
+      });
+      setExportStatus(`Copied ${Number(response.rowCount || 0)} rows. Opened Google Sheets, paste with Ctrl+V.`);
+    } else {
+      setExportStatus(`Copied ${Number(response.rowCount || 0)} rows to clipboard.`);
+    }
+    appendLog("clipboard export copied", {
+      rowCount: Number(response.rowCount || 0),
+      columnCount: Number(response.columnCount || 0),
+      openSheets
+    });
+  } catch (error) {
+    setExportStatus(`Clipboard export failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("clipboard export failed", {
+      message: error.message,
+      openSheets
+    });
+  }
+}
+
+function getFilteredImages() {
+  const search = String(elements.imageSearch.value || "").trim().toLowerCase();
+  const minWidth = Math.max(0, parseNumber(elements.imageMinWidth.value, 0));
+  const minHeight = Math.max(0, parseNumber(elements.imageMinHeight.value, 0));
+  const extFilter = String(elements.imageExtFilter.value || "").trim().toLowerCase();
+  const sizeFilter = String(elements.imageSizeFilter.value || "").trim().toLowerCase();
+  const altFilter = String(elements.imageAltFilter.value || "").trim().toLowerCase();
+
+  return state.imageScanResults.filter((image) => {
+    const imageUrl = String(image?.url || "").toLowerCase();
+    const imageAlt = String(image?.alt || "").toLowerCase();
+    const imageExt = String(image?.ext || "").toLowerCase();
+    const width = Number(image?.width || 0);
+    const height = Number(image?.height || 0);
+    const category = String(image?.sizeCategory || "").toLowerCase();
+    const hasAlt = Boolean(String(image?.alt || "").trim());
+
+    if (search && !imageUrl.includes(search) && !imageAlt.includes(search)) return false;
+    if (width < minWidth || height < minHeight) return false;
+    if (extFilter && imageExt !== extFilter) return false;
+    if (sizeFilter && category !== sizeFilter) return false;
+    if (altFilter === "has" && !hasAlt) return false;
+    if (altFilter === "none" && hasAlt) return false;
+    return true;
+  });
+}
+
+function renderImagePreview() {
+  const filtered = getFilteredImages();
+  elements.imagePreview.innerHTML = "";
+
+  if (state.imageScanResults.length === 0) {
+    elements.imagePreview.textContent = "No images scanned yet.";
+    return;
+  }
+
+  if (filtered.length === 0) {
+    elements.imagePreview.textContent = "No images match your filters.";
+    return;
+  }
+
+  const capped = filtered.slice(0, 150);
+  for (const image of capped) {
+    const row = document.createElement("div");
+    row.className = "image-row";
+
+    const head = document.createElement("div");
+    head.className = "image-row-head";
+
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.className = "device-inline";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.imageSelection.has(image.url);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        state.imageSelection.add(image.url);
+      } else {
+        state.imageSelection.delete(image.url);
+      }
+    });
+
+    const title = document.createElement("span");
+    title.textContent = `${image.width}x${image.height} • ${image.ext} • ${image.sizeCategory}`;
+
+    checkboxLabel.append(checkbox, title);
+
+    const meta = document.createElement("div");
+    meta.className = "field-meta";
+    meta.textContent = image.alt ? `alt: ${image.alt}` : "alt: (none)";
+
+    const link = document.createElement("a");
+    link.href = image.url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = image.url;
+    link.className = "field-meta";
+
+    head.append(checkboxLabel);
+    row.append(head, meta, link);
+    elements.imagePreview.append(row);
+  }
+
+  setImageStatus(
+    `Images: ${filtered.length}/${state.imageScanResults.length} filtered • ${state.imageSelection.size} selected`
+  );
+}
+
+function selectFilteredImages() {
+  const filtered = getFilteredImages();
+  for (const image of filtered) {
+    state.imageSelection.add(image.url);
+  }
+  renderImagePreview();
+}
+
+function clearImageSelection() {
+  state.imageSelection.clear();
+  renderImagePreview();
+}
+
+function resolveImagesForDownload() {
+  const mode = String(elements.imageDownloadMode.value || "filtered").trim();
+  const filtered = getFilteredImages();
+  if (mode !== "selected") {
+    return filtered;
+  }
+
+  const selectedMap = new Set(state.imageSelection);
+  return state.imageScanResults.filter((image) => selectedMap.has(image.url));
+}
+
+async function onScanImages() {
+  setImageStatus("Scanning active page...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.IMAGE_SCAN_REQUEST);
+    state.imageScanResults = Array.isArray(response.images) ? response.images : [];
+    state.imageSelection.clear();
+    renderImagePreview();
+    setImageStatus(`Scan complete: ${state.imageScanResults.length} images`);
+    appendLog("image scan complete", {
+      count: state.imageScanResults.length,
+      pageUrl: response.pageUrl
+    });
+  } catch (error) {
+    setImageStatus(`Image scan failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("image scan failed", {
+      message: error.message
+    });
+  }
+}
+
+async function onDownloadImages() {
+  const images = resolveImagesForDownload();
+  if (images.length === 0) {
+    setImageStatus("No images to download", {
+      error: true
+    });
+    return;
+  }
+
+  setImageStatus(`Downloading ${images.length} images...`);
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.IMAGE_DOWNLOAD_REQUEST, {
+      images,
+      namingPattern: String(elements.imageNamingPattern.value || "").trim()
+    });
+    setImageStatus(`Download complete: ${Number(response.completed || 0)} ok, ${Number(response.failed || 0)} failed`);
+    appendLog("image download complete", response);
+  } catch (error) {
+    setImageStatus(`Image download failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("image download failed", {
+      message: error.message
+    });
+  }
+}
+
+function renderActivationSessionSummary(session) {
+  const account = session?.account || null;
+  const user = session?.user || null;
+  const lines = [
+    `api: ${session?.apiBaseUrl || "(not set)"}`,
+    `device: ${session?.deviceName || "(not set)"} (${session?.deviceId || "n/a"})`,
+    `session: access=${session?.hasAccessToken ? "yes" : "no"}, refresh=${session?.hasRefreshToken ? "yes" : "no"}`
+  ];
+  if (user) {
+    lines.push(`user: ${user.email || user.id || "unknown"}`);
+  }
+  if (account) {
+    lines.push(
+      `account: tier=${account.tier || "unknown"}, licenseActive=${String(account.isLicenseActive ?? "n/a")}, maxDevices=${String(account.maxDevices ?? "n/a")}`
+    );
+  }
+  elements.activationSessionSummary.textContent = lines.join(" | ");
+}
+
+function renderActivationDevices(devicesPayload) {
+  const payload = devicesPayload || {};
+  const devices = Array.isArray(payload.devices) ? payload.devices : [];
+  state.activationDevices = devices;
+  elements.activationDeviceList.innerHTML = "";
+
+  if (devices.length === 0) {
+    elements.activationDeviceList.textContent = "No devices loaded.";
+    return;
+  }
+
+  for (const device of devices) {
+    const row = document.createElement("div");
+    row.className = "device-row";
+
+    const head = document.createElement("div");
+    head.className = "device-row-head";
+
+    const title = document.createElement("div");
+    title.className = "field-meta";
+    title.textContent = `${device.deviceId} • last seen ${formatRelativeTimestamp(device.lastSeenAt)}`;
+
+    const inline = document.createElement("div");
+    inline.className = "device-inline";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = String(device.deviceName || "");
+    nameInput.placeholder = "device name";
+
+    const renameButton = document.createElement("button");
+    renameButton.className = "btn btn-ghost";
+    renameButton.type = "button";
+    renameButton.textContent = "Rename";
+    renameButton.addEventListener("click", () => {
+      void onActivationRenameDevice(device.deviceId, nameInput.value);
+    });
+
+    const removeButton = document.createElement("button");
+    removeButton.className = "btn btn-ghost";
+    removeButton.type = "button";
+    removeButton.textContent = "Remove";
+    removeButton.addEventListener("click", () => {
+      void onActivationRemoveDevice(device.deviceId);
+    });
+
+    inline.append(nameInput, renameButton, removeButton);
+    head.append(title);
+    row.append(head, inline);
+    elements.activationDeviceList.append(row);
+  }
+}
+
+function applyActivationSession(session) {
+  const next = session || null;
+  state.activationSession = next;
+  if (!next) return;
+  elements.activationApiBase.value = String(next.apiBaseUrl || "");
+  elements.activationDeviceName.value = String(next.deviceName || "");
+  elements.activationLicenseKey.value = String(next.licenseKey || "");
+  renderActivationSessionSummary(next);
+}
+
+async function hydrateActivationSession() {
+  const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_SESSION_GET_REQUEST);
+  applyActivationSession(response.session || null);
+}
+
+async function onActivationSaveConfig() {
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_CONFIG_SET_REQUEST, {
+      apiBaseUrl: String(elements.activationApiBase.value || "").trim(),
+      deviceName: String(elements.activationDeviceName.value || "").trim(),
+      licenseKey: String(elements.activationLicenseKey.value || "").trim()
+    });
+    applyActivationSession(response.session || null);
+    setActivationStatus("Activation config saved.");
+  } catch (error) {
+    setActivationStatus(`Save config failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationRegister() {
+  setActivationStatus("Registering account...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_AUTH_REGISTER_REQUEST, {
+      apiBaseUrl: String(elements.activationApiBase.value || "").trim(),
+      email: String(elements.activationEmail.value || "").trim(),
+      password: String(elements.activationPassword.value || ""),
+      displayName: String(elements.activationDisplayName.value || "").trim()
+    });
+    applyActivationSession(response.session || null);
+    setActivationStatus("Account registered. Login next.");
+  } catch (error) {
+    setActivationStatus(`Register failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationLogin() {
+  setActivationStatus("Logging in...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_AUTH_LOGIN_REQUEST, {
+      apiBaseUrl: String(elements.activationApiBase.value || "").trim(),
+      email: String(elements.activationEmail.value || "").trim(),
+      password: String(elements.activationPassword.value || ""),
+      deviceName: String(elements.activationDeviceName.value || "").trim()
+    });
+    applyActivationSession(response.session || null);
+    setActivationStatus("Login successful.");
+  } catch (error) {
+    setActivationStatus(`Login failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationLogout() {
+  setActivationStatus("Logging out...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_AUTH_LOGOUT_REQUEST);
+    applyActivationSession(response.session || null);
+    renderActivationDevices({
+      devices: []
+    });
+    setActivationStatus("Logged out.");
+  } catch (error) {
+    setActivationStatus(`Logout failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationProfileSync() {
+  setActivationStatus("Syncing profile...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_AUTH_REFRESH_PROFILE_REQUEST);
+    applyActivationSession(response.session || null);
+    setActivationStatus("Profile synced.");
+  } catch (error) {
+    setActivationStatus(`Profile sync failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationLicenseRegister() {
+  setActivationStatus("Registering license...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_LICENSE_REGISTER_REQUEST, {
+      licenseKey: String(elements.activationLicenseKey.value || "").trim()
+    });
+    applyActivationSession(response.session || null);
+    setActivationStatus("License registered.");
+  } catch (error) {
+    setActivationStatus(`License register failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationLicenseStatus() {
+  setActivationStatus("Fetching license status...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_LICENSE_STATUS_REQUEST);
+    applyActivationSession(response.session || null);
+    const summary = response.licenseStatus || {};
+    setActivationStatus(
+      `License: ${summary.licenseStatus || "unknown"} • active=${String(summary.isLicenseActive)} • maxDevices=${String(summary.maxDevices)}`
+    );
+  } catch (error) {
+    setActivationStatus(`License status failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationValidateDevice() {
+  setActivationStatus("Validating this device...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_DEVICE_VALIDATE_REQUEST, {
+      licenseKey: String(elements.activationLicenseKey.value || "").trim()
+    });
+    applyActivationSession(response.session || null);
+    setActivationStatus(
+      `Device validation: ${response.validation?.valid ? "valid" : "invalid"} • currentDevices=${String(response.validation?.currentDevices ?? "n/a")}`
+    );
+  } catch (error) {
+    setActivationStatus(`Device validation failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationListDevices() {
+  setActivationStatus("Loading devices...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_DEVICES_LIST_REQUEST, {
+      licenseKey: String(elements.activationLicenseKey.value || "").trim()
+    });
+    applyActivationSession(response.session || null);
+    renderActivationDevices(response.devices || {});
+    const currentDevices = Number(
+      response.devices?.currentDevices || (Array.isArray(response.devices?.devices) ? response.devices.devices.length : 0)
+    );
+    const maxDevicesValue = response.devices?.maxDevices;
+    const maxDevices = Number.isFinite(Number(maxDevicesValue)) ? String(Number(maxDevicesValue)) : "n/a";
+    setActivationStatus(
+      `Devices loaded: ${currentDevices}/${maxDevices}`
+    );
+  } catch (error) {
+    setActivationStatus(`Load devices failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationRemoveDevice(deviceId) {
+  setActivationStatus(`Removing device ${deviceId}...`);
+  try {
+    await sendMessage(MESSAGE_TYPES.ACTIVATION_DEVICE_REMOVE_REQUEST, {
+      licenseKey: String(elements.activationLicenseKey.value || "").trim(),
+      deviceId
+    });
+    await onActivationListDevices();
+  } catch (error) {
+    setActivationStatus(`Remove device failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onActivationRenameDevice(deviceId, deviceName) {
+  const nextName = String(deviceName || "").trim();
+  if (!nextName) {
+    setActivationStatus("Device name cannot be empty", {
+      error: true
+    });
+    return;
+  }
+
+  setActivationStatus(`Renaming device ${deviceId}...`);
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_DEVICE_RENAME_REQUEST, {
+      licenseKey: String(elements.activationLicenseKey.value || "").trim(),
+      deviceId,
+      deviceName: nextName
+    });
+    applyActivationSession(response.session || null);
+    await onActivationListDevices();
+  } catch (error) {
+    setActivationStatus(`Rename device failed: ${error.message}`, {
+      error: true
     });
   }
 }
@@ -1293,6 +1949,9 @@ elements.tableLoadBtn.addEventListener("click", () => {
   void loadSelectedTableRows();
 });
 elements.tableHistorySelect.addEventListener("change", () => {
+  if (elements.tableHistorySelect.value) {
+    elements.exportTableSelect.value = elements.tableHistorySelect.value;
+  }
   void loadSelectedTableRows({
     silent: true
   });
@@ -1327,6 +1986,82 @@ elements.tableLimit.addEventListener("change", () => {
 });
 elements.tableRenameTo.addEventListener("blur", () => {
   elements.tableRenameTo.value = normalizeColumnName(elements.tableRenameTo.value, "");
+});
+
+elements.exportFileBtn.addEventListener("click", () => {
+  void onExportFile();
+});
+elements.exportClipboardBtn.addEventListener("click", () => {
+  void onCopyClipboard();
+});
+elements.exportSheetsBtn.addEventListener("click", () => {
+  void onCopyClipboard({
+    openSheets: true
+  });
+});
+
+elements.imageScanBtn.addEventListener("click", () => {
+  void onScanImages();
+});
+elements.imageDownloadBtn.addEventListener("click", () => {
+  void onDownloadImages();
+});
+elements.imageSelectAllBtn.addEventListener("click", () => {
+  selectFilteredImages();
+});
+elements.imageClearSelectionBtn.addEventListener("click", () => {
+  clearImageSelection();
+});
+for (const control of [
+  elements.imageSearch,
+  elements.imageMinWidth,
+  elements.imageMinHeight,
+  elements.imageExtFilter,
+  elements.imageSizeFilter,
+  elements.imageAltFilter,
+  elements.imageDownloadMode
+]) {
+  control.addEventListener("input", () => {
+    renderImagePreview();
+  });
+  control.addEventListener("change", () => {
+    renderImagePreview();
+  });
+}
+
+elements.activationSaveConfigBtn.addEventListener("click", () => {
+  void onActivationSaveConfig();
+});
+elements.activationRefreshSessionBtn.addEventListener("click", () => {
+  void hydrateActivationSession().catch((error) => {
+    setActivationStatus(`Session refresh failed: ${error.message}`, {
+      error: true
+    });
+  });
+});
+elements.activationProfileBtn.addEventListener("click", () => {
+  void onActivationProfileSync();
+});
+elements.activationRegisterBtn.addEventListener("click", () => {
+  void onActivationRegister();
+});
+elements.activationLoginBtn.addEventListener("click", () => {
+  void onActivationLogin();
+});
+elements.activationLogoutBtn.addEventListener("click", () => {
+  void onActivationLogout();
+});
+elements.activationLicenseRegisterBtn.addEventListener("click", () => {
+  void onActivationLicenseRegister();
+});
+elements.activationLicenseStatusBtn.addEventListener("click", () => {
+  void onActivationLicenseStatus();
+});
+elements.activationDeviceValidateBtn.addEventListener("click", () => {
+  void onActivationValidateDevice();
+});
+elements.activationDevicesRefreshBtn.addEventListener("click", () => {
+  void onActivationListDevices();
 });
 
 elements.pageCsvFile.addEventListener("change", () => {
@@ -1369,6 +2104,18 @@ chrome.runtime.onMessage.addListener((message) => {
   }
   if (message?.type === MESSAGE_TYPES.PICKER_EVENT) {
     handlePickerEvent(message.payload || {});
+    return;
+  }
+  if (message?.type === MESSAGE_TYPES.IMAGE_DOWNLOAD_PROGRESS_EVENT) {
+    const payload = message.payload || {};
+    const status = String(payload.status || "").trim();
+    const line =
+      status === "failed"
+        ? `Downloading images... ${Number(payload.index || 0)}/${Number(payload.total || 0)} • failed ${Number(payload.failed || 0)}`
+        : `Downloading images... ${Number(payload.index || 0)}/${Number(payload.total || 0)} • ok ${Number(payload.completed || 0)}`;
+    setImageStatus(line, {
+      error: status === "failed"
+    });
   }
 });
 
@@ -1376,6 +2123,10 @@ renderListFields();
 renderPageFields();
 setPickerStatus("idle");
 setTableStatus("No table loaded");
+setExportStatus("Export ready");
+setImageStatus("Scan page to load images");
+setActivationStatus("Not connected");
+renderImagePreview();
 applySpeedProfileDefaults("normal");
 updatePageSourceUi();
 updatePageActionUi();
@@ -1394,5 +2145,8 @@ await loadSelectedTableRows({
   setTableStatus("Unable to load table rows", {
     error: true
   });
+});
+await hydrateActivationSession().catch(() => {
+  elements.activationSessionSummary.textContent = "No session loaded.";
 });
 await hydrateSnapshot();

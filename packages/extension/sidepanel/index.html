@@ -294,6 +294,180 @@
 
       <section class="panel">
         <div class="panel-title-row">
+          <h2>Export & Output</h2>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>Export Table</span>
+            <select id="export-table-select"></select>
+          </label>
+          <label class="field">
+            <span>Format</span>
+            <select id="export-format">
+              <option value="csv">CSV</option>
+              <option value="xlsx">XLSX</option>
+              <option value="json">JSON</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="checkbox-row">
+          <input id="export-use-current-filters" type="checkbox" checked />
+          <span>Use current Data Table search/filter values</span>
+        </label>
+
+        <div class="actions">
+          <button id="export-file-btn" class="btn">Export File</button>
+          <button id="export-clipboard-btn" class="btn">Copy Clipboard</button>
+          <button id="export-sheets-btn" class="btn">Open Google Sheets</button>
+        </div>
+
+        <span id="export-status-line" class="table-status">Export ready</span>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Image Downloader</h2>
+          <button id="image-scan-btn" class="btn btn-ghost">Scan Page</button>
+        </div>
+
+        <div class="queue-grid">
+          <label class="field">
+            <span>Search</span>
+            <input id="image-search" type="text" placeholder="src or alt text" />
+          </label>
+          <label class="field">
+            <span>Min Width</span>
+            <input id="image-min-width" type="number" min="0" value="0" />
+          </label>
+          <label class="field">
+            <span>Min Height</span>
+            <input id="image-min-height" type="number" min="0" value="0" />
+          </label>
+          <label class="field">
+            <span>Extension</span>
+            <select id="image-ext-filter">
+              <option value="">all</option>
+              <option value="jpg">jpg</option>
+              <option value="jpeg">jpeg</option>
+              <option value="png">png</option>
+              <option value="webp">webp</option>
+              <option value="gif">gif</option>
+              <option value="svg">svg</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Size Category</span>
+            <select id="image-size-filter">
+              <option value="">all</option>
+              <option value="small">small</option>
+              <option value="medium">medium</option>
+              <option value="large">large</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Alt Text</span>
+            <select id="image-alt-filter">
+              <option value="">any</option>
+              <option value="has">has alt text</option>
+              <option value="none">no alt text</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>Download Mode</span>
+            <select id="image-download-mode">
+              <option value="filtered">all filtered</option>
+              <option value="selected">selected only</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Naming Pattern</span>
+            <input
+              id="image-naming-pattern"
+              type="text"
+              value="image_{index}_{width}x{height}.{ext}"
+              placeholder="image_{index}_{width}x{height}.{ext}"
+            />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="image-download-btn" class="btn">Download Images</button>
+          <button id="image-select-all-btn" class="btn btn-ghost">Select Filtered</button>
+          <button id="image-clear-selection-btn" class="btn btn-ghost">Clear Selection</button>
+        </div>
+
+        <span id="image-status-line" class="table-status">Scan page to load images</span>
+        <div id="image-preview" class="list-preview">No images scanned yet.</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Activation</h2>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>API Base URL</span>
+            <input id="activation-api-base" type="url" placeholder="https://your-control-api.railway.app" />
+          </label>
+          <label class="field">
+            <span>Device Name</span>
+            <input id="activation-device-name" type="text" placeholder="My Laptop" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>License Key</span>
+          <input id="activation-license-key" type="text" placeholder="YOUR-LICENSE-KEY" />
+        </label>
+
+        <div class="actions">
+          <button id="activation-save-config-btn" class="btn">Save Config</button>
+          <button id="activation-refresh-session-btn" class="btn btn-ghost">Refresh Session</button>
+          <button id="activation-profile-btn" class="btn btn-ghost">Sync Profile</button>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>Email</span>
+            <input id="activation-email" type="email" placeholder="you@domain.com" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input id="activation-password" type="password" placeholder="********" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Display Name (register only)</span>
+          <input id="activation-display-name" type="text" placeholder="Your Name" />
+        </label>
+
+        <div class="actions">
+          <button id="activation-register-btn" class="btn">Register</button>
+          <button id="activation-login-btn" class="btn">Login</button>
+          <button id="activation-logout-btn" class="btn">Logout</button>
+        </div>
+
+        <div class="actions actions-4">
+          <button id="activation-license-register-btn" class="btn">Register License</button>
+          <button id="activation-license-status-btn" class="btn btn-ghost">License Status</button>
+          <button id="activation-device-validate-btn" class="btn btn-ghost">Validate Device</button>
+          <button id="activation-devices-refresh-btn" class="btn btn-ghost">List Devices</button>
+        </div>
+
+        <span id="activation-status-line" class="table-status">Not connected</span>
+        <div id="activation-session-summary" class="field-meta">No session loaded.</div>
+        <div id="activation-device-list" class="list-preview">No devices loaded.</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
           <h2>Live Events</h2>
           <div class="panel-actions">
             <span id="picker-status" class="picker-status">picker: idle</span>

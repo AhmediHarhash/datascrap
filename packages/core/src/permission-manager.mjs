@@ -25,10 +25,31 @@ function callChromeApi(fn, details) {
 }
 
 function inferPermission(operation, context = {}) {
-  if (operation === "download.images") {
+  if (operation === "download.images" || operation === "export.file") {
     return {
       permissions: ["downloads"],
       origins: []
+    };
+  }
+
+  if (operation === "clipboard.write") {
+    return {
+      permissions: ["clipboardWrite"],
+      origins: []
+    };
+  }
+
+  if (operation === "network.api") {
+    const pattern = toHostPattern(context.apiBaseUrl || context.url || "");
+    if (!pattern) {
+      return {
+        permissions: [],
+        origins: []
+      };
+    }
+    return {
+      permissions: [],
+      origins: [pattern]
     };
   }
 

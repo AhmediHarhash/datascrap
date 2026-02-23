@@ -3,12 +3,28 @@ import { createPermissionManager } from "../vendor/core/src/permission-manager.m
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import { createStorageClient } from "../vendor/storage/src/storage-client.mjs";
 import {
+  activationLicenseStatus,
+  activationListDevices,
+  activationLogin,
+  activationLogout,
+  activationRefreshProfile,
+  activationRegister,
+  activationRegisterLicense,
+  activationRemoveDevice,
+  activationRenameDevice,
+  activationValidateDevice,
+  getActivationSession,
+  setActivationConfig
+} from "./activation-service.mjs";
+import {
   dedupeTableRows,
   getTableRows,
   listTableHistory,
   renameTableColumn,
   updateTableCell
 } from "./data-table-service.mjs";
+import { buildClipboardExport, exportTableToFile } from "./export-service.mjs";
+import { downloadImages, scanActiveTabImages } from "./image-downloader-service.mjs";
 import { listDataSources, resolveDataSourceUrls } from "./datasource-service.mjs";
 import { createListExtractionEngine } from "./list-extraction-engine.mjs";
 import { createPageExtractionEngine } from "./page-extraction-engine.mjs";
@@ -50,13 +66,14 @@ const controllersReady = (async () => {
   const pageExtractionEngine = createPageExtractionEngine({
     chromeApi: chrome
   });
+  const permissionManager = createPermissionManager({
+    chromeApi: chrome,
+    assumeAllowedIfUnavailable: false
+  });
 
   const runtime = createAutomationRuntime({
     storageClient,
-    permissionManager: createPermissionManager({
-      chromeApi: chrome,
-      assumeAllowedIfUnavailable: false
-    }),
+    permissionManager,
     capabilities: {
       listExtractionEngine,
       pageExtractionEngine
@@ -73,7 +90,8 @@ const controllersReady = (async () => {
   return {
     storageClient,
     runtime,
-    pickerSessionManager
+    pickerSessionManager,
+    permissionManager
   };
 })();
 
@@ -102,7 +120,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void (async () => {
     try {
       const controllers = await controllersReady;
-      const { runtime, pickerSessionManager, storageClient } = controllers;
+      const { runtime, pickerSessionManager, storageClient, permissionManager } = controllers;
 
       const pickerInbound = pickerSessionManager.handleIncomingMessage(message);
       if (pickerInbound.handled) {
@@ -246,6 +264,243 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         sendResponse({
           type: MESSAGE_TYPES.TABLE_DEDUPE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_EXPORT_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await exportTableToFile({
+          storageClient,
+          permissionManager,
+          chromeApi: chrome,
+          tableDataId,
+          format: message?.payload?.format,
+          search: message?.payload?.search || "",
+          filterColumn: message?.payload?.filterColumn || "",
+          filterValue: message?.payload?.filterValue || "",
+          limit: Number(message?.payload?.limit || 5000)
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_EXPORT_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_EXPORT_CLIPBOARD_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await buildClipboardExport({
+          storageClient,
+          tableDataId,
+          search: message?.payload?.search || "",
+          filterColumn: message?.payload?.filterColumn || "",
+          filterValue: message?.payload?.filterValue || "",
+          limit: Number(message?.payload?.limit || 5000)
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_EXPORT_CLIPBOARD_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.IMAGE_SCAN_REQUEST) {
+        const result = await scanActiveTabImages({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.IMAGE_SCAN_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.IMAGE_DOWNLOAD_REQUEST) {
+        const images = Array.isArray(message?.payload?.images) ? message.payload.images : [];
+        const result = await downloadImages({
+          chromeApi: chrome,
+          permissionManager,
+          images,
+          namingPattern: message?.payload?.namingPattern || "image_{index}_{width}x{height}.{ext}",
+          onProgress(progressPayload) {
+            safeSendRuntimeMessage({
+              type: MESSAGE_TYPES.IMAGE_DOWNLOAD_PROGRESS_EVENT,
+              payload: progressPayload
+            });
+          }
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.IMAGE_DOWNLOAD_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_SESSION_GET_REQUEST) {
+        const result = await getActivationSession({
+          chromeApi: chrome
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_SESSION_GET_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_CONFIG_SET_REQUEST) {
+        const result = await setActivationConfig({
+          chromeApi: chrome,
+          apiBaseUrl: message?.payload?.apiBaseUrl,
+          deviceName: message?.payload?.deviceName,
+          licenseKey: message?.payload?.licenseKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_CONFIG_SET_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_AUTH_REGISTER_REQUEST) {
+        const result = await activationRegister({
+          chromeApi: chrome,
+          permissionManager,
+          apiBaseUrl: message?.payload?.apiBaseUrl,
+          email: message?.payload?.email,
+          password: message?.payload?.password,
+          displayName: message?.payload?.displayName
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_AUTH_REGISTER_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_AUTH_LOGIN_REQUEST) {
+        const result = await activationLogin({
+          chromeApi: chrome,
+          permissionManager,
+          apiBaseUrl: message?.payload?.apiBaseUrl,
+          email: message?.payload?.email,
+          password: message?.payload?.password,
+          deviceName: message?.payload?.deviceName
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_AUTH_LOGIN_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_AUTH_LOGOUT_REQUEST) {
+        const result = await activationLogout({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_AUTH_LOGOUT_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_AUTH_REFRESH_PROFILE_REQUEST) {
+        const result = await activationRefreshProfile({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_AUTH_REFRESH_PROFILE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_LICENSE_REGISTER_REQUEST) {
+        const result = await activationRegisterLicense({
+          chromeApi: chrome,
+          permissionManager,
+          licenseKey: message?.payload?.licenseKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_LICENSE_REGISTER_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_LICENSE_STATUS_REQUEST) {
+        const result = await activationLicenseStatus({
+          chromeApi: chrome,
+          permissionManager
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_LICENSE_STATUS_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_DEVICE_VALIDATE_REQUEST) {
+        const result = await activationValidateDevice({
+          chromeApi: chrome,
+          permissionManager,
+          licenseKey: message?.payload?.licenseKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_DEVICE_VALIDATE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_DEVICES_LIST_REQUEST) {
+        const result = await activationListDevices({
+          chromeApi: chrome,
+          permissionManager,
+          licenseKey: message?.payload?.licenseKey
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_DEVICES_LIST_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_DEVICE_REMOVE_REQUEST) {
+        const result = await activationRemoveDevice({
+          chromeApi: chrome,
+          permissionManager,
+          licenseKey: message?.payload?.licenseKey,
+          deviceId: message?.payload?.deviceId
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_DEVICE_REMOVE_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_DEVICE_RENAME_REQUEST) {
+        const result = await activationRenameDevice({
+          chromeApi: chrome,
+          permissionManager,
+          licenseKey: message?.payload?.licenseKey,
+          deviceId: message?.payload?.deviceId,
+          deviceName: message?.payload?.deviceName
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_DEVICE_RENAME_RESPONSE,
           payload: result
         });
         return;

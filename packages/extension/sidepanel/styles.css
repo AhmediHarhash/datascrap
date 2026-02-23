@@ -143,6 +143,10 @@ textarea {
   gap: 8px;
 }
 
+.actions.actions-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .btn {
   border: 1px solid rgba(133, 157, 230, 0.4);
   border-radius: 10px;
@@ -297,6 +301,53 @@ textarea {
   white-space: nowrap;
 }
 
+.list-preview {
+  border: 1px solid rgba(111, 140, 222, 0.28);
+  border-radius: 10px;
+  background: rgba(4, 10, 22, 0.9);
+  max-height: 210px;
+  overflow: auto;
+  padding: 8px;
+  color: #b9d2fd;
+  font-size: 11px;
+  display: grid;
+  gap: 6px;
+}
+
+.image-row,
+.device-row {
+  border: 1px solid rgba(97, 124, 206, 0.35);
+  border-radius: 8px;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  background: rgba(9, 16, 34, 0.78);
+}
+
+.image-row-head,
+.device-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.image-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #4eb4ff;
+}
+
+.device-inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.device-inline input {
+  min-width: 0;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -340,5 +391,9 @@ textarea {
   .grid-two,
   .queue-grid {
     grid-template-columns: 1fr;
+  }
+
+  .actions.actions-4 {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
