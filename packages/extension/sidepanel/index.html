@@ -845,7 +845,7 @@
           <div class="grid-two">
             <label class="field">
               <span>Provider</span>
-              <input id="integration-provider" type="text" placeholder="webhook" value="webhook" />
+              <input id="integration-provider" type="text" placeholder="webhook" value="webhook" list="integration-provider-options" />
             </label>
             <label class="field">
               <span>Secret Name</span>
@@ -861,8 +861,47 @@
             <input id="integration-secret-label" type="text" placeholder="N8N Prod Webhook" />
           </label>
           <div class="actions">
+            <button id="integration-preset-webhook-btn" class="btn btn-ghost" type="button">Preset: Webhook</button>
+            <button id="integration-preset-airtable-btn" class="btn btn-ghost" type="button">Preset: Airtable</button>
+            <button id="integration-preset-n8n-btn" class="btn btn-ghost" type="button">Preset: n8n</button>
+          </div>
+          <div class="grid-two">
+            <label class="field">
+              <span>Test Target URL</span>
+              <input id="integration-test-target-url" type="url" placeholder="https://httpbin.org/status/204" />
+            </label>
+            <label class="field">
+              <span>Test Method</span>
+              <select id="integration-test-method">
+                <option value="POST">POST</option>
+                <option value="GET">GET</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Secret Placement</span>
+              <select id="integration-test-secret-placement">
+                <option value="authorization_bearer">Authorization Bearer</option>
+                <option value="header">Custom Header</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Header Name (if custom)</span>
+              <input id="integration-test-header-name" type="text" value="x-api-key" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Test Body (JSON)</span>
+            <textarea id="integration-test-body" rows="3">
+{"eventType":"datascrap.integration.test","metadata":{"source":"sidepanel"}}
+            </textarea>
+          </label>
+          <div class="actions">
             <button id="integrations-list-btn" class="btn btn-ghost">List</button>
             <button id="integrations-upsert-btn" class="btn">Upsert</button>
+            <button id="integrations-test-btn" class="btn btn-ghost">Test Connection</button>
             <button id="integrations-remove-btn" class="btn btn-ghost">Remove</button>
           </div>
           <div id="integrations-list" class="list-preview">No integration secrets loaded.</div>
@@ -988,6 +1027,11 @@
       <datalist id="cloud-job-type-options">
         <option value="integration.webhook.deliver"></option>
         <option value="extraction.page.summary"></option>
+      </datalist>
+      <datalist id="integration-provider-options">
+        <option value="webhook"></option>
+        <option value="airtable"></option>
+        <option value="n8n"></option>
       </datalist>
 
       <section id="templates-diagnostics-panel" class="panel app-view-panel" data-views="tools history">

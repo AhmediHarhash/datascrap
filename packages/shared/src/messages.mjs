@@ -64,6 +64,8 @@ export const MESSAGE_TYPES = Object.freeze({
   ACTIVATION_INTEGRATIONS_LIST_RESPONSE: "activation.integrations.list.response",
   ACTIVATION_INTEGRATIONS_UPSERT_REQUEST: "activation.integrations.upsert.request",
   ACTIVATION_INTEGRATIONS_UPSERT_RESPONSE: "activation.integrations.upsert.response",
+  ACTIVATION_INTEGRATIONS_TEST_REQUEST: "activation.integrations.test.request",
+  ACTIVATION_INTEGRATIONS_TEST_RESPONSE: "activation.integrations.test.response",
   ACTIVATION_INTEGRATIONS_REMOVE_REQUEST: "activation.integrations.remove.request",
   ACTIVATION_INTEGRATIONS_REMOVE_RESPONSE: "activation.integrations.remove.response",
   ACTIVATION_JOBS_POLICY_REQUEST: "activation.jobs.policy.request",

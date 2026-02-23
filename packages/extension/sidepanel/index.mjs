@@ -219,8 +219,17 @@ const elements = {
   integrationSecretName: document.getElementById("integration-secret-name"),
   integrationSecretValue: document.getElementById("integration-secret-value"),
   integrationSecretLabel: document.getElementById("integration-secret-label"),
+  integrationPresetWebhookBtn: document.getElementById("integration-preset-webhook-btn"),
+  integrationPresetAirtableBtn: document.getElementById("integration-preset-airtable-btn"),
+  integrationPresetN8nBtn: document.getElementById("integration-preset-n8n-btn"),
+  integrationTestTargetUrl: document.getElementById("integration-test-target-url"),
+  integrationTestMethod: document.getElementById("integration-test-method"),
+  integrationTestSecretPlacement: document.getElementById("integration-test-secret-placement"),
+  integrationTestHeaderName: document.getElementById("integration-test-header-name"),
+  integrationTestBody: document.getElementById("integration-test-body"),
   integrationsListBtn: document.getElementById("integrations-list-btn"),
   integrationsUpsertBtn: document.getElementById("integrations-upsert-btn"),
+  integrationsTestBtn: document.getElementById("integrations-test-btn"),
   integrationsRemoveBtn: document.getElementById("integrations-remove-btn"),
   integrationsList: document.getElementById("integrations-list"),
 
@@ -3124,6 +3133,51 @@ function applySchedulePreset(presetKey) {
   setCloudStatus("Schedule payload preset applied: webhook");
 }
 
+function applyIntegrationPreset(presetKey) {
+  if (presetKey === "airtable") {
+    elements.integrationProvider.value = "airtable";
+    elements.integrationSecretName.value = "api_key";
+    if (!String(elements.integrationSecretLabel.value || "").trim()) {
+      elements.integrationSecretLabel.value = "Airtable API Key";
+    }
+    if (!String(elements.integrationTestTargetUrl.value || "").trim()) {
+      elements.integrationTestTargetUrl.value = "https://httpbin.org/status/204";
+    }
+    setCloudStatus("Integration preset applied: airtable");
+    return;
+  }
+  if (presetKey === "n8n") {
+    elements.integrationProvider.value = "n8n";
+    elements.integrationSecretName.value = "webhook_signing_key";
+    if (!String(elements.integrationSecretLabel.value || "").trim()) {
+      elements.integrationSecretLabel.value = "n8n Webhook Signing Key";
+    }
+    if (!String(elements.integrationTestTargetUrl.value || "").trim()) {
+      elements.integrationTestTargetUrl.value = "https://httpbin.org/status/204";
+    }
+    setCloudStatus("Integration preset applied: n8n");
+    return;
+  }
+  elements.integrationProvider.value = "webhook";
+  elements.integrationSecretName.value = "webhook_signing_key";
+  if (!String(elements.integrationSecretLabel.value || "").trim()) {
+    elements.integrationSecretLabel.value = "Webhook Signing Key";
+  }
+  if (!String(elements.integrationTestTargetUrl.value || "").trim()) {
+    elements.integrationTestTargetUrl.value = "https://httpbin.org/status/204";
+  }
+  setCloudStatus("Integration preset applied: webhook");
+}
+
+function updateIntegrationTestUi() {
+  const placement = String(elements.integrationTestSecretPlacement.value || "authorization_bearer").trim().toLowerCase();
+  const usesHeader = placement === "header";
+  elements.integrationTestHeaderName.disabled = !usesHeader;
+  if (!usesHeader) {
+    elements.integrationTestHeaderName.value = String(elements.integrationTestHeaderName.value || "x-api-key").trim() || "x-api-key";
+  }
+}
+
 async function onCloudPolicyLoad() {
   setCloudStatus("Loading cloud policy...");
   try {
@@ -3220,6 +3274,51 @@ async function onIntegrationsRemove() {
     setCloudStatus("Integration secret removed");
   } catch (error) {
     setCloudStatus(`Integration remove failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+async function onIntegrationsTest() {
+  const provider = String(elements.integrationProvider.value || "").trim();
+  const secretName = String(elements.integrationSecretName.value || "").trim();
+  const targetUrl = String(elements.integrationTestTargetUrl.value || "").trim();
+  if (!provider || !secretName || !targetUrl) {
+    setCloudStatus("Provider, secret name, and test target URL are required", {
+      error: true
+    });
+    return;
+  }
+
+  setCloudStatus(`Testing integration ${provider}/${secretName}...`);
+  try {
+    const body = parseJsonInput(elements.integrationTestBody.value, "Integration test body");
+    const response = await sendMessage(MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_TEST_REQUEST, {
+      provider,
+      secretName,
+      targetUrl,
+      method: String(elements.integrationTestMethod.value || "POST").trim().toUpperCase(),
+      timeoutMs: 8000,
+      secretPlacement: String(elements.integrationTestSecretPlacement.value || "authorization_bearer").trim(),
+      headerName: String(elements.integrationTestHeaderName.value || "x-api-key").trim(),
+      headers: {},
+      body
+    });
+    const result = response.result || null;
+    setObservabilityOutput({
+      integrationTest: result
+    });
+    setCloudStatus(
+      result?.ok
+        ? `Integration test passed (${result.statusCode})`
+        : `Integration test response (${result?.statusCode || "unknown"})`,
+      {
+        error: !result?.ok
+      }
+    );
+    appendLog("integration test result", result || {});
+  } catch (error) {
+    setCloudStatus(`Integration test failed: ${error.message}`, {
       error: true
     });
   }
@@ -4490,8 +4589,23 @@ elements.integrationsListBtn.addEventListener("click", () => {
 elements.integrationsUpsertBtn.addEventListener("click", () => {
   void onIntegrationsUpsert();
 });
+elements.integrationsTestBtn.addEventListener("click", () => {
+  void onIntegrationsTest();
+});
 elements.integrationsRemoveBtn.addEventListener("click", () => {
   void onIntegrationsRemove();
+});
+elements.integrationPresetWebhookBtn.addEventListener("click", () => {
+  applyIntegrationPreset("webhook");
+});
+elements.integrationPresetAirtableBtn.addEventListener("click", () => {
+  applyIntegrationPreset("airtable");
+});
+elements.integrationPresetN8nBtn.addEventListener("click", () => {
+  applyIntegrationPreset("n8n");
+});
+elements.integrationTestSecretPlacement.addEventListener("change", () => {
+  updateIntegrationTestUi();
 });
 
 elements.jobsEnqueueBtn.addEventListener("click", () => {
@@ -4670,6 +4784,7 @@ setRoadmapStatus("Roadmap notify actions ready");
 setCloudStatus("Cloud control ready");
 setTemplatesStatus("Templates & diagnostics ready");
 setSpeedProfileStatus("Profile editor ready");
+updateIntegrationTestUi();
 renderImagePreview();
 applySpeedProfileDefaults(elements.speedProfile.value || "normal");
 updatePageSourceUi();

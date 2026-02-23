@@ -27,9 +27,14 @@ Target outcome:
   - schema lock enforcement on run
   - source-domain metadata
   - epic10 smoke wiring
+- Workstream 3 slice 1 shipped:
+  - integration provider presets in sidepanel
+  - API-backed integration secret connection test
+  - phase5 cloud smoke coverage for integration test
 - Tracking artifacts:
   - `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
   - `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
+  - `docs/phase9-sprintB-integrations-pack-slice-2026-02-23.md`
 
 ## Priority Workstreams (Only What We Need Next)
 

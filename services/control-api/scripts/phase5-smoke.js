@@ -94,6 +94,25 @@ async function main() {
   });
   assertStatus("secret upsert", secret.response.status, [200]);
 
+  const integrationTest = await request("/api/integrations/secrets/test", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      provider: "webhook",
+      secretName,
+      targetUrl: webhookUrl,
+      method: "POST",
+      secretPlacement: "authorization_bearer",
+      body: {
+        eventType: "phase5.integration.test",
+        metadata: {
+          source: "phase5-smoke"
+        }
+      }
+    })
+  });
+  assertStatus("integration test", integrationTest.response.status, [200]);
+
   const enqueue = await request("/api/jobs/enqueue", {
     method: "POST",
     headers: authHeaders,
@@ -151,6 +170,8 @@ async function main() {
         ok: true,
         baseUrl,
         accountId: login.body.account?.id || null,
+        integrationTestOk: Boolean(integrationTest.body?.result?.ok),
+        integrationTestStatusCode: Number(integrationTest.body?.result?.statusCode || 0),
         jobId: enqueue.body?.job?.id || null,
         extractionJobId: enqueueExtraction.body?.job?.id || null,
         jobsListed: Array.isArray(jobs.body?.items) ? jobs.body.items.length : 0

@@ -26,6 +26,8 @@ Record the actual production gate execution and resulting artifacts.
 
 ## Cloud Smoke Evidence (from full production gate)
 - Phase5 smoke:
+  - `integrationTestOk=true`
+  - `integrationTestStatusCode=204`
   - `jobId=5e5eacbc-ce35-4c96-aa7d-27dff609fa82`
   - `extractionJobId=53f4f090-3fdb-4d85-bf10-bf0978ef52e6`
 - Phase5 schedule smoke:

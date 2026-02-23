@@ -57,6 +57,10 @@
 - template marketplace v1 (import/export + schema lock + source-domain metadata).
 23) Tracking artifact:
 - `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
+24) Epic 9 Sprint B slice 1 implemented:
+- integrations pack v1.1 (provider presets + API-backed test connection + cloud smoke coverage).
+25) Tracking artifact:
+- `docs/phase9-sprintB-integrations-pack-slice-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

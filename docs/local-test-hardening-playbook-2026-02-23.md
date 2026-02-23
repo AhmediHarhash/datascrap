@@ -34,6 +34,7 @@ npm run hardening:railway
 - cloud smoke covers both:
   - `integration.webhook.deliver`
   - `extraction.page.summary`
+  - integration secret connection test (`/api/integrations/secrets/test`)
 
 If DB is missing, cloud smoke is skipped automatically.
 

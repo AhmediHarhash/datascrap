@@ -14,6 +14,7 @@ import {
   activationLicenseStatus,
   activationListDevices,
   activationListIntegrationSecrets,
+  activationTestIntegrationSecret,
   activationListJobs,
   activationListObservabilityErrors,
   activationListSchedules,
@@ -634,6 +635,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         sendResponse({
           type: MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_UPSERT_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_TEST_REQUEST) {
+        const result = await activationTestIntegrationSecret({
+          chromeApi: chrome,
+          permissionManager,
+          provider: message?.payload?.provider,
+          secretName: message?.payload?.secretName,
+          targetUrl: message?.payload?.targetUrl,
+          method: message?.payload?.method,
+          timeoutMs: message?.payload?.timeoutMs,
+          secretPlacement: message?.payload?.secretPlacement,
+          headerName: message?.payload?.headerName,
+          headers: message?.payload?.headers,
+          body: message?.payload?.body
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.ACTIVATION_INTEGRATIONS_TEST_RESPONSE,
           payload: result
         });
         return;

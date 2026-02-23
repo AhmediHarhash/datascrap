@@ -63,6 +63,8 @@
 6) Full production gate
 - `npm run release:full`
 - Runs Railway hardening + extension release packaging in one command.
+- Verified cloud smoke also covers integration secret connection test endpoint:
+  - `POST /api/integrations/secrets/test`
 
 ## What Is Wired For Testing
 

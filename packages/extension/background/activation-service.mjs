@@ -823,6 +823,43 @@ export async function activationRemoveIntegrationSecret({
   };
 }
 
+export async function activationTestIntegrationSecret({
+  chromeApi = chrome,
+  permissionManager,
+  provider = "",
+  secretName = "",
+  targetUrl = "",
+  method = "POST",
+  timeoutMs = 8000,
+  secretPlacement = "authorization_bearer",
+  headerName = "x-api-key",
+  headers = {},
+  body = {}
+}) {
+  const response = await requestCloud({
+    chromeApi,
+    permissionManager,
+    path: "/api/integrations/secrets/test",
+    method: "POST",
+    body: {
+      provider: toText(provider).trim(),
+      secretName: toText(secretName).trim(),
+      targetUrl: toText(targetUrl).trim(),
+      method: toText(method).trim().toUpperCase() || "POST",
+      timeoutMs: Number(timeoutMs || 8000),
+      secretPlacement: toText(secretPlacement).trim().toLowerCase() || "authorization_bearer",
+      headerName: toText(headerName).trim() || "x-api-key",
+      headers: normalizeObject(headers),
+      body: normalizeObject(body)
+    }
+  });
+  return {
+    session: response.session,
+    success: Boolean(response.payload?.success),
+    result: response.payload?.result || null
+  };
+}
+
 export async function activationGetJobsPolicy({
   chromeApi = chrome,
   permissionManager
