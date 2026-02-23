@@ -69,6 +69,10 @@
 - scale/recovery v1 (URL generator + retry-failed/resume-checkpoint controls + failure report export + checkpoint summary metadata).
 29) Tracking artifact:
 - `docs/phase9-sprintC-scale-recovery-slice-2026-02-23.md`
+30) Epic 9 Sprint D slice 1 implemented:
+- anti-block reliability profiles v1 (profile controls + bounded backoff/jitter + optional sticky session reuse + retry telemetry).
+31) Tracking artifact:
+- `docs/phase9-sprintD-reliability-profiles-slice-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

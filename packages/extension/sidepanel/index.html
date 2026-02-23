@@ -540,6 +540,46 @@
               <input id="queue-jitter-ms" type="number" min="0" max="10000" value="220" />
             </label>
             <label class="field">
+              <span>Reliability Profile</span>
+              <select id="queue-reliability-profile">
+                <option value="balanced">balanced</option>
+                <option value="conservative">conservative</option>
+                <option value="aggressive">aggressive</option>
+                <option value="custom">custom</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Backoff Strategy</span>
+              <select id="queue-backoff-strategy">
+                <option value="exponential">exponential</option>
+                <option value="linear">linear</option>
+                <option value="fixed">fixed</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Jitter Mode</span>
+              <select id="queue-jitter-mode">
+                <option value="bounded">bounded</option>
+                <option value="full">full</option>
+                <option value="none">none</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Retry Delay Min (ms)</span>
+              <input id="queue-retry-min-delay-ms" type="number" min="0" max="120000" value="700" />
+            </label>
+            <label class="field">
+              <span>Retry Delay Max (ms)</span>
+              <input id="queue-retry-max-delay-ms" type="number" min="0" max="120000" value="12000" />
+            </label>
+            <label class="field">
+              <span>Session Reuse</span>
+              <select id="queue-session-reuse-mode">
+                <option value="off">off</option>
+                <option value="sticky">sticky</option>
+              </select>
+            </label>
+            <label class="field">
               <span>Wait For Selector (optional)</span>
               <input id="queue-wait-selector" type="text" placeholder=".product-card" />
             </label>
@@ -548,6 +588,8 @@
               <input id="queue-wait-selector-timeout-ms" type="number" min="200" max="60000" value="4000" />
             </label>
           </div>
+
+          <span id="reliability-profile-status-line" class="table-status">Reliability profiles ready</span>
 
           <label class="checkbox-row">
             <input id="queue-wait-page-load" type="checkbox" checked />

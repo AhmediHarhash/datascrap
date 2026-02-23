@@ -1,11 +1,44 @@
 import { PAGE_ACTION_TYPES } from "../vendor/shared/src/events.mjs";
 import { createAbortError } from "../vendor/core/src/utils.mjs";
-import { createTab, delay, executeInTab, removeTab, waitForTabComplete } from "./chrome-utils.mjs";
+import { createTab, delay, executeInTab, removeTab, updateTab, waitForTabComplete } from "./chrome-utils.mjs";
 
 function clamp(value, min, max, fallback) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, Math.floor(parsed)));
+}
+
+const RELIABILITY_PROFILES = Object.freeze({
+  conservative: Object.freeze({
+    backoffStrategy: "exponential",
+    jitterMode: "full",
+    minRetryDelayMs: 1200,
+    maxRetryDelayMs: 30000,
+    sessionReuseMode: "sticky"
+  }),
+  balanced: Object.freeze({
+    backoffStrategy: "linear",
+    jitterMode: "bounded",
+    minRetryDelayMs: 700,
+    maxRetryDelayMs: 12000,
+    sessionReuseMode: "off"
+  }),
+  aggressive: Object.freeze({
+    backoffStrategy: "fixed",
+    jitterMode: "none",
+    minRetryDelayMs: 200,
+    maxRetryDelayMs: 3500,
+    sessionReuseMode: "off"
+  })
+});
+
+const BACKOFF_STRATEGIES = Object.freeze(["fixed", "linear", "exponential"]);
+const JITTER_MODES = Object.freeze(["none", "bounded", "full"]);
+const SESSION_REUSE_MODES = Object.freeze(["off", "sticky"]);
+
+function normalizeEnum(value, allowedValues, fallback) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return allowedValues.includes(normalized) ? normalized : fallback;
 }
 
 function normalizeUrls(config = {}) {
@@ -94,15 +127,34 @@ function normalizeActionConfig(config = {}) {
   };
 }
 
+function normalizeReliabilityConfig(queue = {}) {
+  const reliability = queue?.reliability && typeof queue.reliability === "object" ? queue.reliability : {};
+  const profile = normalizeEnum(reliability.profile, ["conservative", "balanced", "aggressive", "custom"], "balanced");
+  const defaults = RELIABILITY_PROFILES[profile] || RELIABILITY_PROFILES.balanced;
+  const minRetryDelayMs = clamp(reliability.minRetryDelayMs, 0, 120_000, defaults.minRetryDelayMs);
+  const maxRetryDelayMs = clamp(reliability.maxRetryDelayMs, minRetryDelayMs, 120_000, defaults.maxRetryDelayMs);
+  return {
+    profile,
+    backoffStrategy: normalizeEnum(reliability.backoffStrategy, BACKOFF_STRATEGIES, defaults.backoffStrategy),
+    jitterMode: normalizeEnum(reliability.jitterMode, JITTER_MODES, defaults.jitterMode),
+    minRetryDelayMs,
+    maxRetryDelayMs,
+    sessionReuseMode: normalizeEnum(reliability.sessionReuseMode, SESSION_REUSE_MODES, defaults.sessionReuseMode)
+  };
+}
+
 function normalizeQueueConfig(config = {}) {
   const queue = config.queue && typeof config.queue === "object" ? config.queue : {};
+  const reliability = normalizeReliabilityConfig(queue);
+  const retryDelayMs = clamp(queue.retryDelayMs, 0, 120_000, 1_200);
   return {
     maxConcurrentTabs: clamp(queue.maxConcurrentTabs, 1, 8, 3),
     delayBetweenRequestsMs: clamp(queue.delayBetweenRequestsMs, 0, 30_000, 400),
     pageTimeoutMs: clamp(queue.pageTimeoutMs, 2_000, 120_000, 25_000),
     maxRetries: clamp(queue.maxRetries, 0, 5, 1),
-    retryDelayMs: clamp(queue.retryDelayMs, 0, 30_000, 1_200),
-    jitterMs: clamp(queue.jitterMs, 0, 10_000, 220),
+    retryDelayMs: Math.max(reliability.minRetryDelayMs, Math.min(retryDelayMs, reliability.maxRetryDelayMs)),
+    jitterMs: clamp(queue.jitterMs, 0, 20_000, 220),
+    reliability,
     waitForPageLoad: Boolean(queue.waitForPageLoad !== false),
     waitForSelector: String(queue.waitForSelector || "").trim(),
     waitForSelectorTimeoutMs: clamp(queue.waitForSelectorTimeoutMs, 200, 60_000, 4_000)
@@ -119,6 +171,38 @@ function randomJitter(maxJitterMs) {
   const max = Math.max(0, Number(maxJitterMs || 0));
   if (!max) return 0;
   return Math.floor(Math.random() * max);
+}
+
+function resolveJitterWindowMs(queue = {}) {
+  const baseJitter = Math.max(0, Number(queue.jitterMs || 0));
+  const jitterMode = String(queue?.reliability?.jitterMode || "none");
+  if (jitterMode === "full") return baseJitter;
+  if (jitterMode === "bounded") return Math.floor(baseJitter * 0.45);
+  return 0;
+}
+
+function computeRetryDelayMs({ queue, retryAttempt, random = Math.random }) {
+  const reliability = queue?.reliability || {};
+  const strategy = String(reliability.backoffStrategy || "fixed");
+  const minDelay = Math.max(0, Number(reliability.minRetryDelayMs || 0));
+  const maxDelay = Math.max(minDelay, Number(reliability.maxRetryDelayMs || minDelay));
+  const baseDelay = Math.max(0, Number(queue?.retryDelayMs || 0));
+  const attempt = Math.max(1, Number(retryAttempt || 1));
+
+  let scaledDelay = baseDelay;
+  if (strategy === "linear") {
+    scaledDelay = baseDelay * attempt;
+  } else if (strategy === "exponential") {
+    scaledDelay = baseDelay * 2 ** (attempt - 1);
+  }
+
+  const boundedDelay = Math.max(minDelay, Math.min(Math.floor(scaledDelay), maxDelay));
+  const jitterWindow = resolveJitterWindowMs(queue);
+  const randomValue = typeof random === "function" ? Number(random()) : Math.random();
+  const clampedRandom = Number.isFinite(randomValue) ? Math.max(0, Math.min(1, randomValue)) : Math.random();
+  const jitterOffset = jitterWindow > 0 ? Math.floor(clampedRandom * jitterWindow) : 0;
+  const withJitter = boundedDelay + jitterOffset;
+  return Math.max(minDelay, Math.min(withJitter, maxDelay));
 }
 
 function limitList(list, maxItems = 5000) {
@@ -565,22 +649,63 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
       let nextJobIndex = 0;
       let completed = 0;
       let failed = 0;
+      let retryCount = 0;
       const rows = [];
       const failures = [];
 
-      async function processJob(job) {
+      async function openJobTab(job, workerContext) {
+        if (!workerContext.stickySession) {
+          return createTab({
+            createProperties: {
+              active: false,
+              url: job.url
+            },
+            chromeApi
+          });
+        }
+
+        if (!workerContext.tabId) {
+          const created = await createTab({
+            createProperties: {
+              active: false,
+              url: job.url
+            },
+            chromeApi
+          });
+          workerContext.tabId = created?.id || null;
+          return created;
+        }
+
+        try {
+          return await updateTab({
+            tabId: workerContext.tabId,
+            updateProperties: {
+              url: job.url,
+              active: false
+            },
+            chromeApi
+          });
+        } catch (_error) {
+          workerContext.tabId = null;
+          const created = await createTab({
+            createProperties: {
+              active: false,
+              url: job.url
+            },
+            chromeApi
+          });
+          workerContext.tabId = created?.id || null;
+          return created;
+        }
+      }
+
+      async function processJob(job, workerId, workerContext) {
         let lastError = null;
         for (let attempt = 0; attempt <= queue.maxRetries; attempt += 1) {
           throwIfAborted(signal);
           let tab = null;
           try {
-            tab = await createTab({
-              createProperties: {
-                active: false,
-                url: job.url
-              },
-              chromeApi
-            });
+            tab = await openJobTab(job, workerContext);
 
             if (queue.waitForPageLoad) {
               await waitForTabComplete({
@@ -637,11 +762,30 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
           } catch (error) {
             lastError = error;
             if (attempt < queue.maxRetries) {
-              const retryDelay = queue.retryDelayMs + randomJitter(queue.jitterMs);
+              retryCount += 1;
+              const retryDelay = computeRetryDelayMs({
+                queue,
+                retryAttempt: attempt + 1
+              });
+              emitProgress?.({
+                progress: Math.max(1, Math.min(98, Math.floor(((completed + failed) / jobs.length) * 100))),
+                phase: `Retry ${attempt + 1}/${queue.maxRetries} for ${job.url}`,
+                context: {
+                  workerId,
+                  currentUrl: job.url,
+                  retryAttempt: attempt + 1,
+                  maxRetries: queue.maxRetries,
+                  retryDelayMs: retryDelay,
+                  reliabilityProfile: queue.reliability.profile,
+                  backoffStrategy: queue.reliability.backoffStrategy,
+                  jitterMode: queue.reliability.jitterMode,
+                  sessionReuseMode: queue.reliability.sessionReuseMode
+                }
+              });
               await delay(retryDelay);
             }
           } finally {
-            if (tab?.id) {
+            if (!workerContext.stickySession && tab?.id) {
               await removeTab({
                 tabId: tab.id,
                 chromeApi
@@ -658,43 +802,58 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
       }
 
       async function workerLoop(workerId) {
-        while (true) {
-          throwIfAborted(signal);
-          const currentIndex = nextJobIndex;
-          if (currentIndex >= jobs.length) {
-            return;
-          }
-          nextJobIndex += 1;
-          const job = jobs[currentIndex];
-
-          const result = await processJob(job);
-          if (result.ok) {
-            rows.push(result.row);
-            completed += 1;
-          } else {
-            failed += 1;
-            failures.push({
-              url: job.url,
-              error: result.error,
-              attempts: Number(result.attempts || queue.maxRetries + 1)
-            });
-          }
-
-          const progress = Math.min(99, Math.floor(((completed + failed) / jobs.length) * 100));
-          emitProgress?.({
-            progress,
-            phase: `Bulk extraction ${completed + failed}/${jobs.length}`,
-            context: {
-              workerId,
-              completed,
-              failed,
-              remaining: Math.max(0, jobs.length - completed - failed),
-              currentUrl: job.url
+        const workerContext = {
+          stickySession: queue.reliability.sessionReuseMode === "sticky",
+          tabId: null
+        };
+        try {
+          while (true) {
+            throwIfAborted(signal);
+            const currentIndex = nextJobIndex;
+            if (currentIndex >= jobs.length) {
+              return;
             }
-          });
+            nextJobIndex += 1;
+            const job = jobs[currentIndex];
 
-          if (queue.delayBetweenRequestsMs > 0 && completed + failed < jobs.length) {
-            await delay(queue.delayBetweenRequestsMs + randomJitter(queue.jitterMs));
+            const result = await processJob(job, workerId, workerContext);
+            if (result.ok) {
+              rows.push(result.row);
+              completed += 1;
+            } else {
+              failed += 1;
+              failures.push({
+                url: job.url,
+                error: result.error,
+                attempts: Number(result.attempts || queue.maxRetries + 1)
+              });
+            }
+
+            const progress = Math.min(99, Math.floor(((completed + failed) / jobs.length) * 100));
+            emitProgress?.({
+              progress,
+              phase: `Bulk extraction ${completed + failed}/${jobs.length}`,
+              context: {
+                workerId,
+                completed,
+                failed,
+                retryCount,
+                remaining: Math.max(0, jobs.length - completed - failed),
+                currentUrl: job.url
+              }
+            });
+
+            if (queue.delayBetweenRequestsMs > 0 && completed + failed < jobs.length) {
+              const betweenDelay = queue.delayBetweenRequestsMs + randomJitter(resolveJitterWindowMs(queue));
+              await delay(betweenDelay);
+            }
+          }
+        } finally {
+          if (workerContext.stickySession && workerContext.tabId) {
+            await removeTab({
+              tabId: workerContext.tabId,
+              chromeApi
+            });
           }
         }
       }
@@ -712,7 +871,9 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
         phase: "Bulk extraction completed",
         context: {
           completed,
-          failed
+          failed,
+          retryCount,
+          reliabilityProfile: queue.reliability.profile
         }
       });
 
@@ -746,6 +907,13 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
             maps: actionConfig.mapsOptions
           },
           queue,
+          retryStats: {
+            totalRetryAttempts: retryCount,
+            profile: queue.reliability.profile,
+            backoffStrategy: queue.reliability.backoffStrategy,
+            jitterMode: queue.reliability.jitterMode,
+            sessionReuseMode: queue.reliability.sessionReuseMode
+          },
           inputUrls,
           successfulUrls,
           failedUrls,
@@ -767,8 +935,11 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
 export const __internal = Object.freeze({
   normalizeActionConfig,
   normalizeQueueConfig,
+  normalizeReliabilityConfig,
   normalizeEmailOptions,
   normalizePhoneOptions,
   normalizeTextOptions,
-  normalizeMapsOptions
+  normalizeMapsOptions,
+  computeRetryDelayMs,
+  resolveJitterWindowMs
 });

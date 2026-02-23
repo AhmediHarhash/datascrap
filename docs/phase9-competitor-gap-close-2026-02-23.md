@@ -42,12 +42,18 @@ Target outcome:
   - recovery controls (retry failed only + resume checkpoint)
   - downloadable failure reports (CSV/JSON)
   - page extraction summary checkpoint metadata (`inputUrls`, `failedUrls`, `unresolvedUrls`)
+- Workstream 6 slice 1 shipped:
+  - anti-block reliability profile controls (balanced/conservative/aggressive/custom)
+  - bounded retry backoff strategies + jitter modes wired to runtime
+  - optional sticky worker session/tab reuse mode
+  - retry telemetry + summary stats (`retryStats`) for reliability visibility
 - Tracking artifacts:
   - `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
   - `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
   - `docs/phase9-sprintB-integrations-pack-slice-2026-02-23.md`
   - `docs/phase9-sprintC-monitoring-alerts-slice-2026-02-23.md`
   - `docs/phase9-sprintC-scale-recovery-slice-2026-02-23.md`
+  - `docs/phase9-sprintD-reliability-profiles-slice-2026-02-23.md`
 
 ## Priority Workstreams (Only What We Need Next)
 

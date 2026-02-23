@@ -159,9 +159,16 @@ const elements = {
   queueRetries: document.getElementById("queue-retries"),
   queueRetryDelayMs: document.getElementById("queue-retry-delay-ms"),
   queueJitterMs: document.getElementById("queue-jitter-ms"),
+  queueReliabilityProfile: document.getElementById("queue-reliability-profile"),
+  queueBackoffStrategy: document.getElementById("queue-backoff-strategy"),
+  queueJitterMode: document.getElementById("queue-jitter-mode"),
+  queueRetryMinDelayMs: document.getElementById("queue-retry-min-delay-ms"),
+  queueRetryMaxDelayMs: document.getElementById("queue-retry-max-delay-ms"),
+  queueSessionReuseMode: document.getElementById("queue-session-reuse-mode"),
   queueWaitSelector: document.getElementById("queue-wait-selector"),
   queueWaitSelectorTimeoutMs: document.getElementById("queue-wait-selector-timeout-ms"),
   queueWaitPageLoad: document.getElementById("queue-wait-page-load"),
+  reliabilityProfileStatusLine: document.getElementById("reliability-profile-status-line"),
 
   tableRefreshBtn: document.getElementById("table-refresh-btn"),
   tableHistorySelect: document.getElementById("table-history-select"),
@@ -356,7 +363,8 @@ const state = {
   sessionWelcomeCounted: new Set(),
   dismissedWelcomeTools: new Set(),
   welcomeVisits: {},
-  speedProfiles: {}
+  speedProfiles: {},
+  reliabilitySettings: null
 };
 
 const SHELL_VIEWS = Object.freeze({
@@ -371,6 +379,7 @@ const WELCOME_VISIT_LIMIT = 3;
 const WELCOME_VISITS_STORAGE_KEY = "datascrap.sidepanel.welcome-visits.v1";
 const TEMPLATES_STORAGE_KEY = "datascrap.sidepanel.templates.v1";
 const SPEED_PROFILES_STORAGE_KEY = "datascrap.sidepanel.speed-profiles.v1";
+const RELIABILITY_SETTINGS_STORAGE_KEY = "datascrap.sidepanel.reliability-settings.v1";
 const TEMPLATE_LIMIT = 200;
 const TEMPLATE_BUNDLE_TYPE = "datascrap.templates.bundle";
 const TEMPLATE_BUNDLE_VERSION = "2026-02-23";
@@ -391,6 +400,34 @@ const DEFAULT_SPEED_PROFILES = Object.freeze({
     noChangeThreshold: 1
   })
 });
+const RELIABILITY_PROFILES = Object.freeze({
+  conservative: Object.freeze({
+    backoffStrategy: "exponential",
+    jitterMode: "full",
+    minRetryDelayMs: 1200,
+    maxRetryDelayMs: 30000,
+    sessionReuseMode: "sticky"
+  }),
+  balanced: Object.freeze({
+    backoffStrategy: "linear",
+    jitterMode: "bounded",
+    minRetryDelayMs: 700,
+    maxRetryDelayMs: 12000,
+    sessionReuseMode: "off"
+  }),
+  aggressive: Object.freeze({
+    backoffStrategy: "fixed",
+    jitterMode: "none",
+    minRetryDelayMs: 200,
+    maxRetryDelayMs: 3500,
+    sessionReuseMode: "off"
+  })
+});
+const RELIABILITY_PROFILE_NAMES = Object.freeze(["conservative", "balanced", "aggressive", "custom"]);
+const BACKOFF_STRATEGIES = Object.freeze(["fixed", "linear", "exponential"]);
+const JITTER_MODES = Object.freeze(["none", "bounded", "full"]);
+const SESSION_REUSE_MODES = Object.freeze(["off", "sticky"]);
+const DEFAULT_RELIABILITY_PROFILE = "balanced";
 const ROADMAP_NOTIFY_URLS = Object.freeze({
   scheduling: "https://datascrap.app/waitlist/scheduling",
   integrations: "https://datascrap.app/waitlist/integrations"
@@ -580,6 +617,11 @@ function parseNumber(value, fallback) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function normalizeEnumValue(value, allowedValues, fallback) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return allowedValues.includes(normalized) ? normalized : fallback;
 }
 
 function toCellText(value) {
@@ -950,6 +992,155 @@ function onSpeedProfileReset() {
   saveSpeedProfilesToStorage();
   applySpeedProfileDefaults(profileName);
   setSpeedProfileStatus(`Reset profile "${profileName}" to defaults`);
+}
+
+function setReliabilityProfileStatus(text, { error = false } = {}) {
+  if (!elements.reliabilityProfileStatusLine) return;
+  elements.reliabilityProfileStatusLine.textContent = String(text || "");
+  elements.reliabilityProfileStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function normalizeReliabilitySettingsInput(input = {}, fallbackProfile = DEFAULT_RELIABILITY_PROFILE) {
+  const source = input && typeof input === "object" ? input : {};
+  const fallback = normalizeEnumValue(fallbackProfile, RELIABILITY_PROFILE_NAMES, DEFAULT_RELIABILITY_PROFILE);
+  const profile = normalizeEnumValue(source.profile, RELIABILITY_PROFILE_NAMES, fallback);
+  const defaults = RELIABILITY_PROFILES[profile] || RELIABILITY_PROFILES[fallback] || RELIABILITY_PROFILES.balanced;
+  const minRetryDelayMs = clamp(parseNumber(source.minRetryDelayMs, defaults.minRetryDelayMs), 0, 120000);
+  const maxRetryDelayMs = clamp(parseNumber(source.maxRetryDelayMs, defaults.maxRetryDelayMs), minRetryDelayMs, 120000);
+  return {
+    profile,
+    backoffStrategy: normalizeEnumValue(source.backoffStrategy, BACKOFF_STRATEGIES, defaults.backoffStrategy),
+    jitterMode: normalizeEnumValue(source.jitterMode, JITTER_MODES, defaults.jitterMode),
+    minRetryDelayMs,
+    maxRetryDelayMs,
+    sessionReuseMode: normalizeEnumValue(source.sessionReuseMode, SESSION_REUSE_MODES, defaults.sessionReuseMode)
+  };
+}
+
+function loadReliabilitySettingsFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(RELIABILITY_SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return normalizeReliabilitySettingsInput({
+        profile: DEFAULT_RELIABILITY_PROFILE
+      });
+    }
+    const parsed = JSON.parse(raw);
+    return normalizeReliabilitySettingsInput(parsed, DEFAULT_RELIABILITY_PROFILE);
+  } catch {
+    return normalizeReliabilitySettingsInput({
+      profile: DEFAULT_RELIABILITY_PROFILE
+    });
+  }
+}
+
+function saveReliabilitySettingsToStorage() {
+  try {
+    globalThis.localStorage?.setItem(
+      RELIABILITY_SETTINGS_STORAGE_KEY,
+      JSON.stringify(state.reliabilitySettings || normalizeReliabilitySettingsInput())
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function applyReliabilitySettingsToControls(settings, { persist = true } = {}) {
+  const normalized = normalizeReliabilitySettingsInput(settings, DEFAULT_RELIABILITY_PROFILE);
+  elements.queueReliabilityProfile.value = normalized.profile;
+  elements.queueBackoffStrategy.value = normalized.backoffStrategy;
+  elements.queueJitterMode.value = normalized.jitterMode;
+  elements.queueRetryMinDelayMs.value = String(normalized.minRetryDelayMs);
+  elements.queueRetryMaxDelayMs.value = String(normalized.maxRetryDelayMs);
+  elements.queueSessionReuseMode.value = normalized.sessionReuseMode;
+  state.reliabilitySettings = normalized;
+  if (persist) {
+    saveReliabilitySettingsToStorage();
+  }
+  return normalized;
+}
+
+function readReliabilitySettingsFromControls() {
+  return normalizeReliabilitySettingsInput(
+    {
+      profile: elements.queueReliabilityProfile.value,
+      backoffStrategy: elements.queueBackoffStrategy.value,
+      jitterMode: elements.queueJitterMode.value,
+      minRetryDelayMs: elements.queueRetryMinDelayMs.value,
+      maxRetryDelayMs: elements.queueRetryMaxDelayMs.value,
+      sessionReuseMode: elements.queueSessionReuseMode.value
+    },
+    elements.queueReliabilityProfile.value || DEFAULT_RELIABILITY_PROFILE
+  );
+}
+
+function syncReliabilitySettingsFromControls({ persist = true } = {}) {
+  const normalized = readReliabilitySettingsFromControls();
+  return applyReliabilitySettingsToControls(normalized, {
+    persist
+  });
+}
+
+function onReliabilityProfileSelected() {
+  const profileName = normalizeEnumValue(
+    elements.queueReliabilityProfile.value,
+    RELIABILITY_PROFILE_NAMES,
+    DEFAULT_RELIABILITY_PROFILE
+  );
+  if (profileName === "custom") {
+    const custom = syncReliabilitySettingsFromControls({
+      persist: true
+    });
+    setReliabilityProfileStatus(
+      `Profile "${custom.profile}" using ${custom.backoffStrategy} backoff, ${custom.jitterMode} jitter`
+    );
+    return;
+  }
+
+  const defaults = RELIABILITY_PROFILES[profileName] || RELIABILITY_PROFILES.balanced;
+  const normalized = applyReliabilitySettingsToControls(
+    {
+      profile: profileName,
+      ...defaults
+    },
+    {
+      persist: true
+    }
+  );
+  setReliabilityProfileStatus(
+    `Profile "${normalized.profile}" applied (${normalized.backoffStrategy}, ${normalized.jitterMode}, ${normalized.sessionReuseMode})`
+  );
+}
+
+function onReliabilityControlChanged() {
+  const currentProfile = normalizeEnumValue(
+    elements.queueReliabilityProfile.value,
+    RELIABILITY_PROFILE_NAMES,
+    DEFAULT_RELIABILITY_PROFILE
+  );
+  if (currentProfile !== "custom") {
+    elements.queueReliabilityProfile.value = "custom";
+  }
+  const normalized = syncReliabilitySettingsFromControls({
+    persist: true
+  });
+  setReliabilityProfileStatus(
+    `Profile "${normalized.profile}" saved (${normalized.backoffStrategy}, ${normalized.jitterMode}, ${normalized.sessionReuseMode})`
+  );
+}
+
+function buildQueueReliabilityConfig() {
+  const normalized = syncReliabilitySettingsFromControls({
+    persist: true
+  });
+  return {
+    profile: normalized.profile,
+    backoffStrategy: normalized.backoffStrategy,
+    jitterMode: normalized.jitterMode,
+    minRetryDelayMs: normalized.minRetryDelayMs,
+    maxRetryDelayMs: normalized.maxRetryDelayMs,
+    sessionReuseMode: normalized.sessionReuseMode
+  };
 }
 
 function updateRunnerUi() {
@@ -3204,6 +3395,12 @@ function extractCommonTemplateControls() {
       queueRetries: String(elements.queueRetries.value || ""),
       queueRetryDelayMs: String(elements.queueRetryDelayMs.value || ""),
       queueJitterMs: String(elements.queueJitterMs.value || ""),
+      queueReliabilityProfile: String(elements.queueReliabilityProfile.value || ""),
+      queueBackoffStrategy: String(elements.queueBackoffStrategy.value || ""),
+      queueJitterMode: String(elements.queueJitterMode.value || ""),
+      queueRetryMinDelayMs: String(elements.queueRetryMinDelayMs.value || ""),
+      queueRetryMaxDelayMs: String(elements.queueRetryMaxDelayMs.value || ""),
+      queueSessionReuseMode: String(elements.queueSessionReuseMode.value || ""),
       queueWaitSelector: String(elements.queueWaitSelector.value || ""),
       queueWaitSelectorTimeoutMs: String(elements.queueWaitSelectorTimeoutMs.value || ""),
       queueWaitPageLoad: Boolean(elements.queueWaitPageLoad.checked),
@@ -3287,6 +3484,12 @@ function applyTemplatePayload(payload) {
     queueRetries: elements.queueRetries,
     queueRetryDelayMs: elements.queueRetryDelayMs,
     queueJitterMs: elements.queueJitterMs,
+    queueReliabilityProfile: elements.queueReliabilityProfile,
+    queueBackoffStrategy: elements.queueBackoffStrategy,
+    queueJitterMode: elements.queueJitterMode,
+    queueRetryMinDelayMs: elements.queueRetryMinDelayMs,
+    queueRetryMaxDelayMs: elements.queueRetryMaxDelayMs,
+    queueSessionReuseMode: elements.queueSessionReuseMode,
     queueWaitSelector: elements.queueWaitSelector,
     queueWaitSelectorTimeoutMs: elements.queueWaitSelectorTimeoutMs,
     queueWaitPageLoad: elements.queueWaitPageLoad,
@@ -3333,6 +3536,9 @@ function applyTemplatePayload(payload) {
   renderPageFields();
   applySpeedProfileDefaults(elements.speedProfile.value, {
     preserveManualOverrides: true
+  });
+  syncReliabilitySettingsFromControls({
+    persist: false
   });
   updatePageSourceUi();
   updatePageActionUi();
@@ -4451,6 +4657,7 @@ async function buildPageAutomationConfig() {
     maxRetries: parseNumber(elements.queueRetries.value, 1),
     retryDelayMs: parseNumber(elements.queueRetryDelayMs.value, 1200),
     jitterMs: parseNumber(elements.queueJitterMs.value, 220),
+    reliability: buildQueueReliabilityConfig(),
     waitForPageLoad: Boolean(elements.queueWaitPageLoad.checked),
     waitForSelector: String(elements.queueWaitSelector.value || "").trim(),
     waitForSelectorTimeoutMs: parseNumber(elements.queueWaitSelectorTimeoutMs.value, 4000)
@@ -4502,6 +4709,7 @@ async function buildMetadataAutomationConfig() {
     maxRetries: parseNumber(elements.queueRetries.value, 1),
     retryDelayMs: parseNumber(elements.queueRetryDelayMs.value, 1000),
     jitterMs: parseNumber(elements.queueJitterMs.value, 200),
+    reliability: buildQueueReliabilityConfig(),
     waitForPageLoad: Boolean(elements.queueWaitPageLoad.checked),
     waitForSelector: String(elements.queueWaitSelector.value || "").trim(),
     waitForSelectorTimeoutMs: parseNumber(elements.queueWaitSelectorTimeoutMs.value, 4000)
@@ -4668,6 +4876,24 @@ elements.speedProfileSaveBtn.addEventListener("click", () => {
 });
 elements.speedProfileResetBtn.addEventListener("click", () => {
   onSpeedProfileReset();
+});
+elements.queueReliabilityProfile.addEventListener("change", () => {
+  onReliabilityProfileSelected();
+});
+elements.queueBackoffStrategy.addEventListener("change", () => {
+  onReliabilityControlChanged();
+});
+elements.queueJitterMode.addEventListener("change", () => {
+  onReliabilityControlChanged();
+});
+elements.queueRetryMinDelayMs.addEventListener("change", () => {
+  onReliabilityControlChanged();
+});
+elements.queueRetryMaxDelayMs.addEventListener("change", () => {
+  onReliabilityControlChanged();
+});
+elements.queueSessionReuseMode.addEventListener("change", () => {
+  onReliabilityControlChanged();
 });
 elements.pageUrlSourceMode.addEventListener("change", updatePageSourceUi);
 elements.pageActionType.addEventListener("change", updatePageActionUi);
@@ -5127,6 +5353,7 @@ renderPageFields();
 state.welcomeVisits = loadWelcomeVisits();
 state.templates = loadTemplatesFromStorage();
 state.speedProfiles = loadSpeedProfilesFromStorage();
+state.reliabilitySettings = loadReliabilitySettingsFromStorage();
 renderTemplates();
 renderIntegrationSecrets();
 renderJobs([]);
@@ -5144,12 +5371,17 @@ setRoadmapStatus("Roadmap notify actions ready");
 setCloudStatus("Cloud control ready");
 setTemplatesStatus("Templates & diagnostics ready");
 setSpeedProfileStatus("Profile editor ready");
+setReliabilityProfileStatus("Reliability profiles ready");
 setUrlGeneratorStatus("URL generator ready");
 setPageRecoveryStatus("Recovery controls ready");
 updatePageRecoveryPreview();
 updateIntegrationTestUi();
 renderImagePreview();
 applySpeedProfileDefaults(elements.speedProfile.value || "normal");
+applyReliabilitySettingsToControls(state.reliabilitySettings, {
+  persist: false
+});
+setReliabilityProfileStatus(`Loaded profile "${state.reliabilitySettings?.profile || DEFAULT_RELIABILITY_PROFILE}"`);
 updatePageSourceUi();
 updatePageActionUi();
 await hydrateRunnerCatalog();
