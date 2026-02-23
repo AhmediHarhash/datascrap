@@ -22,8 +22,14 @@ Target outcome:
   - background list auto-detect service
   - sidepanel one-click apply + preview
   - epic9 smoke wiring
-- Tracking artifact:
+- Workstream 2 slice 1 shipped:
+  - template bundle import/export
+  - schema lock enforcement on run
+  - source-domain metadata
+  - epic10 smoke wiring
+- Tracking artifacts:
   - `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
+  - `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
 
 ## Priority Workstreams (Only What We Need Next)
 

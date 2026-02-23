@@ -262,12 +262,18 @@ const elements = {
   obsOutput: document.getElementById("obs-output"),
 
   templateName: document.getElementById("template-name"),
+  templateSourceDomains: document.getElementById("template-source-domains"),
+  templateSchemaLockEnabled: document.getElementById("template-schema-lock-enabled"),
   templateSelect: document.getElementById("template-select"),
   templateNotes: document.getElementById("template-notes"),
   templateSaveBtn: document.getElementById("template-save-btn"),
   templateApplyBtn: document.getElementById("template-apply-btn"),
   templateRunBtn: document.getElementById("template-run-btn"),
   templateDeleteBtn: document.getElementById("template-delete-btn"),
+  templateExportSelectedBtn: document.getElementById("template-export-selected-btn"),
+  templateExportAllBtn: document.getElementById("template-export-all-btn"),
+  templateImportBtn: document.getElementById("template-import-btn"),
+  templateImportFile: document.getElementById("template-import-file"),
   templateList: document.getElementById("template-list"),
   templatesStatusLine: document.getElementById("templates-status-line"),
 
@@ -326,6 +332,8 @@ const WELCOME_VISITS_STORAGE_KEY = "datascrap.sidepanel.welcome-visits.v1";
 const TEMPLATES_STORAGE_KEY = "datascrap.sidepanel.templates.v1";
 const SPEED_PROFILES_STORAGE_KEY = "datascrap.sidepanel.speed-profiles.v1";
 const TEMPLATE_LIMIT = 200;
+const TEMPLATE_BUNDLE_TYPE = "datascrap.templates.bundle";
+const TEMPLATE_BUNDLE_VERSION = "2026-02-23";
 const DEFAULT_SPEED_PROFILES = Object.freeze({
   slow: Object.freeze({
     attempts: 8,
@@ -347,6 +355,63 @@ const ROADMAP_NOTIFY_URLS = Object.freeze({
   scheduling: "https://datascrap.app/waitlist/scheduling",
   integrations: "https://datascrap.app/waitlist/integrations"
 });
+
+const PAGE_ACTION_SCHEMA_COLUMNS = Object.freeze({
+  [PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL]: Object.freeze(["emails", "emailCount", "emailDomains", "deepScannedPages"]),
+  [PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE]: Object.freeze(["phones", "phoneCount"]),
+  [PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT]: Object.freeze([
+    "title",
+    "description",
+    "author",
+    "publishDate",
+    "canonicalUrl",
+    "lang",
+    "h1",
+    "h2Count",
+    "paragraphCount",
+    "wordCount",
+    "excerpt",
+    "content"
+  ]),
+  [PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS]: Object.freeze([
+    "mapName",
+    "mapRating",
+    "mapCategory",
+    "mapAddress",
+    "mapLatitude",
+    "mapLongitude",
+    "mapPhone",
+    "mapWebsite",
+    "mapHours",
+    "mapReviewCount",
+    "mapImageCount"
+  ])
+});
+
+const METADATA_SCHEMA_COLUMNS = Object.freeze([
+  "url",
+  "title",
+  "description",
+  "author",
+  "publishDate",
+  "canonicalUrl",
+  "ogTitle",
+  "ogDescription",
+  "ogType",
+  "ogImage",
+  "twitterCard",
+  "metadataTagCount",
+  "schemaTypes",
+  "schemaTypeCount",
+  "jsonLdScriptsCount",
+  "jsonLdNodeCount",
+  "reviewCount",
+  "aggregateRatingCount",
+  "emailCount",
+  "phoneCount",
+  "detectedLang",
+  "jsonLdPreview"
+]);
 
 const TOOL_PRESETS = Object.freeze({
   list: {
@@ -935,14 +1000,7 @@ function loadTemplatesFromStorage() {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item) => item && typeof item === "object")
-      .map((item) => ({
-        id: String(item.id || randomId("tpl")),
-        name: String(item.name || "Untitled Template").trim() || "Untitled Template",
-        notes: String(item.notes || "").trim(),
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-        payload: item.payload && typeof item.payload === "object" ? item.payload : {}
-      }))
+      .map((item) => normalizeTemplateRecord(item))
       .slice(0, TEMPLATE_LIMIT);
   } catch {
     return [];
@@ -1013,12 +1071,14 @@ function renderSchedules() {
 }
 
 function renderTemplates() {
+  const previousSelection = String(elements.templateSelect.value || "").trim();
   elements.templateSelect.innerHTML = "";
   if (state.templates.length === 0) {
     const option = document.createElement("option");
     option.value = "";
     option.textContent = "No saved templates";
     elements.templateSelect.append(option);
+    applyTemplateMetaControls(null);
     elements.templateList.textContent = "No templates saved.";
     return;
   }
@@ -1030,9 +1090,20 @@ function renderTemplates() {
     elements.templateSelect.append(option);
   }
 
+  if (previousSelection && state.templates.some((template) => template.id === previousSelection)) {
+    elements.templateSelect.value = previousSelection;
+  }
+  const selectedTemplate = findSelectedTemplate() || state.templates[0];
+  if (selectedTemplate) {
+    elements.templateSelect.value = selectedTemplate.id;
+    applyTemplateMetaControls(selectedTemplate);
+  }
+
   const lines = state.templates.map((template) => {
     const runnerType = String(template.payload?.runnerType || "unknown");
-    return `${template.id} | ${template.name} | ${runnerType} | ${template.notes || "-"}`;
+    const domains = Array.isArray(template.sourceDomains) ? template.sourceDomains.join(",") : "";
+    const schema = template.schemaLock?.enabled ? `schema:${template.schemaLock.columns.length}` : "schema:off";
+    return `${template.id} | ${template.name} | ${runnerType} | ${schema} | domains=${domains || "-"} | ${template.notes || "-"}`;
   });
   renderTextLines(elements.templateList, lines, "No templates saved.");
 }
@@ -2645,6 +2716,104 @@ function parseLineSeparated(text) {
     .filter(Boolean);
 }
 
+function normalizeStringArray(values, { lowerCase = false } = {}) {
+  let source = values;
+  if (typeof source === "string") {
+    source = source
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (!Array.isArray(source)) return [];
+  const seen = new Set();
+  const output = [];
+  for (const raw of source) {
+    const value = lowerCase ? String(raw || "").trim().toLowerCase() : String(raw || "").trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    output.push(value);
+  }
+  return output;
+}
+
+function resolveExpectedColumnsForTemplateContext({
+  runnerType,
+  pageActionType,
+  listFields,
+  pageFields
+} = {}) {
+  const runner = String(runnerType || "").trim();
+  if (runner === RUNNER_TYPES.LIST_EXTRACTOR) {
+    return (Array.isArray(listFields) ? listFields : [])
+      .map((field, index) => normalizeFieldName(field?.name, index))
+      .filter(Boolean);
+  }
+  if (runner === RUNNER_TYPES.METADATA_EXTRACTOR) {
+    return [...METADATA_SCHEMA_COLUMNS];
+  }
+  if (runner !== RUNNER_TYPES.PAGE_EXTRACTOR) {
+    return [];
+  }
+
+  const action = String(pageActionType || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
+  if (action === PAGE_ACTION_TYPES.EXTRACT_PAGES) {
+    return (Array.isArray(pageFields) ? pageFields : [])
+      .map((field, index) => normalizeFieldName(field?.name, index))
+      .filter(Boolean);
+  }
+
+  const mapped = PAGE_ACTION_SCHEMA_COLUMNS[action];
+  return Array.isArray(mapped) ? [...mapped] : [];
+}
+
+function normalizeTemplateSchemaLock(rawSchemaLock, payload) {
+  const defaultColumns = resolveExpectedColumnsForTemplateContext({
+    runnerType: payload?.runnerType,
+    pageActionType: payload?.pageActionType,
+    listFields: payload?.listFields,
+    pageFields: payload?.pageFields
+  });
+  const source = rawSchemaLock && typeof rawSchemaLock === "object" ? rawSchemaLock : {};
+  const explicitColumns = normalizeStringArray(source.columns);
+  return {
+    enabled: Boolean(source.enabled),
+    columns: explicitColumns.length > 0 ? explicitColumns : defaultColumns,
+    runnerType: String(source.runnerType || payload?.runnerType || "").trim(),
+    pageActionType: String(source.pageActionType || payload?.pageActionType || "").trim()
+  };
+}
+
+function normalizeTemplateRecord(item) {
+  const payload = item?.payload && typeof item.payload === "object" ? item.payload : {};
+  return {
+    id: String(item?.id || randomId("tpl")),
+    name: String(item?.name || "Untitled Template").trim() || "Untitled Template",
+    notes: String(item?.notes || "").trim(),
+    sourceDomains: normalizeStringArray(item?.sourceDomains || item?.domains, {
+      lowerCase: true
+    }),
+    createdAt: item?.createdAt || new Date().toISOString(),
+    updatedAt: item?.updatedAt || item?.createdAt || new Date().toISOString(),
+    payload,
+    schemaLock: normalizeTemplateSchemaLock(item?.schemaLock, payload)
+  };
+}
+
+function downloadTextFile(filename, text, mimeType = "application/json") {
+  const blob = new Blob([String(text || "")], {
+    type: mimeType
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = String(filename || "download.txt");
+  anchor.rel = "noopener";
+  anchor.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+  }, 1000);
+}
+
 function buildEmailOptions() {
   return {
     deepScanEnabled: Boolean(elements.emailDeepScanEnabled.checked),
@@ -3319,6 +3488,111 @@ async function onCloudRefreshAll() {
   await onSchedulesList();
 }
 
+function buildTemplateSchemaLockFromCurrent(payload) {
+  const columns = resolveExpectedColumnsForTemplateContext({
+    runnerType: payload?.runnerType,
+    pageActionType: payload?.pageActionType,
+    listFields: payload?.listFields,
+    pageFields: payload?.pageFields
+  });
+  const enabled = Boolean(elements.templateSchemaLockEnabled?.checked) && columns.length > 0;
+  return {
+    enabled,
+    columns,
+    runnerType: String(payload?.runnerType || "").trim(),
+    pageActionType: String(payload?.pageActionType || "").trim()
+  };
+}
+
+function applyTemplateMetaControls(template) {
+  const sourceDomains = Array.isArray(template?.sourceDomains) ? template.sourceDomains : [];
+  elements.templateSourceDomains.value = sourceDomains.join(", ");
+  elements.templateSchemaLockEnabled.checked = Boolean(template?.schemaLock?.enabled);
+}
+
+function validateTemplateSchemaLock(template) {
+  const lock = template?.schemaLock;
+  if (!lock || !lock.enabled) return;
+
+  const expected = normalizeStringArray(lock.columns);
+  if (expected.length === 0) return;
+
+  const actual = resolveExpectedColumnsForTemplateContext({
+    runnerType: elements.runnerType.value,
+    pageActionType: elements.pageActionType.value,
+    listFields: state.listFields,
+    pageFields: state.pageFields
+  });
+  const actualNormalized = normalizeStringArray(actual);
+  const expectedSet = new Set(expected);
+  const actualSet = new Set(actualNormalized);
+  const missing = expected.filter((column) => !actualSet.has(column));
+  const extra = actualNormalized.filter((column) => !expectedSet.has(column));
+  if (missing.length === 0 && extra.length === 0) return;
+
+  const parts = [];
+  if (missing.length > 0) {
+    parts.push(`missing: ${missing.join(", ")}`);
+  }
+  if (extra.length > 0) {
+    parts.push(`extra: ${extra.join(", ")}`);
+  }
+  throw new Error(`Template schema lock mismatch (${parts.join(" | ")})`);
+}
+
+function toSerializableTemplate(template) {
+  const normalized = normalizeTemplateRecord(template);
+  return {
+    id: normalized.id,
+    name: normalized.name,
+    notes: normalized.notes,
+    sourceDomains: normalized.sourceDomains,
+    createdAt: normalized.createdAt,
+    updatedAt: normalized.updatedAt,
+    payload: normalized.payload,
+    schemaLock: normalized.schemaLock
+  };
+}
+
+function buildTemplateBundle(templates, scope = "selected") {
+  const items = (Array.isArray(templates) ? templates : [])
+    .filter(Boolean)
+    .map((template) => toSerializableTemplate(template));
+  return {
+    type: TEMPLATE_BUNDLE_TYPE,
+    version: TEMPLATE_BUNDLE_VERSION,
+    scope,
+    exportedAt: new Date().toISOString(),
+    templateCount: items.length,
+    templates: items
+  };
+}
+
+function parseTemplateBundleInput(parsed) {
+  if (Array.isArray(parsed)) {
+    return parsed;
+  }
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Template import JSON must be an object, array, or bundle");
+  }
+  if (Array.isArray(parsed.templates)) {
+    return parsed.templates;
+  }
+  if (parsed.payload && typeof parsed.payload === "object") {
+    return [parsed];
+  }
+  throw new Error("Template import JSON does not include templates");
+}
+
+function ensureUniqueTemplateId(templateId, usedIds) {
+  let next = String(templateId || randomId("template")).trim();
+  while (!next || usedIds.has(next)) {
+    next = randomId("template");
+  }
+  usedIds.add(next);
+  return next;
+}
+
 function onTemplateSave() {
   const name = String(elements.templateName.value || "").trim();
   if (!name) {
@@ -3330,22 +3604,31 @@ function onTemplateSave() {
 
   const notes = String(elements.templateNotes.value || "").trim();
   const payload = extractCommonTemplateControls();
+  const sourceDomains = normalizeStringArray(elements.templateSourceDomains.value, {
+    lowerCase: true
+  });
+  const schemaLock = buildTemplateSchemaLockFromCurrent(payload);
   const templateId = randomId("template");
   const now = new Date().toISOString();
 
-  state.templates.unshift({
+  state.templates.unshift(
+    normalizeTemplateRecord({
     id: templateId,
     name,
     notes,
+    sourceDomains,
+    schemaLock,
     payload,
     createdAt: now,
     updatedAt: now
-  });
+    })
+  );
   state.templates = state.templates.slice(0, TEMPLATE_LIMIT);
   saveTemplatesToStorage();
   renderTemplates();
   elements.templateSelect.value = templateId;
-  setTemplatesStatus(`Template saved: ${name}`);
+  applyTemplateMetaControls(state.templates[0]);
+  setTemplatesStatus(`Template saved: ${name} (${schemaLock.enabled ? "schema lock on" : "schema lock off"})`);
 }
 
 function onTemplateApply() {
@@ -3357,6 +3640,7 @@ function onTemplateApply() {
     return;
   }
   applyTemplatePayload(template.payload);
+  applyTemplateMetaControls(template);
   setTemplatesStatus(`Template applied: ${template.name}`);
 }
 
@@ -3368,9 +3652,17 @@ async function onTemplateRun() {
     });
     return;
   }
-  applyTemplatePayload(template.payload);
-  setTemplatesStatus(`Running template: ${template.name}`);
-  await onStart();
+  try {
+    applyTemplatePayload(template.payload);
+    applyTemplateMetaControls(template);
+    validateTemplateSchemaLock(template);
+    setTemplatesStatus(`Running template: ${template.name}`);
+    await onStart();
+  } catch (error) {
+    setTemplatesStatus(`Template run blocked: ${error.message}`, {
+      error: true
+    });
+  }
 }
 
 function onTemplateDelete() {
@@ -3385,6 +3677,82 @@ function onTemplateDelete() {
   saveTemplatesToStorage();
   renderTemplates();
   setTemplatesStatus(`Template deleted: ${template.name}`);
+}
+
+function onTemplateExportSelected() {
+  const template = findSelectedTemplate();
+  if (!template) {
+    setTemplatesStatus("Choose a template to export", {
+      error: true
+    });
+    return;
+  }
+  const bundle = buildTemplateBundle([template], "selected");
+  const safeName = String(template.name || "template")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "template";
+  const filename = `datascrap-template-${safeName}-${new Date().toISOString().slice(0, 10)}.json`;
+  downloadTextFile(filename, JSON.stringify(bundle, null, 2));
+  setTemplatesStatus(`Template exported: ${template.name}`);
+}
+
+function onTemplateExportAll() {
+  if (state.templates.length === 0) {
+    setTemplatesStatus("No templates to export", {
+      error: true
+    });
+    return;
+  }
+  const bundle = buildTemplateBundle(state.templates, "all");
+  const filename = `datascrap-templates-all-${new Date().toISOString().slice(0, 10)}.json`;
+  downloadTextFile(filename, JSON.stringify(bundle, null, 2));
+  setTemplatesStatus(`Exported ${state.templates.length} templates`);
+}
+
+async function onTemplateImportFromFile(file) {
+  if (!file) {
+    setTemplatesStatus("Choose a JSON file to import", {
+      error: true
+    });
+    return;
+  }
+  setTemplatesStatus("Importing templates...");
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const records = parseTemplateBundleInput(parsed);
+    const imported = [];
+    const usedIds = new Set(state.templates.map((item) => item.id));
+    const now = new Date().toISOString();
+    for (const raw of records) {
+      if (!raw || typeof raw !== "object") continue;
+      const normalized = normalizeTemplateRecord({
+        ...raw,
+        createdAt: raw.createdAt || now,
+        updatedAt: now
+      });
+      normalized.id = ensureUniqueTemplateId(normalized.id, usedIds);
+      imported.push(normalized);
+    }
+    if (imported.length === 0) {
+      throw new Error("No valid templates found in import file");
+    }
+    state.templates = [...imported, ...state.templates].slice(0, TEMPLATE_LIMIT);
+    saveTemplatesToStorage();
+    renderTemplates();
+    elements.templateSelect.value = imported[0].id;
+    applyTemplateMetaControls(imported[0]);
+    setTemplatesStatus(`Imported ${imported.length} templates`);
+  } catch (error) {
+    setTemplatesStatus(`Template import failed: ${error.message}`, {
+      error: true
+    });
+  } finally {
+    if (elements.templateImportFile) {
+      elements.templateImportFile.value = "";
+    }
+  }
 }
 
 async function onDiagnosticsSnapshot() {
@@ -4186,6 +4554,12 @@ elements.obsJobsBtn.addEventListener("click", () => {
 elements.templateSaveBtn.addEventListener("click", () => {
   onTemplateSave();
 });
+elements.templateSelect.addEventListener("change", () => {
+  const template = findSelectedTemplate();
+  if (template) {
+    applyTemplateMetaControls(template);
+  }
+});
 elements.templateApplyBtn.addEventListener("click", () => {
   onTemplateApply();
 });
@@ -4194,6 +4568,19 @@ elements.templateRunBtn.addEventListener("click", () => {
 });
 elements.templateDeleteBtn.addEventListener("click", () => {
   onTemplateDelete();
+});
+elements.templateExportSelectedBtn.addEventListener("click", () => {
+  onTemplateExportSelected();
+});
+elements.templateExportAllBtn.addEventListener("click", () => {
+  onTemplateExportAll();
+});
+elements.templateImportBtn.addEventListener("click", () => {
+  elements.templateImportFile.click();
+});
+elements.templateImportFile.addEventListener("change", () => {
+  const file = elements.templateImportFile.files?.[0] || null;
+  void onTemplateImportFromFile(file);
 });
 
 elements.diagnosticsSnapshotBtn.addEventListener("click", () => {

@@ -53,6 +53,10 @@
 - list auto-detect setup (background + sidepanel apply + smoke coverage).
 21) Tracking artifact:
 - `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
+22) Epic 9 Sprint A slice 2 implemented:
+- template marketplace v1 (import/export + schema lock + source-domain metadata).
+23) Tracking artifact:
+- `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

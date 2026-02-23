@@ -1003,6 +1003,16 @@
           </label>
           <div class="grid-two">
             <label class="field">
+              <span>Source Domains (optional)</span>
+              <input id="template-source-domains" type="text" placeholder="example.com, directory.com" />
+            </label>
+            <label class="checkbox-row">
+              <input id="template-schema-lock-enabled" type="checkbox" checked />
+              <span>Schema lock on run</span>
+            </label>
+          </div>
+          <div class="grid-two">
+            <label class="field">
               <span>Saved Templates</span>
               <select id="template-select"></select>
             </label>
@@ -1016,6 +1026,12 @@
             <button id="template-apply-btn" class="btn btn-ghost">Apply</button>
             <button id="template-run-btn" class="btn btn-ghost">Run</button>
             <button id="template-delete-btn" class="btn btn-ghost">Delete</button>
+          </div>
+          <div class="actions actions-4">
+            <button id="template-export-selected-btn" class="btn btn-ghost" type="button">Export Selected</button>
+            <button id="template-export-all-btn" class="btn btn-ghost" type="button">Export All</button>
+            <button id="template-import-btn" class="btn btn-ghost" type="button">Import Bundle</button>
+            <input id="template-import-file" type="file" accept=".json,application/json" hidden />
           </div>
           <div id="template-list" class="list-preview">No templates saved.</div>
         </div>
