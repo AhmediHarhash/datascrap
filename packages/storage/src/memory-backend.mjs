@@ -84,6 +84,9 @@ export async function createMemoryBackend() {
           total: rows.length
         };
       },
+      async getByDedupeKey(dedupeKey) {
+        return tableRows.get(dedupeKey) || null;
+      },
       async listByTableDataId(tableDataId, { limit = 100 } = {}) {
         const items = Array.from(tableRows.values()).filter((item) => item.tableDataId === tableDataId);
         return sortByDateDesc(items).slice(0, limit);
@@ -98,6 +101,10 @@ export async function createMemoryBackend() {
         };
         tableRows.set(dedupeKey, next);
         return { ...next };
+      },
+      async removeRow(dedupeKey) {
+        tableRows.delete(dedupeKey);
+        return true;
       },
       async removeByTableDataId(tableDataId) {
         let removed = 0;

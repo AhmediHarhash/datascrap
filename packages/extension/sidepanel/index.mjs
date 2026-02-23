@@ -64,7 +64,22 @@ const elements = {
   queueJitterMs: document.getElementById("queue-jitter-ms"),
   queueWaitSelector: document.getElementById("queue-wait-selector"),
   queueWaitSelectorTimeoutMs: document.getElementById("queue-wait-selector-timeout-ms"),
-  queueWaitPageLoad: document.getElementById("queue-wait-page-load")
+  queueWaitPageLoad: document.getElementById("queue-wait-page-load"),
+
+  tableRefreshBtn: document.getElementById("table-refresh-btn"),
+  tableHistorySelect: document.getElementById("table-history-select"),
+  tableLimit: document.getElementById("table-limit"),
+  tableSearch: document.getElementById("table-search"),
+  tableLoadBtn: document.getElementById("table-load-btn"),
+  tableClearFilterBtn: document.getElementById("table-clear-filter-btn"),
+  tableFilterColumn: document.getElementById("table-filter-column"),
+  tableFilterValue: document.getElementById("table-filter-value"),
+  tableRenameFrom: document.getElementById("table-rename-from"),
+  tableRenameTo: document.getElementById("table-rename-to"),
+  tableRenameBtn: document.getElementById("table-rename-btn"),
+  tableDedupeBtn: document.getElementById("table-dedupe-btn"),
+  tableStatusLine: document.getElementById("table-status-line"),
+  tableGrid: document.getElementById("table-grid")
 };
 
 const state = {
@@ -78,7 +93,11 @@ const state = {
   csvUrls: [],
   dataSources: [],
   dataSourceColumns: [],
-  dataSourceUrls: []
+  dataSourceUrls: [],
+  tableHistory: [],
+  tableColumns: [],
+  tableRows: [],
+  activeTableDataId: null
 };
 
 function randomId(prefix = "id") {
@@ -99,6 +118,30 @@ function appendLog(line, payload = null) {
 function parseNumber(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function toCellText(value) {
+  return String(value === undefined || value === null ? "" : value);
+}
+
+function normalizeColumnName(value, fallback = "") {
+  const raw = String(value || "").trim().toLowerCase();
+  const normalized = raw
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized || fallback;
+}
+
+function formatRelativeTimestamp(value) {
+  const iso = String(value || "").trim();
+  if (!iso) return "unknown";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString();
 }
 
 function normalizeFieldName(value, index) {
@@ -345,6 +388,366 @@ function setResolvedUrlsPreview(urls) {
   elements.pageResolvedUrlsPreview.value = list.slice(0, 25).join("\n");
 }
 
+function setTableStatus(text, { error = false } = {}) {
+  elements.tableStatusLine.textContent = String(text || "");
+  elements.tableStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function getSelectedTableDataId() {
+  return String(elements.tableHistorySelect.value || "").trim();
+}
+
+function parseTableLimit() {
+  return clamp(parseNumber(elements.tableLimit.value, 300), 20, 2000);
+}
+
+function renderTableHistoryOptions(items, preferredTableDataId = "") {
+  const list = Array.isArray(items) ? items : [];
+  const preferred = String(preferredTableDataId || "").trim();
+  const current = getSelectedTableDataId();
+  const desired = preferred || current || String(state.activeTableDataId || "");
+
+  elements.tableHistorySelect.innerHTML = "";
+  if (list.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No table history yet";
+    elements.tableHistorySelect.append(option);
+    state.activeTableDataId = null;
+    return;
+  }
+
+  for (const item of list) {
+    const tableDataId = String(item?.tableDataId || "").trim();
+    if (!tableDataId) continue;
+    const option = document.createElement("option");
+    option.value = tableDataId;
+    const runner = String(item?.runnerType || "unknown");
+    const rowCount = Number(item?.rowCount || 0);
+    const updatedAt = formatRelativeTimestamp(item?.updatedAt || item?.createdAt);
+    option.textContent = `${tableDataId.slice(0, 8)}... | ${runner} | rows ${rowCount} | ${updatedAt}`;
+    elements.tableHistorySelect.append(option);
+  }
+
+  const hasDesired = list.some((item) => String(item?.tableDataId || "").trim() === desired);
+  if (hasDesired) {
+    elements.tableHistorySelect.value = desired;
+  }
+  state.activeTableDataId = getSelectedTableDataId() || String(list[0]?.tableDataId || "").trim() || null;
+}
+
+function renderTableColumnOptions(columns) {
+  const list = Array.isArray(columns) ? columns : [];
+  const filterValue = String(elements.tableFilterColumn.value || "").trim();
+  const renameValue = String(elements.tableRenameFrom.value || "").trim();
+  state.tableColumns = list;
+
+  elements.tableFilterColumn.innerHTML = "";
+  const allColumnsOption = document.createElement("option");
+  allColumnsOption.value = "";
+  allColumnsOption.textContent = "All columns";
+  elements.tableFilterColumn.append(allColumnsOption);
+
+  elements.tableRenameFrom.innerHTML = "";
+  const renamePlaceholder = document.createElement("option");
+  renamePlaceholder.value = "";
+  renamePlaceholder.textContent = "Select column";
+  elements.tableRenameFrom.append(renamePlaceholder);
+
+  for (const columnName of list) {
+    const filterOption = document.createElement("option");
+    filterOption.value = columnName;
+    filterOption.textContent = columnName;
+    elements.tableFilterColumn.append(filterOption);
+
+    const renameOption = document.createElement("option");
+    renameOption.value = columnName;
+    renameOption.textContent = columnName;
+    elements.tableRenameFrom.append(renameOption);
+  }
+
+  if (list.includes(filterValue)) {
+    elements.tableFilterColumn.value = filterValue;
+  }
+  if (list.includes(renameValue)) {
+    elements.tableRenameFrom.value = renameValue;
+  }
+}
+
+async function onTableCellBlur(cell) {
+  if (!(cell instanceof HTMLElement)) return;
+
+  const tableDataId = String(state.activeTableDataId || "").trim();
+  const dedupeKey = String(cell.dataset.rowKey || "").trim();
+  const columnName = String(cell.dataset.columnName || "").trim();
+  if (!tableDataId || !dedupeKey || !columnName) return;
+
+  const previousValue = toCellText(cell.dataset.value || "");
+  const nextValue = toCellText(cell.textContent || "");
+  if (nextValue === previousValue || cell.dataset.saving === "1") return;
+
+  cell.dataset.saving = "1";
+  cell.style.opacity = "0.6";
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_UPDATE_CELL_REQUEST, {
+      tableDataId,
+      dedupeKey,
+      columnName,
+      value: nextValue
+    });
+    const committedValue = toCellText(response?.rowData?.[columnName] ?? nextValue);
+    cell.textContent = committedValue;
+    cell.dataset.value = committedValue;
+
+    const targetRow = state.tableRows.find((item) => item?.dedupeKey === dedupeKey);
+    if (targetRow) {
+      targetRow.rowData = {
+        ...(targetRow.rowData || {}),
+        [columnName]: committedValue
+      };
+      targetRow.updatedAt = response?.updatedAt || new Date().toISOString();
+    }
+
+    setTableStatus(`Saved cell: ${columnName}`);
+  } catch (error) {
+    cell.textContent = previousValue;
+    setTableStatus(`Cell update failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table cell update failed", {
+      tableDataId,
+      dedupeKey,
+      columnName,
+      message: error.message
+    });
+  } finally {
+    delete cell.dataset.saving;
+    cell.style.opacity = "";
+  }
+}
+
+function renderTableGrid(rows, columns) {
+  const dataRows = Array.isArray(rows) ? rows : [];
+  const dataColumns = Array.isArray(columns) ? columns : [];
+  elements.tableGrid.innerHTML = "";
+
+  if (dataRows.length === 0 || dataColumns.length === 0) {
+    elements.tableGrid.className = "table-grid-empty";
+    elements.tableGrid.textContent = "No rows found for this table and filter.";
+    return;
+  }
+
+  elements.tableGrid.className = "";
+  const table = document.createElement("table");
+  table.className = "table-grid-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const indexHead = document.createElement("th");
+  indexHead.textContent = "#";
+  headRow.append(indexHead);
+  for (const columnName of dataColumns) {
+    const th = document.createElement("th");
+    th.textContent = columnName;
+    headRow.append(th);
+  }
+  thead.append(headRow);
+  table.append(thead);
+
+  const tbody = document.createElement("tbody");
+  dataRows.forEach((row, rowIndex) => {
+    const tr = document.createElement("tr");
+    if (row?.sourceUrl) {
+      tr.title = `source: ${row.sourceUrl}`;
+    }
+
+    const indexCell = document.createElement("td");
+    indexCell.className = "table-grid-meta";
+    indexCell.textContent = String(rowIndex + 1);
+    tr.append(indexCell);
+
+    for (const columnName of dataColumns) {
+      const td = document.createElement("td");
+      td.className = "table-grid-cell";
+      td.contentEditable = "true";
+      td.spellcheck = false;
+      const cellValue = toCellText(row?.rowData?.[columnName]);
+      td.textContent = cellValue;
+      td.dataset.value = cellValue;
+      td.dataset.rowKey = String(row?.dedupeKey || "");
+      td.dataset.columnName = columnName;
+      td.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          td.blur();
+        }
+      });
+      td.addEventListener("blur", () => {
+        void onTableCellBlur(td);
+      });
+      tr.append(td);
+    }
+
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  elements.tableGrid.append(table);
+}
+
+async function hydrateTableHistory({ preserveSelection = true } = {}) {
+  const preferredTableDataId = preserveSelection ? getSelectedTableDataId() || String(state.activeTableDataId || "") : "";
+  const response = await sendMessage(MESSAGE_TYPES.TABLE_HISTORY_LIST_REQUEST, {
+    limit: 160
+  });
+  const items = Array.isArray(response.items) ? response.items : [];
+  state.tableHistory = items;
+  renderTableHistoryOptions(items, preferredTableDataId);
+}
+
+async function loadSelectedTableRows({ silent = false } = {}) {
+  const tableDataId = getSelectedTableDataId();
+  if (!tableDataId) {
+    state.activeTableDataId = null;
+    state.tableRows = [];
+    renderTableColumnOptions([]);
+    renderTableGrid([], []);
+    setTableStatus("No table selected");
+    return;
+  }
+
+  state.activeTableDataId = tableDataId;
+  if (!silent) {
+    setTableStatus("Loading rows...");
+  }
+
+  const payload = {
+    tableDataId,
+    limit: parseTableLimit(),
+    search: String(elements.tableSearch.value || "").trim(),
+    filterColumn: String(elements.tableFilterColumn.value || "").trim(),
+    filterValue: String(elements.tableFilterValue.value || "").trim()
+  };
+
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_ROWS_REQUEST, payload);
+    const rows = Array.isArray(response.rows) ? response.rows : [];
+    const columns = Array.isArray(response.columns) ? response.columns : [];
+    state.tableRows = rows;
+    renderTableColumnOptions(columns);
+    renderTableGrid(rows, columns);
+
+    setTableStatus(
+      `Rows loaded: ${Number(response.filteredRows || rows.length)}/${Number(response.totalRows || rows.length)}`
+    );
+    appendLog("table rows loaded", {
+      tableDataId,
+      totalRows: Number(response.totalRows || rows.length),
+      filteredRows: Number(response.filteredRows || rows.length),
+      columns: columns.length
+    });
+  } catch (error) {
+    state.tableRows = [];
+    renderTableGrid([], []);
+    setTableStatus(`Table load failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table rows load failed", {
+      tableDataId,
+      message: error.message
+    });
+  }
+}
+
+function clearTableFilters() {
+  elements.tableSearch.value = "";
+  elements.tableFilterColumn.value = "";
+  elements.tableFilterValue.value = "";
+}
+
+async function onRenameTableColumn() {
+  const tableDataId = getSelectedTableDataId();
+  const fromColumn = String(elements.tableRenameFrom.value || "").trim();
+  const toColumn = normalizeColumnName(elements.tableRenameTo.value, "");
+  if (!tableDataId) {
+    setTableStatus("Pick a table before renaming", {
+      error: true
+    });
+    return;
+  }
+  if (!fromColumn || !toColumn) {
+    setTableStatus("Both source and target column names are required", {
+      error: true
+    });
+    return;
+  }
+
+  setTableStatus(`Renaming ${fromColumn} -> ${toColumn}...`);
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_RENAME_COLUMN_REQUEST, {
+      tableDataId,
+      fromColumn,
+      toColumn
+    });
+    await hydrateDataSources();
+    await hydrateTableHistory({
+      preserveSelection: true
+    });
+    await loadSelectedTableRows({
+      silent: true
+    });
+    elements.tableRenameTo.value = "";
+    elements.tableRenameFrom.value = toColumn;
+    setTableStatus(`Column renamed. Updated rows: ${Number(response.renamedRows || 0)}`);
+    appendLog("table column renamed", response);
+  } catch (error) {
+    setTableStatus(`Rename failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table column rename failed", {
+      tableDataId,
+      fromColumn,
+      toColumn,
+      message: error.message
+    });
+  }
+}
+
+async function onDedupeTableRows() {
+  const tableDataId = getSelectedTableDataId();
+  if (!tableDataId) {
+    setTableStatus("Pick a table before dedupe", {
+      error: true
+    });
+    return;
+  }
+
+  setTableStatus("Deduping rows...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.TABLE_DEDUPE_REQUEST, {
+      tableDataId
+    });
+    await hydrateDataSources();
+    await hydrateTableHistory({
+      preserveSelection: true
+    });
+    await loadSelectedTableRows({
+      silent: true
+    });
+    setTableStatus(
+      `Dedupe done. Removed: ${Number(response.removed || 0)}, Remaining: ${Number(response.remaining || 0)}`
+    );
+    appendLog("table dedupe complete", response);
+  } catch (error) {
+    setTableStatus(`Dedupe failed: ${error.message}`, {
+      error: true
+    });
+    appendLog("table dedupe failed", {
+      tableDataId,
+      message: error.message
+    });
+  }
+}
+
 function resolveStatusFromEvent(eventPayload) {
   const eventType = eventPayload.eventType;
   if (eventType === AUTOMATION_EVENT_TYPES.STARTED) return AUTOMATION_STATES.RUNNING;
@@ -370,6 +773,14 @@ function handleRuntimeEvent(eventPayload) {
     nextStatus === AUTOMATION_STATES.ERROR
   ) {
     state.lastTerminalAutomationId = automationId || state.lastTerminalAutomationId;
+    void hydrateDataSources().catch(() => {
+      appendLog("datasource refresh failed after terminal event");
+    });
+    void hydrateTableHistory({
+      preserveSelection: true
+    }).catch(() => {
+      appendLog("table history refresh failed after terminal event");
+    });
   }
 
   appendLog(`event: ${eventPayload.eventType}`, eventPayload.payload || {});
@@ -480,6 +891,7 @@ async function hydrateDataSources() {
   });
   const items = Array.isArray(response.items) ? response.items : [];
   state.dataSources = items;
+  const currentValue = String(elements.pageDatasourceSelect.value || "").trim();
 
   elements.pageDatasourceSelect.innerHTML = "";
   if (items.length === 0) {
@@ -496,6 +908,9 @@ async function hydrateDataSources() {
     const runner = item.runnerType || "unknown";
     const rows = Number(item.rowCount || 0);
     option.textContent = `${item.tableDataId.slice(0, 8)}... (${runner}, rows: ${rows})`;
+    if (currentValue && currentValue === item.tableDataId) {
+      option.selected = true;
+    }
     elements.pageDatasourceSelect.append(option);
   }
 }
@@ -846,6 +1261,9 @@ elements.refreshDatasourcesBtn.addEventListener("click", () => {
     if (elements.pageDatasourceSelect.value) {
       await loadDataSourceUrls();
     }
+    await hydrateTableHistory({
+      preserveSelection: true
+    });
   })();
 });
 elements.loadDatasourceUrlsBtn.addEventListener("click", () => {
@@ -856,6 +1274,59 @@ elements.pageDatasourceColumn.addEventListener("change", () => {
 });
 elements.pageDatasourceSelect.addEventListener("change", () => {
   void loadDataSourceUrls();
+});
+
+elements.tableRefreshBtn.addEventListener("click", () => {
+  void (async () => {
+    await hydrateDataSources();
+    await hydrateTableHistory({
+      preserveSelection: true
+    });
+    if (getSelectedTableDataId()) {
+      await loadSelectedTableRows({
+        silent: true
+      });
+    }
+  })();
+});
+elements.tableLoadBtn.addEventListener("click", () => {
+  void loadSelectedTableRows();
+});
+elements.tableHistorySelect.addEventListener("change", () => {
+  void loadSelectedTableRows({
+    silent: true
+  });
+});
+elements.tableClearFilterBtn.addEventListener("click", () => {
+  clearTableFilters();
+  void loadSelectedTableRows();
+});
+elements.tableRenameBtn.addEventListener("click", () => {
+  void onRenameTableColumn();
+});
+elements.tableDedupeBtn.addEventListener("click", () => {
+  void onDedupeTableRows();
+});
+elements.tableFilterColumn.addEventListener("change", () => {
+  void loadSelectedTableRows();
+});
+elements.tableSearch.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void loadSelectedTableRows();
+  }
+});
+elements.tableFilterValue.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void loadSelectedTableRows();
+  }
+});
+elements.tableLimit.addEventListener("change", () => {
+  elements.tableLimit.value = String(parseTableLimit());
+});
+elements.tableRenameTo.addEventListener("blur", () => {
+  elements.tableRenameTo.value = normalizeColumnName(elements.tableRenameTo.value, "");
 });
 
 elements.pageCsvFile.addEventListener("change", () => {
@@ -904,11 +1375,24 @@ chrome.runtime.onMessage.addListener((message) => {
 renderListFields();
 renderPageFields();
 setPickerStatus("idle");
+setTableStatus("No table loaded");
 applySpeedProfileDefaults("normal");
 updatePageSourceUi();
 updatePageActionUi();
 await hydrateRunnerCatalog();
 await hydrateDataSources().catch(() => {
   appendLog("datasource list failed");
+});
+await hydrateTableHistory({
+  preserveSelection: true
+}).catch(() => {
+  appendLog("table history list failed");
+});
+await loadSelectedTableRows({
+  silent: true
+}).catch(() => {
+  setTableStatus("Unable to load table rows", {
+    error: true
+  });
 });
 await hydrateSnapshot();

@@ -233,6 +233,67 @@
 
       <section class="panel">
         <div class="panel-title-row">
+          <h2>Data Table</h2>
+          <button id="table-refresh-btn" class="btn btn-ghost">Refresh</button>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>History Table</span>
+            <select id="table-history-select"></select>
+          </label>
+          <label class="field">
+            <span>Rows Limit</span>
+            <input id="table-limit" type="number" min="20" max="2000" value="300" />
+          </label>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>Search</span>
+            <input id="table-search" type="text" placeholder="Search across all columns" />
+          </label>
+          <div class="button-stack">
+            <button id="table-load-btn" class="btn">Load Rows</button>
+            <button id="table-clear-filter-btn" class="btn btn-ghost">Clear Filters</button>
+          </div>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>Filter Column</span>
+            <select id="table-filter-column"></select>
+          </label>
+          <label class="field">
+            <span>Filter Value</span>
+            <input id="table-filter-value" type="text" placeholder="column contains..." />
+          </label>
+        </div>
+
+        <div class="grid-two">
+          <label class="field">
+            <span>Rename Column (from)</span>
+            <select id="table-rename-from"></select>
+          </label>
+          <label class="field">
+            <span>Rename Column (to)</span>
+            <input id="table-rename-to" type="text" placeholder="new_column_name" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="table-rename-btn" class="btn">Rename Column</button>
+          <button id="table-dedupe-btn" class="btn">Dedupe Rows</button>
+          <span id="table-status-line" class="table-status">No table loaded</span>
+        </div>
+
+        <div id="table-grid-wrap" class="table-grid-wrap">
+          <div id="table-grid" class="table-grid-empty">Load a table to view rows.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
           <h2>Live Events</h2>
           <div class="panel-actions">
             <span id="picker-status" class="picker-status">picker: idle</span>

@@ -2,6 +2,13 @@ import { createAutomationRuntime } from "../vendor/core/src/automation-runtime.m
 import { createPermissionManager } from "../vendor/core/src/permission-manager.mjs";
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import { createStorageClient } from "../vendor/storage/src/storage-client.mjs";
+import {
+  dedupeTableRows,
+  getTableRows,
+  listTableHistory,
+  renameTableColumn,
+  updateTableCell
+} from "./data-table-service.mjs";
 import { listDataSources, resolveDataSourceUrls } from "./datasource-service.mjs";
 import { createListExtractionEngine } from "./list-extraction-engine.mjs";
 import { createPageExtractionEngine } from "./page-extraction-engine.mjs";
@@ -150,6 +157,95 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         sendResponse({
           type: MESSAGE_TYPES.DATA_SOURCE_URLS_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_HISTORY_LIST_REQUEST) {
+        const items = await listTableHistory({
+          storageClient,
+          limit: Number(message?.payload?.limit || 100)
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_HISTORY_LIST_RESPONSE,
+          payload: {
+            items
+          }
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_ROWS_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await getTableRows({
+          storageClient,
+          tableDataId,
+          limit: Number(message?.payload?.limit || 300),
+          search: message?.payload?.search || "",
+          filterColumn: message?.payload?.filterColumn || "",
+          filterValue: message?.payload?.filterValue || ""
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_ROWS_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_UPDATE_CELL_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        const dedupeKey = String(message?.payload?.dedupeKey || "").trim();
+        const columnName = String(message?.payload?.columnName || "").trim();
+        if (!tableDataId || !dedupeKey || !columnName) {
+          throw new Error("tableDataId, dedupeKey, and columnName are required");
+        }
+        const result = await updateTableCell({
+          storageClient,
+          tableDataId,
+          dedupeKey,
+          columnName,
+          value: message?.payload?.value
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_UPDATE_CELL_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_RENAME_COLUMN_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await renameTableColumn({
+          storageClient,
+          tableDataId,
+          fromColumn: message?.payload?.fromColumn,
+          toColumn: message?.payload?.toColumn
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_RENAME_COLUMN_RESPONSE,
+          payload: result
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.TABLE_DEDUPE_REQUEST) {
+        const tableDataId = String(message?.payload?.tableDataId || "").trim();
+        if (!tableDataId) {
+          throw new Error("tableDataId is required");
+        }
+        const result = await dedupeTableRows({
+          storageClient,
+          tableDataId
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.TABLE_DEDUPE_RESPONSE,
           payload: result
         });
         return;

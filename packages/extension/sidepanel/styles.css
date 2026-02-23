@@ -235,6 +235,68 @@ textarea {
   font-style: italic;
 }
 
+.table-status {
+  font-size: 11px;
+  color: #8bb0ec;
+  display: inline-flex;
+  align-items: center;
+}
+
+.table-grid-wrap {
+  border: 1px solid rgba(111, 140, 222, 0.28);
+  border-radius: 10px;
+  overflow: auto;
+  background: rgba(4, 10, 22, 0.9);
+  max-height: 380px;
+}
+
+.table-grid-empty {
+  color: #7f98c7;
+  font-size: 12px;
+  padding: 12px;
+}
+
+.table-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.table-grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #111d3a;
+  color: #bdd6ff;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(109, 138, 223, 0.38);
+  padding: 8px;
+}
+
+.table-grid-table td {
+  border-bottom: 1px solid rgba(84, 109, 181, 0.25);
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.table-grid-cell {
+  width: 100%;
+  border: 1px solid rgba(111, 140, 222, 0.25);
+  border-radius: 6px;
+  background: rgba(8, 14, 31, 0.75);
+  color: var(--text);
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.table-grid-meta {
+  color: #9ab6eb;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;

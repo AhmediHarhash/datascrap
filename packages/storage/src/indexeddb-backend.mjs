@@ -261,6 +261,9 @@ export async function createIndexedDbBackend(options = {}) {
           sourceUrl
         });
       },
+      getByDedupeKey(dedupeKey) {
+        return getRecord(db, STORE_NAMES.TABLE_ROWS, dedupeKey);
+      },
       listByTableDataId(tableDataId, { limit = 100 } = {}) {
         return listRecords(db, STORE_NAMES.TABLE_ROWS, {
           indexName: "by_table_data_id",
@@ -271,6 +274,9 @@ export async function createIndexedDbBackend(options = {}) {
       },
       updateRow({ dedupeKey, patch }) {
         return updateRowPatch(db, { dedupeKey, patch });
+      },
+      removeRow(dedupeKey) {
+        return deleteRecord(db, STORE_NAMES.TABLE_ROWS, dedupeKey);
       },
       async removeByTableDataId(tableDataId) {
         return removeRowsByTableDataId(db, tableDataId);
