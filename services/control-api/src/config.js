@@ -10,6 +10,11 @@ function int(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function float(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function csv(value, fallback = []) {
   if (value === undefined || value === null) return fallback;
   const list = String(value)
@@ -49,9 +54,10 @@ const configuredActiveKid = String(process.env.JWT_ACTIVE_KID || "").trim();
 const jwtActiveKid = jwtAccessSecrets.some((item) => item.kid === configuredActiveKid)
   ? configuredActiveKid
   : jwtAccessSecrets[0].kid;
+const nodeEnv = process.env.NODE_ENV || "development";
 
 const config = {
-  nodeEnv: process.env.NODE_ENV || "development",
+  nodeEnv,
   port: int(process.env.PORT, 3000),
   appVersion: process.env.APP_VERSION || "0.1.0",
   requireDb: bool(process.env.REQUIRE_DB, false),
@@ -89,7 +95,20 @@ const config = {
   readCacheDefaultTtlSeconds: int(process.env.READ_CACHE_DEFAULT_TTL_SECONDS, 20),
   readCacheMaxEntries: int(process.env.READ_CACHE_MAX_ENTRIES, 5_000),
   licenseStatusCacheTtlSeconds: int(process.env.LICENSE_STATUS_CACHE_TTL_SECONDS, 20),
-  devicesListCacheTtlSeconds: int(process.env.DEVICES_LIST_CACHE_TTL_SECONDS, 15)
+  devicesListCacheTtlSeconds: int(process.env.DEVICES_LIST_CACHE_TTL_SECONDS, 15),
+  enableOptionalCloudFeatures: bool(process.env.ENABLE_OPTIONAL_CLOUD_FEATURES, false),
+  maxMetadataPayloadBytes: int(process.env.MAX_METADATA_PAYLOAD_BYTES, 32_768),
+  optInPolicyVersion: process.env.OPT_IN_POLICY_VERSION || "2026-02-23",
+  jobPollIntervalMs: int(process.env.JOB_POLL_INTERVAL_MS, 2_000),
+  jobMaxAttemptsDefault: int(process.env.JOB_MAX_ATTEMPTS_DEFAULT, 5),
+  jobBackoffBaseSeconds: int(process.env.JOB_BACKOFF_BASE_SECONDS, 15),
+  jobBackoffMultiplier: float(process.env.JOB_BACKOFF_MULTIPLIER, 2),
+  jobBackoffMaxSeconds: int(process.env.JOB_BACKOFF_MAX_SECONDS, 900),
+  jobLockTimeoutSeconds: int(process.env.JOB_LOCK_TIMEOUT_SECONDS, 300),
+  jobListMaxLimit: int(process.env.JOB_LIST_MAX_LIMIT, 100),
+  jobWorkerId: process.env.JOB_WORKER_ID || "",
+  vaultMasterKey: process.env.VAULT_MASTER_KEY || "",
+  vaultRequireKey: bool(process.env.VAULT_REQUIRE_KEY, nodeEnv === "production")
 };
 
 module.exports = { config };

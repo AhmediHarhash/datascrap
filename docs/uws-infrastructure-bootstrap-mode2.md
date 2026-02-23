@@ -118,12 +118,17 @@ Exit gate:
 Deliverables:
 - scheduling/integrations rolled out only after stable control plane.
 Checklist:
-- [ ] background job system isolated from core auth/license APIs
-- [ ] queue/backoff/dead-letter policies defined
-- [ ] integration secrets vaulting complete
-- [ ] opt-in data handling policy explicitly enforced
+- [x] background job system isolated from core auth/license APIs
+- [x] queue/backoff/dead-letter policies defined
+- [x] integration secrets vaulting complete
+- [x] opt-in data handling policy explicitly enforced
+Tracking doc:
+- `docs/phase5-optional-cloud-features-2026-02-23.md`
 Exit gate:
 - optional features do not degrade baseline auth/license SLAs.
+Verification:
+- API health/readiness still returns `200` in staging and production after Phase 5 rollout.
+- Staging Phase 5 smoke run passed (`phase5:smoke:control-api`) with queue job executed to success by isolated worker.
 
 ## Environment Layout
 1) `local`

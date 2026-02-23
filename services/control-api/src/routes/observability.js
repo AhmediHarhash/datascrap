@@ -5,6 +5,7 @@ const { config } = require("../config");
 const { getRateLimiterStats } = require("../middleware/rate-limit");
 const { cacheStats } = require("../services/cache");
 const { listRecentErrors, getErrorSummary } = require("../services/error-store");
+const { getQueueStats } = require("../services/jobs");
 const { currentWindowSnapshot, toPrometheus } = require("../services/metrics");
 
 const router = Router();
@@ -32,12 +33,13 @@ router.get("/api/observability/slo", requireObservabilityKey, (_req, res) => {
   return res.status(200).json(currentWindowSnapshot());
 });
 
-router.get("/api/observability/dashboard", requireObservabilityKey, (_req, res) => {
+router.get("/api/observability/dashboard", requireObservabilityKey, async (_req, res) => {
   if (!config.enableMetricsEndpoint) {
     return res.status(404).json({ error: "Observability endpoints are disabled" });
   }
 
   const snapshot = currentWindowSnapshot();
+  const queue = await getQueueStats();
   return res.status(200).json({
     generatedAt: snapshot.generatedAt,
     windowMinutes: snapshot.windowMinutes,
@@ -45,7 +47,8 @@ router.get("/api/observability/dashboard", requireObservabilityKey, (_req, res) 
     slo: snapshot.slo,
     topRoutes: snapshot.topRoutes,
     rateLimits: getRateLimiterStats(),
-    cache: cacheStats()
+    cache: cacheStats(),
+    queue
   });
 });
 
@@ -70,6 +73,18 @@ router.get("/api/observability/rate-limits", requireObservabilityKey, (_req, res
     generatedAt: new Date().toISOString(),
     windowSeconds: config.rateLimitWindowSeconds,
     items: getRateLimiterStats()
+  });
+});
+
+router.get("/api/observability/jobs", requireObservabilityKey, async (_req, res) => {
+  if (!config.enableMetricsEndpoint) {
+    return res.status(404).json({ error: "Observability endpoints are disabled" });
+  }
+
+  const queue = await getQueueStats();
+  return res.status(200).json({
+    generatedAt: new Date().toISOString(),
+    queue
   });
 });
 

@@ -7,7 +7,10 @@ const helmet = require("helmet");
 
 const { authRouter } = require("./routes/auth");
 const { configRouter } = require("./routes/config");
+const { dataHandlingRouter } = require("./routes/data-handling");
 const { devicesRouter } = require("./routes/devices");
+const { integrationsRouter } = require("./routes/integrations");
+const { jobsRouter } = require("./routes/jobs");
 const { licenseRouter } = require("./routes/license");
 const { observabilityRouter } = require("./routes/observability");
 const { config } = require("./config");
@@ -78,6 +81,9 @@ app.use(configRouter);
 app.use(authRouter);
 app.use(licenseRouter);
 app.use(devicesRouter);
+app.use(dataHandlingRouter);
+app.use(integrationsRouter);
+app.use(jobsRouter);
 app.use(observabilityRouter);
 
 app.use((_req, res) => {

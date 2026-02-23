@@ -1,0 +1,80 @@
+name: Job Queue Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  queue-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run Job Queue Monitor
+        id: queue
+        run: node services/control-api/scripts/job-queue-monitor.js
+        env:
+          OBSERVABILITY_URL_STAGING: ${{ vars.OBSERVABILITY_URL_STAGING }}
+          OBSERVABILITY_URL_PRODUCTION: ${{ vars.OBSERVABILITY_URL_PRODUCTION }}
+          OBSERVABILITY_KEY_STAGING: ${{ secrets.OBSERVABILITY_KEY_STAGING }}
+          OBSERVABILITY_KEY_PRODUCTION: ${{ secrets.OBSERVABILITY_KEY_PRODUCTION }}
+          MAX_DUE_JOBS: ${{ vars.MAX_DUE_JOBS }}
+          MAX_DEAD_LETTER_JOBS: ${{ vars.MAX_DEAD_LETTER_JOBS }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_WEBHOOK_BEARER_TOKEN: ${{ secrets.ALERT_WEBHOOK_BEARER_TOKEN }}
+
+      - name: Create Or Update Job Queue Incident Issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Job Queue Monitor Incident';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              'Automatic alert from job queue monitor workflow.',
+              '',
+              `- Workflow run: ${runUrl}`,
+              `- Trigger: ${context.eventName}`,
+              `- Timestamp (UTC): ${new Date().toISOString()}`,
+              '',
+              'Please inspect due queue depth and dead-letter count.'
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['incident', 'queue']
+              });
+            }

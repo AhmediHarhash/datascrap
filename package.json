@@ -4,7 +4,7 @@
   "private": true,
   "description": "Datascrap control plane bootstrap",
   "scripts": {
-    "start": "node services/control-api/src/server.js",
+    "start": "node services/control-api/scripts/start-runtime.js",
     "start:control-api": "node services/control-api/src/server.js",
     "dev:control-api": "node --watch services/control-api/src/server.js",
     "smoke:control-api": "node services/control-api/scripts/smoke.js",
@@ -14,7 +14,10 @@
     "cost:control-api": "node services/control-api/scripts/cost-monitor.js",
     "backup:verify:control-api": "node services/control-api/scripts/backup-verify.js",
     "chaos:check:control-api": "node services/control-api/scripts/chaos-check.js",
-    "jwt:generate:control-api": "node services/control-api/scripts/generate-jwt-secret.js"
+    "jwt:generate:control-api": "node services/control-api/scripts/generate-jwt-secret.js",
+    "jobs:worker:control-api": "node services/control-api/scripts/jobs-worker.js",
+    "phase5:smoke:control-api": "node services/control-api/scripts/phase5-smoke.js",
+    "queue:monitor:control-api": "node services/control-api/scripts/job-queue-monitor.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

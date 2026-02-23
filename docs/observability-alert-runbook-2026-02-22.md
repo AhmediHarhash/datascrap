@@ -20,6 +20,8 @@
   - title: `Cost Monitor Incident`
 - GitHub workflow `Backup Verify` automatically opens or comments on issue:
   - title: `Backup Verification Incident`
+- GitHub workflow `Job Queue Monitor` automatically opens or comments on issue:
+  - title: `Job Queue Monitor Incident`
 - This is active even when external webhook secrets are not configured.
 
 ## Alert Thresholds
@@ -38,6 +40,11 @@
 4) License latency alert:
 - condition: license p95 (`/api/license/status` + `/api/devices/validate-devices`) > `600ms` for 10 minutes
 - severity: medium
+
+5) Job queue pressure alert:
+- condition: queue due-now or dead-letter thresholds exceeded
+- source: `GET /api/observability/jobs`
+- severity: medium (high if dead-letter growth is sustained)
 
 ## Triage Steps
 1) Confirm blast radius:
