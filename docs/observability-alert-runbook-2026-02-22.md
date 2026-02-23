@@ -16,6 +16,8 @@
   - title: `Uptime Monitor Incident`
 - GitHub workflow `SLO Monitor` automatically opens or comments on issue:
   - title: `SLO Monitor Incident`
+- GitHub workflow `Cost Monitor` automatically opens or comments on issue:
+  - title: `Cost Monitor Incident`
 - This is active even when external webhook secrets are not configured.
 
 ## Alert Thresholds

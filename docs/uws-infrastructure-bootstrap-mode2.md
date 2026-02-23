@@ -101,12 +101,14 @@ Exit gate:
 ## Phase 4 - Scale and Cost Control
 Deliverables:
 - stable operation for larger active user base while keeping margins healthy.
+Tracking doc:
+- `docs/phase4-cost-performance-control-2026-02-22.md`
 Checklist:
-- [ ] per-endpoint rate-limit tuning
-- [ ] cache for hot read paths (only if required)
-- [ ] read/write query optimization and indexes
-- [ ] monthly cost dashboard and anomaly alerts
-- [ ] predictable overage strategy
+- [x] per-endpoint rate-limit tuning
+- [x] cache for hot read paths (only if required)
+- [x] read/write query optimization and indexes
+- [x] monthly cost dashboard and anomaly alerts
+- [x] predictable overage strategy
 Exit gate:
 - cost per active user stays within target band for two billing cycles.
 

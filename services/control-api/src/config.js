@@ -51,7 +51,12 @@ const config = {
   observabilityApiKey: process.env.OBSERVABILITY_API_KEY || "",
   errorTrackingWebhookUrl: process.env.ERROR_TRACKING_WEBHOOK_URL || "",
   errorTrackingWebhookBearerToken: process.env.ERROR_TRACKING_WEBHOOK_BEARER_TOKEN || "",
-  errorTrackingMinIntervalSeconds: int(process.env.ERROR_TRACKING_MIN_INTERVAL_SECONDS, 15)
+  errorTrackingMinIntervalSeconds: int(process.env.ERROR_TRACKING_MIN_INTERVAL_SECONDS, 15),
+  enableReadCache: bool(process.env.ENABLE_READ_CACHE, true),
+  readCacheDefaultTtlSeconds: int(process.env.READ_CACHE_DEFAULT_TTL_SECONDS, 20),
+  readCacheMaxEntries: int(process.env.READ_CACHE_MAX_ENTRIES, 5_000),
+  licenseStatusCacheTtlSeconds: int(process.env.LICENSE_STATUS_CACHE_TTL_SECONDS, 20),
+  devicesListCacheTtlSeconds: int(process.env.DEVICES_LIST_CACHE_TTL_SECONDS, 15)
 };
 
 module.exports = { config };

@@ -1,0 +1,82 @@
+name: Cost Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 0 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  cost-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run Cost Monitor
+        id: cost
+        run: node services/control-api/scripts/cost-monitor.js
+        env:
+          MONTHLY_BUDGET_USD: ${{ vars.MONTHLY_BUDGET_USD }}
+          MONTH_TO_DATE_COST_USD: ${{ vars.MONTH_TO_DATE_COST_USD }}
+          COST_ALERT_THRESHOLD_PERCENT: ${{ vars.COST_ALERT_THRESHOLD_PERCENT }}
+          COST_HARD_CAP_PERCENT: ${{ vars.COST_HARD_CAP_PERCENT }}
+          DAILY_COST_SERIES_USD: ${{ vars.DAILY_COST_SERIES_USD }}
+          CURRENT_DAY_OF_MONTH: ${{ vars.CURRENT_DAY_OF_MONTH }}
+          DAYS_IN_MONTH: ${{ vars.DAYS_IN_MONTH }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_WEBHOOK_BEARER_TOKEN: ${{ secrets.ALERT_WEBHOOK_BEARER_TOKEN }}
+
+      - name: Create Or Update Cost Incident Issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Cost Monitor Incident';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              'Automatic alert from cost monitor workflow.',
+              '',
+              `- Workflow run: ${runUrl}`,
+              `- Trigger: ${context.eventName}`,
+              `- Timestamp (UTC): ${new Date().toISOString()}`,
+              '',
+              'Please review budget usage, projected month-end cost, and anomaly signals.'
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['incident', 'cost']
+              });
+            }
+

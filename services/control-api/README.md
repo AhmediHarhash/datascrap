@@ -29,6 +29,7 @@ npm run start:control-api
 - `GET /api/observability/slo`
 - `GET /api/observability/dashboard`
 - `GET /api/observability/errors/recent`
+- `GET /api/observability/rate-limits`
 - `GET /metrics`
 
 ## Smoke Test
@@ -61,6 +62,19 @@ Environment variables:
 - `MAX_AUTH_P95_MS` (default `600`)
 - `MAX_LICENSE_P95_MS` (default `600`)
 
+## Cost Monitor Script
+
+```bash
+node services/control-api/scripts/cost-monitor.js
+```
+
+Environment variables:
+- `MONTHLY_BUDGET_USD`
+- `MONTH_TO_DATE_COST_USD`
+- `COST_ALERT_THRESHOLD_PERCENT` (default `80`)
+- `COST_HARD_CAP_PERCENT` (default `100`)
+- `DAILY_COST_SERIES_USD` (optional comma-separated values)
+
 ## Notes
 
 - `migrate:control-api` needs `DATABASE_URL` set.
@@ -76,6 +90,7 @@ Environment variables:
   - `ERROR_TRACKING_WEBHOOK_URL`
   - `ERROR_TRACKING_WEBHOOK_BEARER_TOKEN`
   - `ERROR_TRACKING_MIN_INTERVAL_SECONDS`
+- Hot read paths (`/api/license/status` and `/api/devices`) use bounded in-memory cache with short TTL.
 
 ## Rollback Notes
 
@@ -86,3 +101,12 @@ DROP TABLE IF EXISTS idempotency_keys;
 ```
 
 - If rollback is applied, remove idempotency headers in clients or redeploy API with idempotency disabled.
+- Migration `0003_perf_indexes.sql` can be reverted safely with:
+
+```sql
+DROP INDEX IF EXISTS idx_licenses_account_created_at;
+DROP INDEX IF EXISTS idx_devices_account_created_at;
+DROP INDEX IF EXISTS idx_devices_account_last_seen_at;
+DROP INDEX IF EXISTS idx_sessions_account_revoked_expires;
+DROP INDEX IF EXISTS idx_audit_events_created_at;
+```

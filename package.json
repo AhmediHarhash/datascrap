@@ -10,7 +10,8 @@
     "smoke:control-api": "node services/control-api/scripts/smoke.js",
     "migrate:control-api": "node services/control-api/scripts/migrate.js",
     "uptime:control-api": "node services/control-api/scripts/uptime-monitor.js",
-    "slo:control-api": "node services/control-api/scripts/slo-monitor.js"
+    "slo:control-api": "node services/control-api/scripts/slo-monitor.js",
+    "cost:control-api": "node services/control-api/scripts/cost-monitor.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -6,6 +6,7 @@ const { config } = require("../config");
 const { withTransaction } = require("../db/pool");
 const { createRateLimiter, ipRateLimitKey } = require("../middleware/rate-limit");
 const { logAudit } = require("../services/audit");
+const { invalidate, get, set } = require("../services/cache");
 const {
   getIdempotencyKey,
   loadIdempotentResponse,
@@ -43,6 +44,14 @@ const devicesMutateRateLimit = createRateLimiter({
   keyResolver: licenseOrIpKey
 });
 
+function devicesListCacheKeyByHash(keyHash) {
+  return `devices-list:license:${keyHash}`;
+}
+
+function devicesListCacheKeyByRawKey(rawKey) {
+  return devicesListCacheKeyByHash(hashLicenseKey(rawKey));
+}
+
 async function getAccountByKey(client, rawKey) {
   const keyHash = hashLicenseKey(rawKey);
   const result = await client.query(
@@ -77,7 +86,8 @@ router.post("/api/devices/validate-devices", devicesValidateRateLimit, async (re
   const deviceId = String(req.body?.deviceId || "").trim();
   const deviceName = req.body?.deviceName ? String(req.body.deviceName).trim() : null;
   const idempotencyKey = getIdempotencyKey(req);
-  const idempotencyScopeKey = key ? `license:${hashLicenseKey(key)}` : null;
+  const keyHash = key ? hashLicenseKey(key) : null;
+  const idempotencyScopeKey = keyHash ? `license:${keyHash}` : null;
   let idempotencyRequestHash = null;
 
   if (!key || !deviceId) {
@@ -193,6 +203,10 @@ router.post("/api/devices/validate-devices", devicesValidateRateLimit, async (re
       });
     }
 
+    if (result.valid && keyHash) {
+      invalidate(devicesListCacheKeyByHash(keyHash));
+    }
+
     return res.status(200).json(result);
   } catch (_error) {
     return res.status(500).json({ valid: false, message: "Unexpected device validation error" });
@@ -203,6 +217,12 @@ router.post("/api/devices", devicesListRateLimit, async (req, res) => {
   const key = String(req.body?.key || "").trim();
   if (!key) {
     return res.status(400).json({ success: false, message: "No license key provided" });
+  }
+  const cacheKey = devicesListCacheKeyByRawKey(key);
+  const cached = get(cacheKey);
+  if (cached) {
+    res.setHeader("X-Cache", "HIT");
+    return res.status(200).json(cached);
   }
 
   try {
@@ -235,6 +255,8 @@ router.post("/api/devices", devicesListRateLimit, async (req, res) => {
       };
     });
 
+    set(cacheKey, result, config.devicesListCacheTtlSeconds);
+    res.setHeader("X-Cache", "MISS");
     return res.status(200).json(result);
   } catch (_error) {
     return res.status(500).json({ success: false, message: "Failed to get devices" });
@@ -245,7 +267,8 @@ router.post("/api/devices/remove", devicesMutateRateLimit, async (req, res) => {
   const key = String(req.body?.key || "").trim();
   const deviceId = String(req.body?.deviceId || "").trim();
   const idempotencyKey = getIdempotencyKey(req);
-  const idempotencyScopeKey = key ? `license:${hashLicenseKey(key)}` : null;
+  const keyHash = key ? hashLicenseKey(key) : null;
+  const idempotencyScopeKey = keyHash ? `license:${keyHash}` : null;
   let idempotencyRequestHash = null;
 
   if (!key || !deviceId) {
@@ -309,6 +332,10 @@ router.post("/api/devices/remove", devicesMutateRateLimit, async (req, res) => {
       });
     }
 
+    if (keyHash) {
+      invalidate(devicesListCacheKeyByHash(keyHash));
+    }
+
     return res.status(200).json(result);
   } catch (_error) {
     return res.status(500).json({ success: false, message: "Failed to remove device" });
@@ -320,7 +347,8 @@ router.post("/api/devices/rename", devicesMutateRateLimit, async (req, res) => {
   const deviceId = String(req.body?.deviceId || "").trim();
   const deviceName = String(req.body?.deviceName || "").trim();
   const idempotencyKey = getIdempotencyKey(req);
-  const idempotencyScopeKey = key ? `license:${hashLicenseKey(key)}` : null;
+  const keyHash = key ? hashLicenseKey(key) : null;
+  const idempotencyScopeKey = keyHash ? `license:${keyHash}` : null;
   let idempotencyRequestHash = null;
 
   if (!key || !deviceId || !deviceName) {
@@ -389,6 +417,10 @@ router.post("/api/devices/rename", devicesMutateRateLimit, async (req, res) => {
         status: 200,
         body: result
       });
+    }
+
+    if (keyHash) {
+      invalidate(devicesListCacheKeyByHash(keyHash));
     }
 
     return res.status(200).json(result);

@@ -7,6 +7,7 @@ const { query, withTransaction } = require("../db/pool");
 const { requireAuth } = require("../middleware/auth");
 const { createRateLimiter, ipRateLimitKey } = require("../middleware/rate-limit");
 const { logAudit } = require("../services/audit");
+const { invalidate, set, get } = require("../services/cache");
 const {
   getIdempotencyKey,
   loadIdempotentResponse,
@@ -34,6 +35,14 @@ const licenseStatusRateLimit = createRateLimiter({
   maxRequests: config.rateLimitLicenseStatusMax,
   keyResolver: accountRateLimitKey
 });
+
+function licenseStatusCacheKey(accountId) {
+  return `license-status:${accountId}`;
+}
+
+function devicesListCacheKeyByHash(licenseKeyHash) {
+  return `devices-list:license:${licenseKeyHash}`;
+}
 
 function normalizeMaxDevices(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -179,6 +188,9 @@ router.post("/api/license/register", requireAuth, licenseRegisterRateLimit, asyn
       });
     }
 
+    invalidate(licenseStatusCacheKey(req.auth.accountId));
+    invalidate(devicesListCacheKeyByHash(keyHash));
+
     return res.status(200).json(responseBody);
   } catch (error) {
     if (error.code === "INVALID_LICENSE") {
@@ -196,6 +208,13 @@ router.post("/api/license/register", requireAuth, licenseRegisterRateLimit, asyn
 });
 
 router.get("/api/license/status", requireAuth, licenseStatusRateLimit, async (req, res) => {
+  const cacheKey = licenseStatusCacheKey(req.auth.accountId);
+  const cached = get(cacheKey);
+  if (cached) {
+    res.setHeader("X-Cache", "HIT");
+    return res.status(200).json(cached);
+  }
+
   try {
     const result = await query(
       `
@@ -220,14 +239,18 @@ router.get("/api/license/status", requireAuth, licenseStatusRateLimit, async (re
     }
 
     const row = result.rows[0];
-    return res.status(200).json({
+    const responseBody = {
       accountId: row.id,
       tier: row.tier,
       isLicenseActive: row.is_license_active,
       maxDevices: row.max_devices,
       licenseStatus: row.license_status || "none",
       licenseKeyLast4: row.license_key_last4 || null
-    });
+    };
+
+    set(cacheKey, responseBody, config.licenseStatusCacheTtlSeconds);
+    res.setHeader("X-Cache", "MISS");
+    return res.status(200).json(responseBody);
   } catch (_error) {
     return res.status(500).json({ error: "Failed to fetch license status" });
   }

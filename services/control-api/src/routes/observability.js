@@ -2,6 +2,8 @@
 
 const { Router } = require("express");
 const { config } = require("../config");
+const { getRateLimiterStats } = require("../middleware/rate-limit");
+const { cacheStats } = require("../services/cache");
 const { listRecentErrors, getErrorSummary } = require("../services/error-store");
 const { currentWindowSnapshot, toPrometheus } = require("../services/metrics");
 
@@ -41,7 +43,9 @@ router.get("/api/observability/dashboard", requireObservabilityKey, (_req, res) 
     windowMinutes: snapshot.windowMinutes,
     window: snapshot.window,
     slo: snapshot.slo,
-    topRoutes: snapshot.topRoutes
+    topRoutes: snapshot.topRoutes,
+    rateLimits: getRateLimiterStats(),
+    cache: cacheStats()
   });
 });
 
@@ -54,6 +58,18 @@ router.get("/api/observability/errors/recent", requireObservabilityKey, (req, re
   return res.status(200).json({
     summary: getErrorSummary(),
     items: listRecentErrors(limit)
+  });
+});
+
+router.get("/api/observability/rate-limits", requireObservabilityKey, (_req, res) => {
+  if (!config.enableMetricsEndpoint) {
+    return res.status(404).json({ error: "Observability endpoints are disabled" });
+  }
+
+  return res.status(200).json({
+    generatedAt: new Date().toISOString(),
+    windowSeconds: config.rateLimitWindowSeconds,
+    items: getRateLimiterStats()
   });
 });
 

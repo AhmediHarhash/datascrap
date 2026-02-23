@@ -15,6 +15,7 @@
 - Provisioned and healthy in staging and production.
 - Phase 2 migration `0001_control_plane_core.sql` applied in both environments.
 - Phase 3 migration `0002_idempotency_keys.sql` applied in both environments.
+- Phase 4 migration `0003_perf_indexes.sql` applied in both environments.
 
 2) `control-api`
 - Service ID: `955c58a3-9816-41d7-a963-68c6bcfe024a`
@@ -53,6 +54,9 @@
     - extension-style origin (`chrome-extension://...`) -> `200`
   - Observability:
     - `GET /api/observability/slo` -> `200` (with `X-Observability-Key`)
+    - `GET /api/observability/dashboard` -> `200` (with `X-Observability-Key`)
+    - `GET /api/observability/rate-limits` -> `200` (with `X-Observability-Key`)
+    - `GET /api/observability/errors/recent` -> `200` (with `X-Observability-Key`)
     - `GET /metrics` -> `200` (with `X-Observability-Key`)
   - Idempotency checks:
     - `POST /api/license/register` replay returns `Idempotent-Replay: true`
@@ -73,6 +77,9 @@
     - extension-style origin -> `200`
   - Observability:
     - `GET /api/observability/slo` -> `200` (with `X-Observability-Key`)
+    - `GET /api/observability/dashboard` -> `200` (with `X-Observability-Key`)
+    - `GET /api/observability/rate-limits` -> `200` (with `X-Observability-Key`)
+    - `GET /api/observability/errors/recent` -> `200` (with `X-Observability-Key`)
     - `GET /metrics` -> `200` (with `X-Observability-Key`)
   - Auth/license check:
     - register/login successful
@@ -81,13 +88,14 @@
 ## Repository Status
 - GitHub repo:
   - `https://github.com/AhmediHarhash/datascrap`
-- Phase 2/3 local changes include:
+- Phase 2/3/4 local changes include:
   - `services/control-api/src/routes/auth.js`
   - `services/control-api/src/routes/license.js`
   - `services/control-api/src/routes/devices.js`
   - `services/control-api/src/db/migrations.js`
   - `services/control-api/migrations/0001_control_plane_core.sql`
   - `services/control-api/migrations/0002_idempotency_keys.sql`
+  - `services/control-api/migrations/0003_perf_indexes.sql`
   - `services/control-api/src/middleware/cors.js`
   - `services/control-api/src/middleware/rate-limit.js`
   - `services/control-api/src/middleware/request.js`
@@ -95,9 +103,15 @@
   - `services/control-api/src/utils/logger.js`
   - `services/control-api/src/services/metrics.js`
   - `services/control-api/src/services/error-tracker.js`
+  - `services/control-api/src/services/cache.js`
+  - `services/control-api/src/services/error-store.js`
   - `services/control-api/src/routes/observability.js`
   - `.github/workflows/uptime-monitor.yml`
+  - `.github/workflows/slo-monitor.yml`
+  - `.github/workflows/cost-monitor.yml`
   - `services/control-api/scripts/uptime-monitor.js`
+  - `services/control-api/scripts/slo-monitor.js`
+  - `services/control-api/scripts/cost-monitor.js`
   - `services/control-api/scripts/migrate.js`
   - `.env.example`
   - `infra/railway/control-api.env.example`
@@ -107,24 +121,27 @@
 - Environment: `staging`
 - Service: `control-api`
 
-## Next Phase Focus (Observability)
-1) Keep SLO thresholds calibrated with real traffic baselines.
+## Next Phase Focus (Scale And Cost)
+1) Keep Phase 4 thresholds calibrated with real traffic and real spend.
 2) Connect external incident webhooks (optional) for multi-channel alerts.
 3) Assign primary/secondary owner contacts in runbook.
-4) Start Phase 4 cost/perf tuning loops.
+4) Begin Phase 5 optional cloud features only after two stable billing cycles.
 
 ## GitHub Automation
 - Workflow committed:
   - `.github/workflows/uptime-monitor.yml`
   - `.github/workflows/slo-monitor.yml`
+  - `.github/workflows/cost-monitor.yml`
 - Repo variable configured:
   - `UPTIME_URLS=https://control-api-staging-98c0.up.railway.app/healthz,https://control-api-production-e750.up.railway.app/healthz`
   - `OBSERVABILITY_URL_STAGING=https://control-api-staging-98c0.up.railway.app`
   - `OBSERVABILITY_URL_PRODUCTION=https://control-api-production-e750.up.railway.app`
   - SLO thresholds (`MAX_*`, `MIN_*`) configured for workflow defaults
+  - cost thresholds and budget vars (`MONTHLY_BUDGET_USD`, `MONTH_TO_DATE_COST_USD`, `COST_*`, `DAILY_COST_SERIES_USD`)
 - Failure fallback enabled:
   - workflow auto-creates/updates issue `Uptime Monitor Incident`
   - workflow auto-creates/updates issue `SLO Monitor Incident`
+  - workflow auto-creates/updates issue `Cost Monitor Incident`
 - Repo secrets configured:
   - `OBSERVABILITY_KEY_STAGING`
   - `OBSERVABILITY_KEY_PRODUCTION`
