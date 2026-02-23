@@ -1,0 +1,169 @@
+name: Backup Verify
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 1 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install PostgreSQL Client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verify Staging Backup
+        run: |
+          set -euo pipefail
+          node services/control-api/scripts/backup-verify.js | tee backup-summary-staging.json
+        env:
+          BACKUP_LABEL: staging
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL_STAGING }}
+          MIN_BACKUP_BYTES: ${{ vars.MIN_BACKUP_BYTES }}
+          MIN_BACKUP_ENTRIES: ${{ vars.MIN_BACKUP_ENTRIES }}
+
+      - name: Upload Staging Backup Summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-summary-staging
+          path: backup-summary-staging.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Create Or Update Backup Incident Issue (Staging)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Backup Verification Incident';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              'Automatic alert from backup verification workflow.',
+              '',
+              '- Environment: staging',
+              `- Workflow run: ${runUrl}`,
+              `- Trigger: ${context.eventName}`,
+              `- Timestamp (UTC): ${new Date().toISOString()}`,
+              '',
+              'Backup verification failed. Check pg_dump/pg_restore logs and secret configuration.'
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['incident', 'backup']
+              });
+            }
+
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install PostgreSQL Client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verify Production Backup
+        run: |
+          set -euo pipefail
+          node services/control-api/scripts/backup-verify.js | tee backup-summary-production.json
+        env:
+          BACKUP_LABEL: production
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL_PRODUCTION }}
+          MIN_BACKUP_BYTES: ${{ vars.MIN_BACKUP_BYTES }}
+          MIN_BACKUP_ENTRIES: ${{ vars.MIN_BACKUP_ENTRIES }}
+
+      - name: Upload Production Backup Summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-summary-production
+          path: backup-summary-production.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Create Or Update Backup Incident Issue (Production)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Backup Verification Incident';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              'Automatic alert from backup verification workflow.',
+              '',
+              '- Environment: production',
+              `- Workflow run: ${runUrl}`,
+              `- Trigger: ${context.eventName}`,
+              `- Timestamp (UTC): ${new Date().toISOString()}`,
+              '',
+              'Backup verification failed. Check pg_dump/pg_restore logs and secret configuration.'
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['incident', 'backup']
+              });
+            }

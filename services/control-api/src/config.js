@@ -19,13 +19,46 @@ function csv(value, fallback = []) {
   return list.length > 0 ? list : fallback;
 }
 
+function parseJwtAccessSecrets(rawValue, fallbackSecret) {
+  const pairs = csv(rawValue, []);
+  const seenKids = new Set();
+  const keyring = [];
+
+  for (const pair of pairs) {
+    const separatorIndex = pair.indexOf(":");
+    if (separatorIndex <= 0) continue;
+
+    const kid = pair.slice(0, separatorIndex).trim();
+    const secret = pair.slice(separatorIndex + 1).trim();
+    if (!kid || !secret || seenKids.has(kid)) continue;
+
+    seenKids.add(kid);
+    keyring.push({ kid, secret });
+  }
+
+  if (keyring.length === 0) {
+    keyring.push({ kid: "legacy", secret: fallbackSecret });
+  }
+
+  return keyring;
+}
+
+const jwtAccessSecret = process.env.JWT_ACCESS_SECRET || "dev-access-secret-change-me";
+const jwtAccessSecrets = parseJwtAccessSecrets(process.env.JWT_ACCESS_SECRETS, jwtAccessSecret);
+const configuredActiveKid = String(process.env.JWT_ACTIVE_KID || "").trim();
+const jwtActiveKid = jwtAccessSecrets.some((item) => item.kid === configuredActiveKid)
+  ? configuredActiveKid
+  : jwtAccessSecrets[0].kid;
+
 const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: int(process.env.PORT, 3000),
   appVersion: process.env.APP_VERSION || "0.1.0",
   requireDb: bool(process.env.REQUIRE_DB, false),
   databaseUrl: process.env.DATABASE_URL || "",
-  jwtAccessSecret: process.env.JWT_ACCESS_SECRET || "dev-access-secret-change-me",
+  jwtAccessSecret,
+  jwtAccessSecrets,
+  jwtActiveKid,
   jwtIssuer: process.env.JWT_ISSUER || "datascrap-control-api",
   accessTokenTtlSeconds: int(process.env.ACCESS_TOKEN_TTL_SECONDS, 900),
   refreshTokenTtlDays: int(process.env.REFRESH_TOKEN_TTL_DAYS, 30),

@@ -106,12 +106,18 @@
   - `services/control-api/src/services/cache.js`
   - `services/control-api/src/services/error-store.js`
   - `services/control-api/src/routes/observability.js`
+  - `services/control-api/src/utils/security.js` (JWT keyring rotation support)
+  - `services/control-api/src/config.js` (JWT keyring config)
   - `.github/workflows/uptime-monitor.yml`
   - `.github/workflows/slo-monitor.yml`
   - `.github/workflows/cost-monitor.yml`
+  - `.github/workflows/backup-verify.yml`
   - `services/control-api/scripts/uptime-monitor.js`
   - `services/control-api/scripts/slo-monitor.js`
   - `services/control-api/scripts/cost-monitor.js`
+  - `services/control-api/scripts/backup-verify.js`
+  - `services/control-api/scripts/chaos-check.js`
+  - `services/control-api/scripts/generate-jwt-secret.js`
   - `services/control-api/scripts/migrate.js`
   - `.env.example`
   - `infra/railway/control-api.env.example`
@@ -138,6 +144,7 @@
   - `OBSERVABILITY_URL_PRODUCTION=https://control-api-production-e750.up.railway.app`
   - SLO thresholds (`MAX_*`, `MIN_*`) configured for workflow defaults
   - cost thresholds and budget vars (`MONTHLY_BUDGET_USD`, `MONTH_TO_DATE_COST_USD`, `COST_*`, `DAILY_COST_SERIES_USD`)
+  - backup verification vars (`MIN_BACKUP_BYTES`, `MIN_BACKUP_ENTRIES`)
 - Failure fallback enabled:
   - workflow auto-creates/updates issue `Uptime Monitor Incident`
   - workflow auto-creates/updates issue `SLO Monitor Incident`
@@ -148,6 +155,8 @@
 - Optional additional secrets:
   - `ALERT_WEBHOOK_URL`
   - `ALERT_WEBHOOK_BEARER_TOKEN`
+  - `BACKUP_DATABASE_URL_STAGING`
+  - `BACKUP_DATABASE_URL_PRODUCTION`
 
 ## Error Tracking
 - API endpoint available:
@@ -155,3 +164,11 @@
 - Dashboard endpoint available:
   - `GET /api/observability/dashboard` (protected by `X-Observability-Key`)
 - Errors logged through `logError(...)` are retained in bounded in-memory buffer for fast triage.
+
+## Ops Hardening Notes (2026-02-23)
+- JWT access token rotation is now no-downtime capable with `JWT_ACCESS_SECRETS` + `JWT_ACTIVE_KID`.
+- Daily backup verification workflow is committed and scheduled.
+- Remaining manual wiring:
+  - authenticate Railway CLI to fetch and wire backup DB URLs into GitHub secrets
+  - run first successful `Backup Verify` workflow run
+  - execute and log staging restart/failover chaos drill

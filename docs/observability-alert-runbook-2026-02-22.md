@@ -18,6 +18,8 @@
   - title: `SLO Monitor Incident`
 - GitHub workflow `Cost Monitor` automatically opens or comments on issue:
   - title: `Cost Monitor Incident`
+- GitHub workflow `Backup Verify` automatically opens or comments on issue:
+  - title: `Backup Verification Incident`
 - This is active even when external webhook secrets are not configured.
 
 ## Alert Thresholds
@@ -79,6 +81,6 @@
   - ETA for next update
 
 ## Owners
-- Primary owner: `TBD`
-- Secondary owner: `TBD`
-- Escalation contact: `TBD`
+- Primary owner: `Ahmedi Harhash (@AhmediHarhash)`
+- Secondary owner: `Ahmedi Harhash (@AhmediHarhash)` (until a second on-call owner is assigned)
+- Escalation contact: `GitHub incident issues + ALERT_WEBHOOK_URL destination (if configured)`

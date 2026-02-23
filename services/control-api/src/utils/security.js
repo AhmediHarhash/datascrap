@@ -29,17 +29,60 @@ function verifyPassword(password, storedHash) {
   return crypto.timingSafeEqual(expected, received);
 }
 
+function getJwtSigningKey() {
+  const keyring = Array.isArray(config.jwtAccessSecrets) ? config.jwtAccessSecrets : [];
+  if (keyring.length === 0) {
+    return { kid: "legacy", secret: config.jwtAccessSecret };
+  }
+
+  const activeKey = keyring.find((item) => item.kid === config.jwtActiveKid);
+  return activeKey || keyring[0];
+}
+
 function createAccessToken(payload) {
-  return jwt.sign(payload, config.jwtAccessSecret, {
+  const signingKey = getJwtSigningKey();
+  return jwt.sign(payload, signingKey.secret, {
     expiresIn: config.accessTokenTtlSeconds,
-    issuer: config.jwtIssuer
+    issuer: config.jwtIssuer,
+    header: { kid: signingKey.kid }
   });
 }
 
 function verifyAccessToken(token) {
-  return jwt.verify(token, config.jwtAccessSecret, {
-    issuer: config.jwtIssuer
-  });
+  const keyring = Array.isArray(config.jwtAccessSecrets) ? config.jwtAccessSecrets : [];
+  const decoded = jwt.decode(token, { complete: true });
+  const headerKid = String(decoded?.header?.kid || "").trim();
+  const candidates = [];
+
+  if (headerKid) {
+    const headerKey = keyring.find((item) => item.kid === headerKid);
+    if (headerKey) {
+      candidates.push(headerKey);
+    }
+  }
+
+  for (const item of keyring) {
+    if (!candidates.some((candidate) => candidate.kid === item.kid)) {
+      candidates.push(item);
+    }
+  }
+
+  if (candidates.length === 0) {
+    candidates.push({ kid: "legacy", secret: config.jwtAccessSecret });
+  }
+
+  let lastError = null;
+  for (const item of candidates) {
+    try {
+      return jwt.verify(token, item.secret, {
+        issuer: config.jwtIssuer
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Invalid token");
 }
 
 function createRefreshToken() {
@@ -64,4 +107,3 @@ module.exports = {
   verifyAccessToken,
   verifyPassword
 };
-

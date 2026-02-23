@@ -43,10 +43,10 @@ Deliverables:
 - budget guardrail policy defined.
 Checklist:
 - [x] baseline env template prepared (`infra/railway/control-api.env.example`)
-- [ ] JWT key rotation policy defined
-- [ ] DB backup policy defined
-- [ ] Railway usage cap policy defined
-- [ ] incident contact + owner defined
+- [x] JWT key rotation policy defined (`docs/ops-hardening-policies-2026-02-23.md`)
+- [x] DB backup policy defined (`docs/ops-hardening-policies-2026-02-23.md`)
+- [x] Railway usage cap policy defined (`docs/ops-hardening-policies-2026-02-23.md`)
+- [x] incident contact + owner defined (`docs/observability-alert-runbook-2026-02-22.md`)
 Exit gate:
 - no unknown secrets, no unknown owners, no unknown budget policy.
 
@@ -74,6 +74,7 @@ Checklist:
 - [x] DB migrations with rollback plan
 - [ ] automated daily Postgres backups verified
 - [x] structured logs with correlation IDs
+Note: backup verification automation is implemented (`.github/workflows/backup-verify.yml`) and awaits DB secrets plus first successful run.
 Exit gate:
 - chaos test (service restart + DB failover drill) completed without data loss.
 

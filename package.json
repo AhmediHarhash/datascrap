@@ -11,7 +11,10 @@
     "migrate:control-api": "node services/control-api/scripts/migrate.js",
     "uptime:control-api": "node services/control-api/scripts/uptime-monitor.js",
     "slo:control-api": "node services/control-api/scripts/slo-monitor.js",
-    "cost:control-api": "node services/control-api/scripts/cost-monitor.js"
+    "cost:control-api": "node services/control-api/scripts/cost-monitor.js",
+    "backup:verify:control-api": "node services/control-api/scripts/backup-verify.js",
+    "chaos:check:control-api": "node services/control-api/scripts/chaos-check.js",
+    "jwt:generate:control-api": "node services/control-api/scripts/generate-jwt-secret.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

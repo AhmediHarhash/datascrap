@@ -75,6 +75,39 @@ Environment variables:
 - `COST_HARD_CAP_PERCENT` (default `100`)
 - `DAILY_COST_SERIES_USD` (optional comma-separated values)
 
+## Backup Verification Script
+
+```bash
+node services/control-api/scripts/backup-verify.js
+```
+
+Environment variables:
+- `BACKUP_DATABASE_URL` (or `DATABASE_URL` fallback)
+- `MIN_BACKUP_BYTES` (default `10000`)
+- `MIN_BACKUP_ENTRIES` (default `20`)
+- `BACKUP_LABEL` (optional: `staging`/`production`)
+
+## Chaos Check Script
+
+```bash
+node services/control-api/scripts/chaos-check.js
+```
+
+Environment variables:
+- `API_BASE_URL` (default staging domain)
+- `CHAOS_EMAIL` / `CHAOS_PASSWORD` (optional fixed account for repeatable drill)
+- `CHAOS_DEVICE_ID` / `CHAOS_DEVICE_NAME` (optional)
+
+## JWT Secret Generator
+
+```bash
+node services/control-api/scripts/generate-jwt-secret.js
+```
+
+Environment variables:
+- `JWT_SECRET_BYTES` (default `48`)
+- `JWT_NEW_KID` (optional explicit key ID)
+
 ## Notes
 
 - `migrate:control-api` needs `DATABASE_URL` set.
@@ -91,6 +124,10 @@ Environment variables:
   - `ERROR_TRACKING_WEBHOOK_BEARER_TOKEN`
   - `ERROR_TRACKING_MIN_INTERVAL_SECONDS`
 - Hot read paths (`/api/license/status` and `/api/devices`) use bounded in-memory cache with short TTL.
+- Access tokens support no-downtime key rotation with:
+  - `JWT_ACCESS_SECRETS` (CSV `kid:secret`)
+  - `JWT_ACTIVE_KID`
+  - legacy `JWT_ACCESS_SECRET` fallback remains supported.
 
 ## Rollback Notes
 
