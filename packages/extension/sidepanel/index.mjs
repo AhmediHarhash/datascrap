@@ -8,6 +8,17 @@ import {
   URL_SOURCE_MODES
 } from "../vendor/shared/src/events.mjs";
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
+import {
+  buildFailureReportCsv,
+  buildFailureReportEntries,
+  dedupeUrls,
+  generatePatternUrls,
+  generateRangeUrls,
+  generateSeedUrls,
+  parseSeedList,
+  resolveResumeUrls,
+  resolveRetryFailedUrls
+} from "./page-recovery.mjs";
 
 const elements = {
   navMenuBtn: document.getElementById("nav-menu-btn"),
@@ -89,6 +100,24 @@ const elements = {
   pageDatasourceColumn: document.getElementById("page-datasource-column"),
   pageDatasourceCount: document.getElementById("page-datasource-count"),
   pageResolvedUrlsPreview: document.getElementById("page-resolved-urls-preview"),
+  urlgenTemplate: document.getElementById("urlgen-template"),
+  urlgenRangeStart: document.getElementById("urlgen-range-start"),
+  urlgenRangeEnd: document.getElementById("urlgen-range-end"),
+  urlgenRangeStep: document.getElementById("urlgen-range-step"),
+  urlgenPadding: document.getElementById("urlgen-padding"),
+  urlgenSeeds: document.getElementById("urlgen-seeds"),
+  urlgenAppendMode: document.getElementById("urlgen-append-mode"),
+  urlgenGenerateRangeBtn: document.getElementById("urlgen-generate-range-btn"),
+  urlgenGenerateSeedsBtn: document.getElementById("urlgen-generate-seeds-btn"),
+  urlgenGeneratePatternBtn: document.getElementById("urlgen-generate-pattern-btn"),
+  urlgenClearBtn: document.getElementById("urlgen-clear-btn"),
+  urlgenStatusLine: document.getElementById("urlgen-status-line"),
+  pageRetryFailedBtn: document.getElementById("page-retry-failed-btn"),
+  pageResumeCheckpointBtn: document.getElementById("page-resume-checkpoint-btn"),
+  pageFailureReportCsvBtn: document.getElementById("page-failure-report-csv-btn"),
+  pageFailureReportJsonBtn: document.getElementById("page-failure-report-json-btn"),
+  pageRecoveryPreview: document.getElementById("page-recovery-preview"),
+  pageRecoveryStatusLine: document.getElementById("page-recovery-status-line"),
   pageFieldsPanel: document.getElementById("page-fields-panel"),
   pageFieldList: document.getElementById("page-field-list"),
   pickPageFieldsBtn: document.getElementById("pick-page-fields-btn"),
@@ -967,6 +996,16 @@ function setResolvedUrlsPreview(urls) {
   elements.pageResolvedUrlsPreview.value = list.slice(0, 25).join("\n");
 }
 
+function setUrlGeneratorStatus(text, { error = false } = {}) {
+  elements.urlgenStatusLine.textContent = String(text || "");
+  elements.urlgenStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function setPageRecoveryStatus(text, { error = false } = {}) {
+  elements.pageRecoveryStatusLine.textContent = String(text || "");
+  elements.pageRecoveryStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
 function setTableStatus(text, { error = false } = {}) {
   elements.tableStatusLine.textContent = String(text || "");
   elements.tableStatusLine.classList.toggle("status-error", Boolean(error));
@@ -1688,6 +1727,7 @@ async function hydrateTableHistory({ preserveSelection = true } = {}) {
   state.tableHistory = items;
   renderTableHistoryOptions(items, preferredTableDataId);
   renderExportTableOptions(items, preferredExportTableId || preferredTableDataId);
+  updatePageRecoveryPreview();
 }
 
 async function loadSelectedTableRows({ silent = false } = {}) {
@@ -2725,6 +2765,250 @@ function parseLineSeparated(text) {
     .split(/\r?\n/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function applyManualUrls(urls, { append = false } = {}) {
+  const incoming = dedupeUrls(urls);
+  const existing = append ? parseManualUrls(elements.pageManualUrls.value) : [];
+  const merged = dedupeUrls([...existing, ...incoming]);
+  elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+  updatePageSourceUi();
+  elements.pageManualUrls.value = merged.join("\n");
+  setResolvedUrlsPreview(merged);
+  return merged;
+}
+
+function getTableHistoryEntryById(tableDataId) {
+  const id = String(tableDataId || "").trim();
+  if (!id) return null;
+  return state.tableHistory.find((item) => String(item?.tableDataId || "").trim() === id) || null;
+}
+
+function getPageRecoverySourceRecord() {
+  const selected = getSelectedTableDataId();
+  const selectedEntry = getTableHistoryEntryById(selected);
+  if (selectedEntry) {
+    return selectedEntry;
+  }
+
+  return (
+    state.tableHistory.find((item) => String(item?.runnerType || "").trim() === RUNNER_TYPES.PAGE_EXTRACTOR) || null
+  );
+}
+
+function getRecoverySummary(record) {
+  const summary = record?.summary && typeof record.summary === "object" ? record.summary : null;
+  return summary || null;
+}
+
+function getRecoveryFailureEntries(record) {
+  const summary = getRecoverySummary(record);
+  if (!summary) return [];
+  return buildFailureReportEntries(summary);
+}
+
+function updatePageRecoveryPreview() {
+  const source = getPageRecoverySourceRecord();
+  if (!source) {
+    elements.pageRecoveryPreview.textContent = "Select a page extractor table run with failures to use recovery controls.";
+    return;
+  }
+
+  const summary = getRecoverySummary(source);
+  if (!summary) {
+    elements.pageRecoveryPreview.textContent = "Selected run has no recovery summary.";
+    return;
+  }
+
+  const failedUrls = resolveRetryFailedUrls(summary);
+  const resumeUrls = resolveResumeUrls(summary);
+  const checkpoint = summary.checkpoint && typeof summary.checkpoint === "object" ? summary.checkpoint : {};
+  const lines = [
+    `source=${String(source.tableDataId || "").slice(0, 8)}...`,
+    `rowCount=${Number(summary.rowCount || source.rowCount || 0)}`,
+    `urlCount=${Number(summary.urlCount || checkpoint.totalUrls || 0)}`,
+    `failed=${failedUrls.length}`,
+    `resume=${resumeUrls.length}`,
+    `updated=${formatRelativeTimestamp(source.updatedAt || source.createdAt)}`
+  ];
+  elements.pageRecoveryPreview.textContent = lines.join(" | ");
+}
+
+function buildRecoveryFilename(record, suffix, extension) {
+  const tableDataId = String(record?.tableDataId || "table").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12) || "table";
+  const safeSuffix = String(suffix || "report").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const ext = String(extension || "txt").replace(/[^a-zA-Z0-9]/g, "") || "txt";
+  return `page_recovery_${tableDataId}_${safeSuffix}.${ext}`;
+}
+
+function parseUrlGeneratorInput() {
+  return {
+    template: String(elements.urlgenTemplate.value || "").trim(),
+    start: parseNumber(elements.urlgenRangeStart.value, 1),
+    end: parseNumber(elements.urlgenRangeEnd.value, 10),
+    step: parseNumber(elements.urlgenRangeStep.value, 1),
+    padding: parseNumber(elements.urlgenPadding.value, 0),
+    seeds: parseSeedList(elements.urlgenSeeds.value),
+    append: Boolean(elements.urlgenAppendMode.checked)
+  };
+}
+
+function onGenerateRangeUrls() {
+  try {
+    const input = parseUrlGeneratorInput();
+    const generated = generateRangeUrls({
+      template: input.template,
+      start: input.start,
+      end: input.end,
+      step: input.step,
+      padding: input.padding,
+      maxCount: 10_000
+    });
+    const merged = applyManualUrls(generated, {
+      append: input.append
+    });
+    setUrlGeneratorStatus(`Generated ${generated.length} range URLs (${merged.length} in manual list)`);
+  } catch (error) {
+    setUrlGeneratorStatus(`Range generation failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+function onGenerateSeedUrls() {
+  try {
+    const input = parseUrlGeneratorInput();
+    const generated = generateSeedUrls({
+      template: input.template,
+      seeds: input.seeds,
+      maxCount: 10_000
+    });
+    const merged = applyManualUrls(generated, {
+      append: input.append
+    });
+    setUrlGeneratorStatus(`Generated ${generated.length} seed URLs (${merged.length} in manual list)`);
+  } catch (error) {
+    setUrlGeneratorStatus(`Seed generation failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+function onGeneratePatternUrls() {
+  try {
+    const input = parseUrlGeneratorInput();
+    const generated = generatePatternUrls({
+      template: input.template,
+      seeds: input.seeds,
+      start: input.start,
+      end: input.end,
+      step: input.step,
+      padding: input.padding,
+      maxCount: 10_000
+    });
+    const merged = applyManualUrls(generated, {
+      append: input.append
+    });
+    setUrlGeneratorStatus(`Generated ${generated.length} pattern URLs (${merged.length} in manual list)`);
+  } catch (error) {
+    setUrlGeneratorStatus(`Pattern generation failed: ${error.message}`, {
+      error: true
+    });
+  }
+}
+
+function onClearManualUrls() {
+  elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+  updatePageSourceUi();
+  elements.pageManualUrls.value = "";
+  setResolvedUrlsPreview([]);
+  setUrlGeneratorStatus("Manual URL list cleared");
+}
+
+function onRetryFailedOnly() {
+  const source = getPageRecoverySourceRecord();
+  if (!source) {
+    setPageRecoveryStatus("No table run selected for recovery", {
+      error: true
+    });
+    return;
+  }
+
+  const summary = getRecoverySummary(source);
+  if (!summary) {
+    setPageRecoveryStatus("Selected run has no recovery summary", {
+      error: true
+    });
+    return;
+  }
+
+  const failedUrls = resolveRetryFailedUrls(summary);
+  if (failedUrls.length === 0) {
+    setPageRecoveryStatus("No failed URLs found in selected run");
+    return;
+  }
+
+  applyManualUrls(failedUrls, {
+    append: false
+  });
+  setPageRecoveryStatus(`Prepared ${failedUrls.length} failed URLs for retry`);
+}
+
+function onResumeCheckpoint() {
+  const source = getPageRecoverySourceRecord();
+  if (!source) {
+    setPageRecoveryStatus("No table run selected for checkpoint resume", {
+      error: true
+    });
+    return;
+  }
+
+  const summary = getRecoverySummary(source);
+  if (!summary) {
+    setPageRecoveryStatus("Selected run has no checkpoint summary", {
+      error: true
+    });
+    return;
+  }
+
+  const resumeUrls = resolveResumeUrls(summary);
+  if (resumeUrls.length === 0) {
+    setPageRecoveryStatus("Checkpoint has no unresolved URLs to resume");
+    return;
+  }
+
+  applyManualUrls(resumeUrls, {
+    append: false
+  });
+  setPageRecoveryStatus(`Prepared ${resumeUrls.length} checkpoint URLs to resume`);
+}
+
+function onDownloadFailureReport(format = "csv") {
+  const source = getPageRecoverySourceRecord();
+  if (!source) {
+    setPageRecoveryStatus("No table run selected for failure report", {
+      error: true
+    });
+    return;
+  }
+
+  const entries = getRecoveryFailureEntries(source);
+  if (entries.length === 0) {
+    setPageRecoveryStatus("Selected run has no failures to export");
+    return;
+  }
+
+  if (format === "json") {
+    const filename = buildRecoveryFilename(source, "failure_report", "json");
+    downloadTextFile(filename, JSON.stringify(entries, null, 2), "application/json");
+    setPageRecoveryStatus(`Failure report exported: ${entries.length} rows (JSON)`);
+    return;
+  }
+
+  const csv = buildFailureReportCsv(entries);
+  const filename = buildRecoveryFilename(source, "failure_report", "csv");
+  downloadTextFile(filename, csv, "text/csv");
+  setPageRecoveryStatus(`Failure report exported: ${entries.length} rows (CSV)`);
 }
 
 function normalizeStringArray(values, { lowerCase = false } = {}) {
@@ -4468,6 +4752,31 @@ elements.pageDatasourceSelect.addEventListener("change", () => {
   void loadDataSourceUrls();
 });
 
+elements.urlgenGenerateRangeBtn.addEventListener("click", () => {
+  onGenerateRangeUrls();
+});
+elements.urlgenGenerateSeedsBtn.addEventListener("click", () => {
+  onGenerateSeedUrls();
+});
+elements.urlgenGeneratePatternBtn.addEventListener("click", () => {
+  onGeneratePatternUrls();
+});
+elements.urlgenClearBtn.addEventListener("click", () => {
+  onClearManualUrls();
+});
+elements.pageRetryFailedBtn.addEventListener("click", () => {
+  onRetryFailedOnly();
+});
+elements.pageResumeCheckpointBtn.addEventListener("click", () => {
+  onResumeCheckpoint();
+});
+elements.pageFailureReportCsvBtn.addEventListener("click", () => {
+  onDownloadFailureReport("csv");
+});
+elements.pageFailureReportJsonBtn.addEventListener("click", () => {
+  onDownloadFailureReport("json");
+});
+
 elements.tableRefreshBtn.addEventListener("click", () => {
   void (async () => {
     await hydrateDataSources();
@@ -4488,6 +4797,7 @@ elements.tableHistorySelect.addEventListener("change", () => {
   if (elements.tableHistorySelect.value) {
     elements.exportTableSelect.value = elements.tableHistorySelect.value;
   }
+  updatePageRecoveryPreview();
   void loadSelectedTableRows({
     silent: true
   });
@@ -4834,6 +5144,9 @@ setRoadmapStatus("Roadmap notify actions ready");
 setCloudStatus("Cloud control ready");
 setTemplatesStatus("Templates & diagnostics ready");
 setSpeedProfileStatus("Profile editor ready");
+setUrlGeneratorStatus("URL generator ready");
+setPageRecoveryStatus("Recovery controls ready");
+updatePageRecoveryPreview();
 updateIntegrationTestUi();
 renderImagePreview();
 applySpeedProfileDefaults(elements.speedProfile.value || "normal");

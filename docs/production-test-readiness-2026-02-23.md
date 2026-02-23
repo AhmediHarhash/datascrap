@@ -31,7 +31,7 @@
 - Includes:
   - storage/runtime
   - advanced table merge/cleanup smoke
-  - epic5/epic6/epic7/epic8/epic9/epic10/epic11 UI+wiring checks
+  - epic5/epic6/epic7/epic8/epic9/epic10/epic11/epic12 UI+wiring checks
 
 2) Control API health/readiness smoke
 - `npm run smoke:control-api` (with API running)
@@ -74,6 +74,7 @@
 - list/page/email/phone/text/maps/metadata
 - data table + exports + image downloader
 - data table advanced ops: cleanup/density + merge columns
+- URL generator (range/seed/pattern) + recovery controls (retry failed/resume checkpoint/failure report)
 - activation/license/device management
 - list speed profile editor + reset defaults
 

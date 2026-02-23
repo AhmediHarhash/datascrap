@@ -121,6 +121,25 @@ function randomJitter(maxJitterMs) {
   return Math.floor(Math.random() * max);
 }
 
+function limitList(list, maxItems = 5000) {
+  if (!Array.isArray(list)) return [];
+  const limit = Math.max(1, Math.min(50_000, Number(maxItems || 5000)));
+  return list.slice(0, limit);
+}
+
+function dedupeList(list) {
+  const source = Array.isArray(list) ? list : [];
+  const seen = new Set();
+  const output = [];
+  for (const item of source) {
+    const value = String(item || "").trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    output.push(value);
+  }
+  return output;
+}
+
 async function pageExtractInDom(input) {
   function cleanText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
@@ -612,7 +631,8 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
             };
             return {
               ok: true,
-              row
+              row,
+              attempts: attempt + 1
             };
           } catch (error) {
             lastError = error;
@@ -632,7 +652,8 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
 
         return {
           ok: false,
-          error: lastError?.message || "Page extraction failed"
+          error: lastError?.message || "Page extraction failed",
+          attempts: queue.maxRetries + 1
         };
       }
 
@@ -654,7 +675,8 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
             failed += 1;
             failures.push({
               url: job.url,
-              error: result.error
+              error: result.error,
+              attempts: Number(result.attempts || queue.maxRetries + 1)
             });
           }
 
@@ -694,6 +716,21 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
         }
       });
 
+      const inputUrls = limitList(dedupeList(urls), 10_000);
+      const successfulUrls = limitList(
+        dedupeList(
+          rows.map((row) => row?.url).filter(Boolean)
+        ),
+        10_000
+      );
+      const failedUrls = limitList(
+        dedupeList(
+          failures.map((item) => item?.url).filter(Boolean)
+        ),
+        10_000
+      );
+      const unresolvedUrls = [...failedUrls];
+
       return {
         rows,
         summary: {
@@ -709,7 +746,18 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
             maps: actionConfig.mapsOptions
           },
           queue,
-          failures: failures.slice(0, 50)
+          inputUrls,
+          successfulUrls,
+          failedUrls,
+          failures: failures.slice(0, 200),
+          checkpoint: {
+            totalUrls: inputUrls.length,
+            attemptedCount: completed + failed,
+            successCount: completed,
+            failureCount: failed,
+            nextIndex: inputUrls.length,
+            unresolvedUrls: limitList(unresolvedUrls, 10_000)
+          }
         }
       };
     }

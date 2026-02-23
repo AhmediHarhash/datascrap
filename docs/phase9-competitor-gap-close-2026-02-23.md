@@ -37,11 +37,17 @@ Target outcome:
   - optional webhook notify on changed runs only
   - sidepanel monitor payload presets for jobs and schedules
   - monitor smoke coverage for no-change/change transitions
+- Workstream 5 slice 1 shipped:
+  - URL generator utility (range + seed + pattern expansion)
+  - recovery controls (retry failed only + resume checkpoint)
+  - downloadable failure reports (CSV/JSON)
+  - page extraction summary checkpoint metadata (`inputUrls`, `failedUrls`, `unresolvedUrls`)
 - Tracking artifacts:
   - `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
   - `docs/phase9-sprintA-template-marketplace-slice-2026-02-23.md`
   - `docs/phase9-sprintB-integrations-pack-slice-2026-02-23.md`
   - `docs/phase9-sprintC-monitoring-alerts-slice-2026-02-23.md`
+  - `docs/phase9-sprintC-scale-recovery-slice-2026-02-23.md`
 
 ## Priority Workstreams (Only What We Need Next)
 

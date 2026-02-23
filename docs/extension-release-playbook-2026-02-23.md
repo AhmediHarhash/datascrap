@@ -62,6 +62,7 @@ Run these checks in loaded unpacked extension (`packages/extension`):
 10. Jobs enqueue/list/cancel works for webhook + extraction summary + monitor diff presets.
 11. Schedules create/run-now/remove works for webhook + extraction summary + monitor diff presets.
 12. Templates save/apply/run/delete and diagnostics report copy work.
+13. Page URL generator + recovery controls work (retry failed only, resume checkpoint, failure report CSV/JSON).
 
 ## Release Checklist
 1. `npm run release:extension` passed.

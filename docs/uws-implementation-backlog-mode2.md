@@ -65,6 +65,10 @@
 - monitoring alerts v1 (`monitor.page.diff`, persisted monitor states, field-level diff summary, monitor schedule/job presets).
 27) Tracking artifact:
 - `docs/phase9-sprintC-monitoring-alerts-slice-2026-02-23.md`
+28) Epic 9 Sprint C slice 2 implemented:
+- scale/recovery v1 (URL generator + retry-failed/resume-checkpoint controls + failure report export + checkpoint summary metadata).
+29) Tracking artifact:
+- `docs/phase9-sprintC-scale-recovery-slice-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

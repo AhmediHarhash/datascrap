@@ -314,6 +314,59 @@
             <textarea id="page-resolved-urls-preview" rows="3" readonly></textarea>
           </label>
 
+          <div id="page-url-generator-panel" class="subpanel">
+            <h2>URL Generator</h2>
+            <label class="field">
+              <span>Pattern Template</span>
+              <input id="urlgen-template" type="text" placeholder="https://example.com/{seed}/page/{n}" />
+            </label>
+            <div class="grid-two">
+              <label class="field">
+                <span>Range Start</span>
+                <input id="urlgen-range-start" type="number" value="1" />
+              </label>
+              <label class="field">
+                <span>Range End</span>
+                <input id="urlgen-range-end" type="number" value="10" />
+              </label>
+              <label class="field">
+                <span>Range Step</span>
+                <input id="urlgen-range-step" type="number" min="1" value="1" />
+              </label>
+              <label class="field">
+                <span>Padding</span>
+                <input id="urlgen-padding" type="number" min="0" max="12" value="0" />
+              </label>
+            </div>
+            <label class="field">
+              <span>Seed Values (comma or newline)</span>
+              <textarea id="urlgen-seeds" rows="3" placeholder="plumbers&#10;electricians&#10;roofers"></textarea>
+            </label>
+            <label class="checkbox-row">
+              <input id="urlgen-append-mode" type="checkbox" />
+              <span>Append to existing manual URLs</span>
+            </label>
+            <div class="actions actions-4">
+              <button id="urlgen-generate-range-btn" class="btn btn-ghost" type="button">Generate Range</button>
+              <button id="urlgen-generate-seeds-btn" class="btn btn-ghost" type="button">Generate Seeds</button>
+              <button id="urlgen-generate-pattern-btn" class="btn btn-ghost" type="button">Generate Pattern</button>
+              <button id="urlgen-clear-btn" class="btn btn-ghost" type="button">Clear Manual URLs</button>
+            </div>
+            <span id="urlgen-status-line" class="table-status">URL generator ready</span>
+          </div>
+
+          <div id="page-recovery-panel" class="subpanel">
+            <h2>Recovery Controls</h2>
+            <div class="actions actions-4">
+              <button id="page-retry-failed-btn" class="btn btn-ghost" type="button">Retry Failed Only</button>
+              <button id="page-resume-checkpoint-btn" class="btn btn-ghost" type="button">Resume Checkpoint</button>
+              <button id="page-failure-report-csv-btn" class="btn btn-ghost" type="button">Failure Report CSV</button>
+              <button id="page-failure-report-json-btn" class="btn btn-ghost" type="button">Failure Report JSON</button>
+            </div>
+            <div id="page-recovery-preview" class="list-preview">Select a table run with failures to use recovery controls.</div>
+            <span id="page-recovery-status-line" class="table-status">Recovery controls ready</span>
+          </div>
+
           <div id="page-fields-panel" class="inline-row">
             <div class="field">
               <span>Custom Page Fields</span>

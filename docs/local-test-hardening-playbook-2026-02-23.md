@@ -21,7 +21,7 @@ npm run hardening:railway
 ## What It Executes
 
 1) `npm run smoke:extension`
-- storage/runtime + epic5/6/7/8/9/10/11 checks
+- storage/runtime + epic5/6/7/8/9/10/11/12 checks
 
 2) local API boot + `npm run smoke:control-api`
 - verifies `/healthz` and `/readyz`
@@ -81,6 +81,8 @@ npm run test:local:hardening
 2) Extraction:
 - list extractor -> run -> table rows visible
 - page details/email/text -> run -> rows/history updates
+- URL generator (range/seed/pattern) -> manual URLs updated correctly
+- recovery controls: retry-failed-only + resume-checkpoint + failure report export
 - image scan/download smoke
 
 3) Cloud control:
