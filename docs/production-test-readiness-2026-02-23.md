@@ -30,7 +30,7 @@
 - Includes:
   - storage/runtime
   - advanced table merge/cleanup smoke
-  - epic5/epic6/epic7/epic8 UI+wiring checks
+  - epic5/epic6/epic7/epic8/epic9 UI+wiring checks
 
 2) Control API health/readiness smoke
 - `npm run smoke:control-api` (with API running)

@@ -49,6 +49,7 @@ import { buildClipboardExport, exportTableToFile } from "./export-service.mjs";
 import { downloadImages, scanActiveTabImages } from "./image-downloader-service.mjs";
 import { listDataSources, resolveDataSourceUrls } from "./datasource-service.mjs";
 import { createListExtractionEngine } from "./list-extraction-engine.mjs";
+import { autodetectListConfig } from "./list-autodetect-service.mjs";
 import { createMetadataExtractionEngine } from "./metadata-extraction-engine.mjs";
 import { createPageExtractionEngine } from "./page-extraction-engine.mjs";
 import { createPickerSessionManager } from "./picker-session-manager.mjs";
@@ -185,6 +186,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           payload: {
             items
           }
+        });
+        return;
+      }
+
+      if (type === MESSAGE_TYPES.LIST_AUTODETECT_REQUEST) {
+        const result = await autodetectListConfig({
+          chromeApi: chrome,
+          permissionManager,
+          options: message?.payload || {}
+        });
+        sendResponse({
+          type: MESSAGE_TYPES.LIST_AUTODETECT_RESPONSE,
+          payload: result
         });
         return;
       }

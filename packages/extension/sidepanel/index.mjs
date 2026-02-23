@@ -49,6 +49,9 @@ const elements = {
   listConfigPanel: document.getElementById("list-config-panel"),
   containerSelector: document.getElementById("container-selector"),
   pickContainerBtn: document.getElementById("pick-container-btn"),
+  listAutoDetectBtn: document.getElementById("list-autodetect-btn"),
+  listAutoDetectStatusLine: document.getElementById("list-autodetect-status-line"),
+  listAutoDetectPreview: document.getElementById("list-autodetect-preview"),
   fieldList: document.getElementById("field-list"),
   pickFieldsBtn: document.getElementById("pick-fields-btn"),
   clearFieldsBtn: document.getElementById("clear-fields-btn"),
@@ -539,6 +542,22 @@ function createFieldFromSelection(selection, targetListLength, index) {
   };
 }
 
+function createFieldFromAutoDetect(field, index) {
+  const mode = String(field?.extractMode || "text").trim().toLowerCase();
+  const normalizedMode = ["text", "link_url", "image_url", "attribute"].includes(mode) ? mode : "text";
+  const relativeSelector = String(field?.relativeSelector || "").trim();
+  const selector = String(field?.selector || relativeSelector).trim();
+  const fallbackName = `field_${index + 1}`;
+  return {
+    id: randomId("field"),
+    name: normalizeFieldName(field?.name || fallbackName, index),
+    selector,
+    relativeSelector,
+    extractMode: normalizedMode,
+    attribute: String(field?.attribute || "").trim()
+  };
+}
+
 function setStatus(status) {
   state.currentStatus = String(status || AUTOMATION_STATES.IDLE);
   elements.statusPill.textContent = state.currentStatus;
@@ -551,6 +570,37 @@ function setStatus(status) {
 
 function setPickerStatus(text) {
   elements.pickerStatus.textContent = `picker: ${text}`;
+}
+
+function setListAutoDetectStatus(text, { error = false } = {}) {
+  if (!elements.listAutoDetectStatusLine) return;
+  elements.listAutoDetectStatusLine.textContent = String(text || "");
+  elements.listAutoDetectStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function renderListAutoDetectPreview(payload) {
+  if (!elements.listAutoDetectPreview) return;
+  const fields = Array.isArray(payload?.fields) ? payload.fields : [];
+  const previewRows = Array.isArray(payload?.previewRows) ? payload.previewRows : [];
+  if (!payload || fields.length === 0) {
+    elements.listAutoDetectPreview.textContent = "No auto-detect run yet.";
+    return;
+  }
+
+  const lines = [];
+  lines.push(
+    `container=${String(payload.containerSelector || "")} | rows=${Number(payload.containerCount || 0)} | confidence=${Math.round(
+      Number(payload.confidence || 0) * 100
+    )}%`
+  );
+  lines.push(`fields=${fields.map((field) => String(field.name || "")).join(", ")}`);
+  if (previewRows.length > 0) {
+    lines.push("preview:");
+    for (const row of previewRows.slice(0, 2)) {
+      lines.push(JSON.stringify(row));
+    }
+  }
+  elements.listAutoDetectPreview.textContent = lines.join("\n");
 }
 
 function sendMessage(type, payload = {}) {
@@ -3452,6 +3502,69 @@ async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = ""
   }
 }
 
+async function onListAutoDetect() {
+  setListAutoDetectStatus("Auto-detecting list setup...");
+  try {
+    const response = await sendMessage(MESSAGE_TYPES.LIST_AUTODETECT_REQUEST, {
+      maxFields: 8,
+      maxPreviewRows: 5,
+      minItems: 3
+    });
+
+    const fields = Array.isArray(response.fields) ? response.fields : [];
+    if (fields.length === 0) {
+      throw new Error("No stable fields detected");
+    }
+
+    const containerSelector = String(response.containerSelector || "").trim();
+    if (!containerSelector) {
+      throw new Error("No container selector detected");
+    }
+
+    elements.containerSelector.value = containerSelector;
+    state.listFields = fields.map((field, index) => createFieldFromAutoDetect(field, index));
+    renderListFields();
+
+    const loadMore = response.loadMore || {};
+    const loadMoreMethod = String(loadMore.method || "").trim();
+    if (loadMoreMethod === LOAD_MORE_METHODS.CLICK_BUTTON || loadMoreMethod === LOAD_MORE_METHODS.NAVIGATE) {
+      elements.loadMoreMethod.value = loadMoreMethod;
+      if (loadMoreMethod === LOAD_MORE_METHODS.CLICK_BUTTON) {
+        elements.loadMoreButtonSelector.value = String(loadMore.buttonSelector || "").trim();
+      }
+      if (loadMoreMethod === LOAD_MORE_METHODS.NAVIGATE) {
+        elements.loadMoreNextSelector.value = String(loadMore.nextLinkSelector || "").trim();
+      }
+    }
+
+    if (!String(elements.startUrl.value || "").trim() && response.pageUrl) {
+      elements.startUrl.value = String(response.pageUrl);
+    }
+
+    const confidencePct = Math.round(Number(response.confidence || 0) * 100);
+    setListAutoDetectStatus(
+      `Auto-detect applied: ${state.listFields.length} fields, ${Number(response.containerCount || 0)} rows, ${confidencePct}% confidence`
+    );
+    renderListAutoDetectPreview(response);
+    trackUiEvent("list_autodetect_applied", {
+      fieldCount: state.listFields.length,
+      containerCount: Number(response.containerCount || 0),
+      confidence: Number(response.confidence || 0)
+    });
+    appendLog("list auto-detect applied", {
+      containerSelector: response.containerSelector,
+      fieldCount: state.listFields.length,
+      loadMore: response.loadMore || null,
+      detectionMs: Number(response.detectionMs || 0)
+    });
+  } catch (error) {
+    setListAutoDetectStatus(`Auto-detect failed: ${error.message}`, {
+      error: true
+    });
+    appendLog(`list auto-detect failed: ${error.message}`);
+  }
+}
+
 function buildListAutomationConfig() {
   const startUrl = String(elements.startUrl.value || "").trim();
   const containerSelector = String(elements.containerSelector.value || "").trim();
@@ -3779,6 +3892,9 @@ elements.clearLogBtn.addEventListener("click", () => {
 elements.clearFieldsBtn.addEventListener("click", () => {
   state.listFields = [];
   renderListFields();
+});
+elements.listAutoDetectBtn.addEventListener("click", () => {
+  void onListAutoDetect();
 });
 elements.clearPageFieldsBtn.addEventListener("click", () => {
   state.pageFields = [];
@@ -4157,6 +4273,8 @@ renderSchedules();
 setObservabilityOutput({});
 setDiagnosticsOutput({});
 setPickerStatus("idle");
+setListAutoDetectStatus("Auto-detect ready");
+renderListAutoDetectPreview(null);
 setTableStatus("No table loaded");
 setExportStatus("Export ready");
 setImageStatus("Scan page to load images");

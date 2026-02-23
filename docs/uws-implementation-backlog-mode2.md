@@ -45,6 +45,14 @@
 - `npm run smoke:extension` pass
 - `npm run test:local:hardening` pass
 - `npm run hardening:railway` pass (cloud smoke enabled)
+18) Epic 9 execution conversion completed:
+- competitor gap-close workstreams prioritized and sequenced.
+19) Tracking artifact:
+- `docs/phase9-competitor-gap-close-2026-02-23.md`
+20) Epic 9 Sprint A slice 1 implemented:
+- list auto-detect setup (background + sidepanel apply + smoke coverage).
+21) Tracking artifact:
+- `docs/phase9-sprintA-autodetect-slice-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.
@@ -120,10 +128,16 @@ Acceptance:
 - Webhook delivery success/failure observable and retryable.
 
 ## Epic 9 - Templates + Playbooks
-1) Save/reuse extraction templates.
-2) Playbook parameterization by niche/use-case.
+1) One-click auto-detect extraction setup.
+2) Template/recipe library with import/export + schema lock.
+3) Destination integrations pack (Sheets hardening + Airtable + signed webhook).
+4) Monitoring diff alerts and schedule presets.
+5) Scale URL operations + failure recovery UX.
+6) Anti-block reliability profiles.
 Acceptance:
-- One-click rerun from template with deterministic output schema.
+- New-user one-click extraction succeeds on benchmark targets.
+- Template flows are deterministic and portable.
+- Destination delivery and monitoring flows are observable and retryable.
 
 ## Epic 10 - Telemetry + Diagnostics
 1) Event taxonomy implementation.

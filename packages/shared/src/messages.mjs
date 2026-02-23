@@ -21,6 +21,8 @@ export const MESSAGE_TYPES = Object.freeze({
   TABLE_MERGE_COLUMNS_RESPONSE: "table.merge_columns.response",
   TABLE_CLEANUP_REQUEST: "table.cleanup.request",
   TABLE_CLEANUP_RESPONSE: "table.cleanup.response",
+  LIST_AUTODETECT_REQUEST: "list.autodetect.request",
+  LIST_AUTODETECT_RESPONSE: "list.autodetect.response",
   TABLE_EXPORT_REQUEST: "table.export.request",
   TABLE_EXPORT_RESPONSE: "table.export.response",
   TABLE_EXPORT_CLIPBOARD_REQUEST: "table.export_clipboard.request",
