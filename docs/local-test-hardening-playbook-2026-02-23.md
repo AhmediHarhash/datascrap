@@ -21,7 +21,7 @@ npm run hardening:railway
 ## What It Executes
 
 1) `npm run smoke:extension`
-- storage/runtime + epic5/6/7/8/9/10/11/12/13 checks
+- storage/runtime + epic5/6/7/8/9/10/11/12/13/14 checks
 
 2) local API boot + `npm run smoke:control-api`
 - verifies `/healthz` and `/readyz`
@@ -98,3 +98,4 @@ npm run test:local:hardening
 4) Templates/diagnostics:
 - save/apply/run/delete template
 - generate snapshot/report and copy to clipboard
+- verify run artifact summary + latest failure packet fields in diagnostics output

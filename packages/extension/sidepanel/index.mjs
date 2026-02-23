@@ -4388,23 +4388,67 @@ async function onTemplateImportFromFile(file) {
   }
 }
 
+function buildDiagnosticsRunArtifactSummary(snapshot) {
+  const runArtifacts = Array.isArray(snapshot?.runArtifacts) ? snapshot.runArtifacts : [];
+  const failedArtifacts = Array.isArray(snapshot?.failedArtifacts) ? snapshot.failedArtifacts : [];
+  const statusCounts = {
+    running: 0,
+    completed: 0,
+    stopped: 0,
+    error: 0,
+    other: 0
+  };
+
+  for (const artifact of runArtifacts) {
+    const status = String(artifact?.status || "").trim().toLowerCase();
+    if (status === AUTOMATION_STATES.RUNNING) statusCounts.running += 1;
+    else if (status === AUTOMATION_STATES.COMPLETED) statusCounts.completed += 1;
+    else if (status === AUTOMATION_STATES.STOPPED) statusCounts.stopped += 1;
+    else if (status === AUTOMATION_STATES.ERROR) statusCounts.error += 1;
+    else statusCounts.other += 1;
+  }
+
+  const latestArtifact = runArtifacts[0] || null;
+  const latestFailure = failedArtifacts[0] || runArtifacts.find((item) => item?.errorPacket) || null;
+  return {
+    total: runArtifacts.length,
+    failedTotal: failedArtifacts.length,
+    statusCounts,
+    latestAutomationId: latestArtifact?.automationId || null,
+    latestFailureAutomationId: latestFailure?.automationId || null,
+    latestFailureError: latestFailure?.errorPacket || null,
+    recentEventSummary: snapshot?.recentEventSummary || null
+  };
+}
+
+function buildDiagnosticsContextPayload() {
+  return {
+    activeTool: state.activeTool,
+    activeShellView: state.activeShellView,
+    currentStatus: state.currentStatus,
+    templateCount: state.templates.length,
+    cloudPolicyLoaded: Boolean(state.cloudPolicy),
+    cloudJobsLoaded: state.cloudJobs.length,
+    cloudSchedulesLoaded: state.cloudSchedules.length
+  };
+}
+
 async function onDiagnosticsSnapshot() {
   setTemplatesStatus("Loading runtime snapshot...");
   try {
     const snapshot = await sendMessage(MESSAGE_TYPES.SNAPSHOT_REQUEST);
+    const runArtifactSummary = buildDiagnosticsRunArtifactSummary(snapshot);
     state.diagnosticsReport = {
       generatedAt: new Date().toISOString(),
       snapshot,
       activation: await sendMessage(MESSAGE_TYPES.ACTIVATION_SESSION_GET_REQUEST),
-      context: {
-        activeTool: state.activeTool,
-        activeShellView: state.activeShellView,
-        currentStatus: state.currentStatus,
-        templateCount: state.templates.length
-      }
+      runArtifactSummary,
+      context: buildDiagnosticsContextPayload()
     };
     setDiagnosticsOutput(state.diagnosticsReport);
-    setTemplatesStatus("Runtime snapshot loaded");
+    setTemplatesStatus(
+      `Runtime snapshot loaded (${runArtifactSummary.total} artifacts, ${runArtifactSummary.failedTotal} failures)`
+    );
   } catch (error) {
     setTemplatesStatus(`Snapshot failed: ${error.message}`, {
       error: true
@@ -4417,10 +4461,14 @@ async function onDiagnosticsReport() {
   try {
     const snapshot = await sendMessage(MESSAGE_TYPES.SNAPSHOT_REQUEST);
     const activation = await sendMessage(MESSAGE_TYPES.ACTIVATION_SESSION_GET_REQUEST);
+    const runArtifactSummary = buildDiagnosticsRunArtifactSummary(snapshot);
     state.diagnosticsReport = {
       generatedAt: new Date().toISOString(),
       snapshot,
+      runArtifactSummary,
+      recentEventSummary: snapshot?.recentEventSummary || null,
       activation,
+      context: buildDiagnosticsContextPayload(),
       templatePayloadPreview: extractCommonTemplateControls(),
       cloudSummary: {
         policy: state.cloudPolicy,
@@ -4435,7 +4483,9 @@ async function onDiagnosticsReport() {
         .slice(-200)
     };
     setDiagnosticsOutput(state.diagnosticsReport);
-    setTemplatesStatus("Diagnostics report generated");
+    setTemplatesStatus(
+      `Diagnostics report generated (${runArtifactSummary.total} artifacts, ${runArtifactSummary.failedTotal} failures)`
+    );
   } catch (error) {
     setTemplatesStatus(`Report generation failed: ${error.message}`, {
       error: true

@@ -66,7 +66,7 @@ Deliver Workstream 6 foundation in extension runtime:
 ## Validation
 1) `npm run smoke:extension` -> pass
 2) `npm run test:local:hardening` -> pass
-3) `npm run hardening:railway` -> blocked in this sandbox session (`spawn EPERM` while loading Railway vars)
+3) `npm run hardening:railway` -> pass
 
 ## Notes
 - Sticky session reuse is intentionally optional and controlled per run via queue reliability settings.

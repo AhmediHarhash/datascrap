@@ -73,6 +73,10 @@
 - anti-block reliability profiles v1 (profile controls + bounded backoff/jitter + optional sticky session reuse + retry telemetry).
 31) Tracking artifact:
 - `docs/phase9-sprintD-reliability-profiles-slice-2026-02-23.md`
+32) Epic 10 Sprint A slice 1 implemented:
+- runtime telemetry + diagnostics depth v1 (event taxonomy + error packets + run artifacts + diagnostics summary enrichment).
+33) Tracking artifact:
+- `docs/phase10-sprintA-telemetry-diagnostics-slice-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

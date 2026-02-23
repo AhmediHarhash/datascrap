@@ -64,6 +64,7 @@ Run these checks in loaded unpacked extension (`packages/extension`):
 12. Templates save/apply/run/delete and diagnostics report copy work.
 13. Page URL generator + recovery controls work (retry failed only, resume checkpoint, failure report CSV/JSON).
 14. Reliability profile controls apply and persist (profile/backoff/jitter/session reuse).
+15. Diagnostics report includes run artifacts + recent event summary + failure error packet.
 
 ## Release Checklist
 1. `npm run release:extension` passed.

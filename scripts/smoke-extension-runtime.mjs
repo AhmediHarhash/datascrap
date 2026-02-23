@@ -68,6 +68,11 @@ async function main() {
       pageExtractionEngine: {
         async extractPages({ config, signal, emitProgress }) {
           void signal;
+          if (config?.forceFailure) {
+            const error = new Error("Simulated timeout from mock page engine");
+            error.code = "TIMEOUT";
+            throw error;
+          }
           mockPageEngineCalls += 1;
           const urls = Array.isArray(config.urls) ? config.urls : [];
           emitProgress({
@@ -160,11 +165,44 @@ async function main() {
     );
   }
 
+  const failingRun = await runtime.startAutomation({
+    runnerType: "pageExtractor",
+    config: {
+      urls: ["https://example.com/fail"],
+      forceFailure: true,
+      queue: {
+        maxConcurrentTabs: 1
+      }
+    }
+  });
+  await waitForEvent(
+    events,
+    (event) => event.eventType === AUTOMATION_EVENT_TYPES.FAILED && event.payload?.automationId === failingRun.automationId
+  );
+
   const hasProgress = events.some((event) => event.eventType === AUTOMATION_EVENT_TYPES.PROGRESS);
   assert(hasProgress, "progress events were not emitted");
 
   const snapshot = await runtime.getSnapshot();
-  assert(Array.isArray(snapshot.automations) && snapshot.automations.length >= 3, "snapshot automations missing");
+  assert(Array.isArray(snapshot.automations) && snapshot.automations.length >= 4, "snapshot automations missing");
+  assert(Array.isArray(snapshot.runArtifacts) && snapshot.runArtifacts.length >= 4, "snapshot runArtifacts missing");
+  assert(Array.isArray(snapshot.failedArtifacts) && snapshot.failedArtifacts.length >= 1, "snapshot failedArtifacts missing");
+  assert(snapshot.recentEventSummary?.byType?.[AUTOMATION_EVENT_TYPES.FAILED] >= 1, "recent event summary missing failed count");
+
+  const failedArtifact =
+    snapshot.failedArtifacts.find((item) => item.automationId === failingRun.automationId) || snapshot.failedArtifacts[0];
+  assert(Boolean(failedArtifact), "failed artifact record missing");
+  assert(Boolean(failedArtifact.errorPacket), "failed artifact error packet missing");
+  assert(Boolean(failedArtifact.errorPacket.errorType), "failed artifact error type missing");
+  assert(Boolean(failedArtifact.errorPacket.runStep), "failed artifact runStep missing");
+
+  const failedEvent = events.find(
+    (event) => event.eventType === AUTOMATION_EVENT_TYPES.FAILED && event.payload?.automationId === failingRun.automationId
+  );
+  assert(Boolean(failedEvent?.taxonomy?.eventName), "failed event taxonomy missing");
+  assert(failedEvent.taxonomy.eventName === "extraction_failed", "failed event taxonomy mismatch");
+  assert(Boolean(failedEvent?.payload?.errorPacket), "failed event payload missing error packet");
+
   assert(mockListEngineCalls >= 2, "list extraction engine capability path was not exercised");
   assert(mockPageEngineCalls >= 1, "page extraction engine capability path was not exercised");
 
@@ -177,6 +215,8 @@ async function main() {
         automationCount: snapshot.automations.length,
         eventsCaptured: events.length,
         stoppedAutomationId: stoppable.automationId,
+        failedAutomationId: failingRun.automationId,
+        failedErrorType: failedArtifact.errorPacket.errorType,
         mockListEngineCalls,
         mockPageEngineCalls
       },

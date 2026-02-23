@@ -31,7 +31,7 @@
 - Includes:
   - storage/runtime
   - advanced table merge/cleanup smoke
-  - epic5/epic6/epic7/epic8/epic9/epic10/epic11/epic12/epic13 UI+wiring checks
+  - epic5/epic6/epic7/epic8/epic9/epic10/epic11/epic12/epic13/epic14 UI+wiring checks
 
 2) Control API health/readiness smoke
 - `npm run smoke:control-api` (with API running)
@@ -96,6 +96,7 @@
 - template save/apply/run/delete
 - runtime snapshot capture
 - diagnostics report generation/copy
+- run artifact and failure packet summary visibility
 
 ## Required Env For Full Cloud E2E
 
