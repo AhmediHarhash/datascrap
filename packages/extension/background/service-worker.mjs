@@ -27,6 +27,7 @@ import { buildClipboardExport, exportTableToFile } from "./export-service.mjs";
 import { downloadImages, scanActiveTabImages } from "./image-downloader-service.mjs";
 import { listDataSources, resolveDataSourceUrls } from "./datasource-service.mjs";
 import { createListExtractionEngine } from "./list-extraction-engine.mjs";
+import { createMetadataExtractionEngine } from "./metadata-extraction-engine.mjs";
 import { createPageExtractionEngine } from "./page-extraction-engine.mjs";
 import { createPickerSessionManager } from "./picker-session-manager.mjs";
 
@@ -66,6 +67,9 @@ const controllersReady = (async () => {
   const pageExtractionEngine = createPageExtractionEngine({
     chromeApi: chrome
   });
+  const metadataExtractionEngine = createMetadataExtractionEngine({
+    chromeApi: chrome
+  });
   const permissionManager = createPermissionManager({
     chromeApi: chrome,
     assumeAllowedIfUnavailable: false
@@ -76,7 +80,8 @@ const controllersReady = (async () => {
     permissionManager,
     capabilities: {
       listExtractionEngine,
-      pageExtractionEngine
+      pageExtractionEngine,
+      metadataExtractionEngine
     },
     onEvent(event) {
       safeSendRuntimeMessage({

@@ -38,6 +38,7 @@ const elements = {
 
   pageConfigPanel: document.getElementById("page-config-panel"),
   pageUrlSourceMode: document.getElementById("page-url-source-mode"),
+  pageActionTypeField: document.getElementById("page-action-type-field"),
   pageActionType: document.getElementById("page-action-type"),
   pageManualUrlsField: document.getElementById("page-manual-urls-field"),
   pageManualUrls: document.getElementById("page-manual-urls"),
@@ -56,6 +57,37 @@ const elements = {
   pageFieldList: document.getElementById("page-field-list"),
   pickPageFieldsBtn: document.getElementById("pick-page-fields-btn"),
   clearPageFieldsBtn: document.getElementById("clear-page-fields-btn"),
+  pageEmailOptionsPanel: document.getElementById("page-email-options-panel"),
+  emailDeepScanEnabled: document.getElementById("email-deep-scan-enabled"),
+  emailDeepMaxDepth: document.getElementById("email-deep-max-depth"),
+  emailDeepMaxLinksPerPage: document.getElementById("email-deep-max-links-per-page"),
+  emailDeepSameDomainOnly: document.getElementById("email-deep-same-domain-only"),
+  emailDeepLinkSelector: document.getElementById("email-deep-link-selector"),
+  emailRemoveDuplicates: document.getElementById("email-remove-duplicates"),
+  emailToLowercase: document.getElementById("email-to-lowercase"),
+  emailBasicValidation: document.getElementById("email-basic-validation"),
+  emailIncludeMailto: document.getElementById("email-include-mailto"),
+  emailDomainFilters: document.getElementById("email-domain-filters"),
+  pagePhoneOptionsPanel: document.getElementById("page-phone-options-panel"),
+  phoneRemoveDuplicates: document.getElementById("phone-remove-duplicates"),
+  phoneBasicValidation: document.getElementById("phone-basic-validation"),
+  phonePatterns: document.getElementById("phone-patterns"),
+  pageTextOptionsPanel: document.getElementById("page-text-options-panel"),
+  textIncludeMetadata: document.getElementById("text-include-metadata"),
+  textMaxContentChars: document.getElementById("text-max-content-chars"),
+  pageMapsOptionsPanel: document.getElementById("page-maps-options-panel"),
+  mapsIncludeBasicInfo: document.getElementById("maps-include-basic-info"),
+  mapsIncludeContactDetails: document.getElementById("maps-include-contact-details"),
+  mapsIncludeReviews: document.getElementById("maps-include-reviews"),
+  mapsIncludeHours: document.getElementById("maps-include-hours"),
+  mapsIncludeLocation: document.getElementById("maps-include-location"),
+  mapsIncludeImages: document.getElementById("maps-include-images"),
+  metadataOptionsPanel: document.getElementById("metadata-options-panel"),
+  metadataIncludeMetaTags: document.getElementById("metadata-include-meta-tags"),
+  metadataIncludeJsonLd: document.getElementById("metadata-include-jsonld"),
+  metadataIncludeReviewSignals: document.getElementById("metadata-include-review-signals"),
+  metadataIncludeContactSignals: document.getElementById("metadata-include-contact-signals"),
+  metadataIncludeRawJsonLd: document.getElementById("metadata-include-raw-jsonld"),
   queueConcurrency: document.getElementById("queue-concurrency"),
   queueDelayMs: document.getElementById("queue-delay-ms"),
   queuePageTimeoutMs: document.getElementById("queue-page-timeout-ms"),
@@ -411,8 +443,11 @@ function updateRunnerUi() {
   const runnerType = elements.runnerType.value;
   const isListRunner = runnerType === RUNNER_TYPES.LIST_EXTRACTOR;
   const isPageRunner = runnerType === RUNNER_TYPES.PAGE_EXTRACTOR;
+  const isMetadataRunner = runnerType === RUNNER_TYPES.METADATA_EXTRACTOR;
   elements.listConfigPanel.style.display = isListRunner ? "grid" : "none";
-  elements.pageConfigPanel.style.display = isPageRunner ? "grid" : "none";
+  elements.pageConfigPanel.style.display = isPageRunner || isMetadataRunner ? "grid" : "none";
+  elements.pageActionTypeField.style.display = isMetadataRunner ? "none" : "grid";
+  updatePageActionUi();
 }
 
 function updatePageSourceUi() {
@@ -425,9 +460,20 @@ function updatePageSourceUi() {
 }
 
 function updatePageActionUi() {
+  const runnerType = elements.runnerType.value;
+  const isMetadataRunner = runnerType === RUNNER_TYPES.METADATA_EXTRACTOR;
   const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
-  const isCustomFieldMode = actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES;
+  const isCustomFieldMode = !isMetadataRunner && actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES;
   elements.pageFieldsPanel.style.display = isCustomFieldMode ? "grid" : "none";
+  elements.pageEmailOptionsPanel.style.display =
+    !isMetadataRunner && actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL ? "grid" : "none";
+  elements.pagePhoneOptionsPanel.style.display =
+    !isMetadataRunner && actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE ? "grid" : "none";
+  elements.pageTextOptionsPanel.style.display =
+    !isMetadataRunner && actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT ? "grid" : "none";
+  elements.pageMapsOptionsPanel.style.display =
+    !isMetadataRunner && actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS ? "grid" : "none";
+  elements.metadataOptionsPanel.style.display = isMetadataRunner ? "grid" : "none";
 }
 
 function setResolvedUrlsPreview(urls) {
@@ -1637,6 +1683,71 @@ function parseManualUrls(text) {
     .filter(Boolean);
 }
 
+function parseCommaSeparated(text) {
+  return String(text || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseLineSeparated(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function buildEmailOptions() {
+  return {
+    deepScanEnabled: Boolean(elements.emailDeepScanEnabled.checked),
+    maxDepth: clamp(parseNumber(elements.emailDeepMaxDepth.value, 1), 1, 3),
+    maxLinksPerPage: clamp(parseNumber(elements.emailDeepMaxLinksPerPage.value, 20), 1, 60),
+    sameDomainOnly: Boolean(elements.emailDeepSameDomainOnly.checked),
+    linkSelector: String(elements.emailDeepLinkSelector.value || "").trim(),
+    removeDuplicates: Boolean(elements.emailRemoveDuplicates.checked),
+    toLowerCase: Boolean(elements.emailToLowercase.checked),
+    basicValidation: Boolean(elements.emailBasicValidation.checked),
+    includeMailtoLinks: Boolean(elements.emailIncludeMailto.checked),
+    domainFilters: parseCommaSeparated(elements.emailDomainFilters.value)
+  };
+}
+
+function buildPhoneOptions() {
+  return {
+    removeDuplicates: Boolean(elements.phoneRemoveDuplicates.checked),
+    basicValidation: Boolean(elements.phoneBasicValidation.checked),
+    phonePatterns: parseLineSeparated(elements.phonePatterns.value)
+  };
+}
+
+function buildTextOptions() {
+  return {
+    includeMetadata: Boolean(elements.textIncludeMetadata.checked),
+    maxContentChars: clamp(parseNumber(elements.textMaxContentChars.value, 12000), 1000, 100000)
+  };
+}
+
+function buildMapsOptions() {
+  return {
+    includeBasicInfo: Boolean(elements.mapsIncludeBasicInfo.checked),
+    includeContactDetails: Boolean(elements.mapsIncludeContactDetails.checked),
+    includeReviews: Boolean(elements.mapsIncludeReviews.checked),
+    includeHours: Boolean(elements.mapsIncludeHours.checked),
+    includeLocation: Boolean(elements.mapsIncludeLocation.checked),
+    includeImages: Boolean(elements.mapsIncludeImages.checked)
+  };
+}
+
+function buildMetadataOptions() {
+  return {
+    includeMetaTags: Boolean(elements.metadataIncludeMetaTags.checked),
+    includeJsonLd: Boolean(elements.metadataIncludeJsonLd.checked),
+    includeReviewSignals: Boolean(elements.metadataIncludeReviewSignals.checked),
+    includeContactSignals: Boolean(elements.metadataIncludeContactSignals.checked),
+    includeRawJsonLd: Boolean(elements.metadataIncludeRawJsonLd.checked)
+  };
+}
+
 async function hydrateSnapshot() {
   const snapshot = await sendMessage(MESSAGE_TYPES.SNAPSHOT_REQUEST);
   const events = Array.isArray(snapshot.recentEvents) ? snapshot.recentEvents : [];
@@ -1777,6 +1888,15 @@ async function buildPageAutomationConfig() {
       fields: actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES ? normalizePageFields() : []
     }
   ];
+  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL) {
+    actions[0].emailOptions = buildEmailOptions();
+  } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE) {
+    actions[0].phoneOptions = buildPhoneOptions();
+  } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) {
+    actions[0].textOptions = buildTextOptions();
+  } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
+    actions[0].mapsOptions = buildMapsOptions();
+  }
 
   return {
     startUrl,
@@ -1792,13 +1912,49 @@ async function buildPageAutomationConfig() {
   };
 }
 
+async function buildMetadataAutomationConfig() {
+  const startUrl = String(elements.startUrl.value || "").trim();
+  const urlSourceMode = String(elements.pageUrlSourceMode.value || URL_SOURCE_MODES.MANUAL).trim();
+  const urls = await resolvePageUrlsBySourceMode(urlSourceMode);
+  const dedupedUrls = Array.from(new Set(urls.map((item) => String(item || "").trim()).filter(Boolean)));
+  if (dedupedUrls.length === 0 && !startUrl) {
+    throw new Error("No URLs available for metadata extraction");
+  }
+
+  const queue = {
+    maxConcurrentTabs: parseNumber(elements.queueConcurrency.value, 2),
+    delayBetweenRequestsMs: parseNumber(elements.queueDelayMs.value, 300),
+    pageTimeoutMs: parseNumber(elements.queuePageTimeoutMs.value, 25000),
+    maxRetries: parseNumber(elements.queueRetries.value, 1),
+    retryDelayMs: parseNumber(elements.queueRetryDelayMs.value, 1000),
+    jitterMs: parseNumber(elements.queueJitterMs.value, 200),
+    waitForPageLoad: Boolean(elements.queueWaitPageLoad.checked),
+    waitForSelector: String(elements.queueWaitSelector.value || "").trim(),
+    waitForSelectorTimeoutMs: parseNumber(elements.queueWaitSelectorTimeoutMs.value, 4000)
+  };
+
+  return {
+    startUrl,
+    urls: dedupedUrls.length > 0 ? dedupedUrls : [startUrl],
+    urlSourceMode,
+    queue,
+    metadata: buildMetadataOptions(),
+    dataSource: {
+      tableDataId: String(elements.pageDatasourceSelect.value || "").trim(),
+      selectedColumn: String(elements.pageDatasourceColumn.value || "").trim()
+    }
+  };
+}
+
 async function onStart() {
   try {
     const runnerType = elements.runnerType.value;
     const config =
       runnerType === RUNNER_TYPES.LIST_EXTRACTOR
         ? buildListAutomationConfig()
-        : await buildPageAutomationConfig();
+        : runnerType === RUNNER_TYPES.METADATA_EXTRACTOR
+          ? await buildMetadataAutomationConfig()
+          : await buildPageAutomationConfig();
 
     const payload = await sendMessage(MESSAGE_TYPES.START_REQUEST, {
       runnerType,

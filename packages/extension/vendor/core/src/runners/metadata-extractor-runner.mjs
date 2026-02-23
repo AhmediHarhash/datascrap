@@ -5,7 +5,17 @@ export const metadataExtractorRunner = Object.freeze({
   type: RUNNER_TYPES.METADATA_EXTRACTOR,
   label: "Page Metadata Extractor",
   permissionOperation: "extract.metadata",
-  async run({ automation, signal, emitProgress }) {
+  async run({ automation, signal, emitProgress, capabilities = {} }) {
+    const metadataExtractionEngine = capabilities?.metadataExtractionEngine;
+    if (metadataExtractionEngine && typeof metadataExtractionEngine.extractMetadataPages === "function") {
+      return metadataExtractionEngine.extractMetadataPages({
+        automation,
+        config: automation?.config || {},
+        signal,
+        emitProgress
+      });
+    }
+
     const startUrl = String(automation?.config?.startUrl || "https://example.com").trim();
     const stepDelayMs = Number(automation?.config?.stepDelayMs || 220);
 

@@ -18,6 +18,61 @@ function normalizeUrls(config = {}) {
   return [];
 }
 
+function normalizeEmailOptions(input = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const domainFilters =
+    Array.isArray(source.domainFilters)
+      ? source.domainFilters
+      : String(source.domainFilters || "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+  return {
+    deepScanEnabled: Boolean(source.deepScanEnabled),
+    maxDepth: clamp(source.maxDepth, 1, 3, 1),
+    maxLinksPerPage: clamp(source.maxLinksPerPage, 1, 60, 20),
+    sameDomainOnly: Boolean(source.sameDomainOnly !== false),
+    linkSelector: String(source.linkSelector || "").trim(),
+    removeDuplicates: Boolean(source.removeDuplicates !== false),
+    toLowerCase: Boolean(source.toLowerCase !== false),
+    basicValidation: Boolean(source.basicValidation !== false),
+    includeMailtoLinks: Boolean(source.includeMailtoLinks !== false),
+    domainFilters
+  };
+}
+
+function normalizePhoneOptions(input = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const phonePatterns = Array.isArray(source.phonePatterns)
+    ? source.phonePatterns.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  return {
+    removeDuplicates: Boolean(source.removeDuplicates !== false),
+    basicValidation: Boolean(source.basicValidation !== false),
+    phonePatterns
+  };
+}
+
+function normalizeTextOptions(input = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  return {
+    includeMetadata: Boolean(source.includeMetadata !== false),
+    maxContentChars: clamp(source.maxContentChars, 1000, 100_000, 12_000)
+  };
+}
+
+function normalizeMapsOptions(input = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  return {
+    includeBasicInfo: Boolean(source.includeBasicInfo !== false),
+    includeContactDetails: Boolean(source.includeContactDetails !== false),
+    includeReviews: Boolean(source.includeReviews !== false),
+    includeHours: Boolean(source.includeHours !== false),
+    includeLocation: Boolean(source.includeLocation !== false),
+    includeImages: Boolean(source.includeImages !== false)
+  };
+}
+
 function normalizeActionConfig(config = {}) {
   const actions = Array.isArray(config.actions) ? config.actions : [];
   const explicitActionType = String(config.pageActionType || "").trim().toUpperCase();
@@ -31,7 +86,11 @@ function normalizeActionConfig(config = {}) {
   const fields = Array.isArray(action?.fields) ? action.fields : [];
   return {
     actionType,
-    fields
+    fields,
+    emailOptions: normalizeEmailOptions(action?.emailOptions || config.emailOptions),
+    phoneOptions: normalizePhoneOptions(action?.phoneOptions || config.phoneOptions),
+    textOptions: normalizeTextOptions(action?.textOptions || config.textOptions),
+    mapsOptions: normalizeMapsOptions(action?.mapsOptions || config.mapsOptions)
   };
 }
 
@@ -62,7 +121,7 @@ function randomJitter(maxJitterMs) {
   return Math.floor(Math.random() * max);
 }
 
-function pageExtractInDom(input) {
+async function pageExtractInDom(input) {
   function cleanText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
@@ -98,34 +157,189 @@ function pageExtractInDom(input) {
     return row;
   }
 
-  function extractEmails() {
-    const text = `${document.body?.innerText || ""}\n${document.documentElement?.innerText || ""}`;
-    const matches = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
-    const mailtoLinks = Array.from(document.querySelectorAll("a[href^='mailto:']"))
-      .map((link) => String(link.getAttribute("href") || "").replace(/^mailto:/i, "").trim())
+  function normalizeEmailCandidate(value, options) {
+    let email = String(value || "").trim();
+    email = email.replace(/^mailto:/i, "").replace(/[<>()\[\]{};,]+$/g, "").trim();
+    if (options.toLowerCase) {
+      email = email.toLowerCase();
+    }
+    if (!email) return "";
+    if (options.basicValidation && !/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) {
+      return "";
+    }
+    if (options.domainFilters.length > 0) {
+      const domain = email.split("@")[1] || "";
+      const allowed = options.domainFilters.some((item) => domain.endsWith(String(item).toLowerCase()));
+      if (!allowed) return "";
+    }
+    return email;
+  }
+
+  function extractEmailsFromText(text, options) {
+    const matches = String(text || "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+    const output = matches
+      .map((item) => normalizeEmailCandidate(item, options))
       .filter(Boolean);
-    const unique = Array.from(new Set([...matches, ...mailtoLinks].map((item) => item.toLowerCase())));
+    return options.removeDuplicates ? Array.from(new Set(output)) : output;
+  }
+
+  function absoluteUrl(value, baseUrl) {
+    try {
+      const parsed = new URL(String(value || "").trim(), baseUrl);
+      if (!/^https?:$/i.test(parsed.protocol)) return "";
+      return parsed.href;
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function collectLinksFromDocument(doc, baseUrl, options) {
+    const nodes = Array.from(
+      doc.querySelectorAll(options.linkSelector || "a[href]")
+    );
+    const links = [];
+    const seen = new Set();
+    for (const node of nodes) {
+      const href = absoluteUrl(node.getAttribute("href"), baseUrl);
+      if (!href || seen.has(href)) continue;
+      if (options.sameDomainOnly) {
+        try {
+          const target = new URL(href);
+          const base = new URL(baseUrl);
+          if (target.host !== base.host) {
+            continue;
+          }
+        } catch (_error) {
+          continue;
+        }
+      }
+      seen.add(href);
+      links.push(href);
+      if (links.length >= options.maxLinksPerPage) break;
+    }
+    return links;
+  }
+
+  async function deepScanEmails(options) {
+    const visited = new Set([location.href]);
+    const queue = collectLinksFromDocument(document, location.href, options).map((url) => ({
+      url,
+      depth: 1
+    }));
+    let scannedPages = 0;
+    const collectedEmails = [];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current || current.depth > options.maxDepth) continue;
+      if (visited.has(current.url)) continue;
+      visited.add(current.url);
+
+      try {
+        const response = await fetch(current.url, {
+          credentials: "include"
+        });
+        if (!response.ok) continue;
+        const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+        if (!contentType.includes("text/html")) continue;
+        const html = await response.text();
+        collectedEmails.push(...extractEmailsFromText(html, options));
+        scannedPages += 1;
+
+        if (current.depth < options.maxDepth) {
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const links = collectLinksFromDocument(doc, current.url, options);
+          for (const link of links) {
+            if (!visited.has(link)) {
+              queue.push({
+                url: link,
+                depth: current.depth + 1
+              });
+            }
+          }
+        }
+      } catch (_error) {
+        continue;
+      }
+    }
+
     return {
-      emails: unique,
-      emailCount: unique.length
+      scannedPages,
+      emails: options.removeDuplicates ? Array.from(new Set(collectedEmails)) : collectedEmails
     };
   }
 
-  function extractPhones() {
+  async function extractEmails(options) {
     const text = `${document.body?.innerText || ""}\n${document.documentElement?.innerText || ""}`;
-    const matches = text.match(/(?:\+?\d[\d\s().-]{6,}\d)/g) || [];
-    const normalized = matches
-      .map((item) => cleanText(item))
-      .map((item) => item.replace(/\s+/g, " "))
-      .filter((item) => item.length >= 7);
-    const unique = Array.from(new Set(normalized));
+    let emails = extractEmailsFromText(text, options);
+
+    if (options.includeMailtoLinks) {
+      const mailtoLinks = Array.from(document.querySelectorAll("a[href^='mailto:']"))
+        .map((link) => normalizeEmailCandidate(link.getAttribute("href") || "", options))
+        .filter(Boolean);
+      emails = [...emails, ...mailtoLinks];
+    }
+
+    let deepScanEmailsResult = [];
+    let deepScannedPages = 0;
+    if (options.deepScanEnabled) {
+      const deepResult = await deepScanEmails(options);
+      deepScanEmailsResult = deepResult.emails;
+      deepScannedPages = deepResult.scannedPages;
+    }
+
+    const merged = options.removeDuplicates
+      ? Array.from(new Set([...emails, ...deepScanEmailsResult]))
+      : [...emails, ...deepScanEmailsResult];
+
+    const domains = Array.from(
+      new Set(
+        merged
+          .map((email) => String(email).split("@")[1] || "")
+          .filter(Boolean)
+      )
+    );
+
     return {
-      phones: unique,
-      phoneCount: unique.length
+      emails: merged,
+      emailCount: merged.length,
+      emailDomains: domains,
+      deepScannedPages
     };
   }
 
-  function extractText() {
+  function extractPhones(options) {
+    const text = `${document.body?.innerText || ""}\n${document.documentElement?.innerText || ""}`;
+    const baseMatches = text.match(/(?:\+?\d[\d\s().-]{6,}\d)/g) || [];
+    const customMatches = [];
+
+    for (const pattern of options.phonePatterns) {
+      try {
+        const regex = new RegExp(pattern, "g");
+        const matches = text.match(regex) || [];
+        customMatches.push(...matches);
+      } catch (_error) {
+        continue;
+      }
+    }
+
+    const merged = [...baseMatches, ...customMatches]
+      .map((item) => cleanText(item))
+      .filter(Boolean)
+      .filter((item) => {
+        if (!options.basicValidation) return true;
+        const digitCount = item.replace(/\D/g, "").length;
+        return digitCount >= 7;
+      });
+
+    const phones = options.removeDuplicates ? Array.from(new Set(merged)) : merged;
+    return {
+      phones,
+      phoneCount: phones.length
+    };
+  }
+
+  function extractText(options) {
     const title = cleanText(document.querySelector("title")?.textContent || "");
     const description = cleanText(
       document.querySelector("meta[name='description']")?.getAttribute("content") || ""
@@ -147,63 +361,128 @@ function pageExtractInDom(input) {
         ""
     );
     const words = mainContent ? mainContent.split(/\s+/).filter(Boolean).length : 0;
+    const maxChars = Math.max(1000, Number(options.maxContentChars || 12000));
+    const h1 = cleanText(document.querySelector("h1")?.textContent || "");
+    const h2Count = document.querySelectorAll("h2").length;
+    const paragraphCount = document.querySelectorAll("p").length;
+    const canonicalUrl = cleanText(document.querySelector("link[rel='canonical']")?.getAttribute("href") || "");
+    const lang = cleanText(document.documentElement?.getAttribute("lang") || "");
+
     return {
       title,
       description,
-      author,
-      publishDate,
+      author: options.includeMetadata ? author : "",
+      publishDate: options.includeMetadata ? publishDate : "",
+      canonicalUrl: options.includeMetadata ? canonicalUrl : "",
+      lang: options.includeMetadata ? lang : "",
+      h1,
+      h2Count,
+      paragraphCount,
       wordCount: words,
-      content: mainContent.slice(0, 12_000)
+      excerpt: mainContent.slice(0, 280),
+      content: mainContent.slice(0, maxChars)
     };
   }
 
-  function extractMaps() {
-    const name = cleanText(
+  function parseMapCoordsFromUrl(urlValue) {
+    const raw = String(urlValue || "");
+    const match = raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (!match) {
+      return {
+        latitude: "",
+        longitude: ""
+      };
+    }
+    return {
+      latitude: match[1],
+      longitude: match[2]
+    };
+  }
+
+  function parseReviewCount(rawValue) {
+    const text = cleanText(rawValue);
+    const match = text.match(/([0-9][0-9,.]*)/);
+    if (!match) return 0;
+    const parsed = Number(match[1].replace(/,/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function extractMaps(options) {
+    const rawTitle = cleanText(
       document.querySelector("h1")?.innerText ||
         document.querySelector("[role='main'] h1")?.innerText ||
         ""
     );
-    const rating = cleanText(
+    const rawRating = cleanText(
       document.querySelector("[aria-label*='stars']")?.getAttribute("aria-label") ||
         document.querySelector("[data-value='Rating']")?.innerText ||
         ""
     );
-    const address = cleanText(
+    const rawReviewText = cleanText(
+      document.querySelector("button[jsaction*='pane.reviewChart.moreReviews']")?.innerText ||
+        document.querySelector("[aria-label*='reviews']")?.getAttribute("aria-label") ||
+        ""
+    );
+    const rawCategory = cleanText(
+      document.querySelector("button[jsaction*='category']")?.innerText ||
+        document.querySelector("[aria-label*='Category']")?.innerText ||
+        ""
+    );
+    const rawAddress = cleanText(
       document.querySelector("button[data-item-id*='address']")?.innerText ||
         document.querySelector("[data-item-id='address']")?.innerText ||
         ""
     );
-    const phone = cleanText(
+    const rawPhone = cleanText(
       document.querySelector("button[data-item-id*='phone']")?.innerText ||
         document.querySelector("[data-item-id='phone:tel']")?.innerText ||
         ""
     );
-    const website = cleanText(
+    const rawWebsite = cleanText(
       document.querySelector("a[data-item-id='authority']")?.href ||
         document.querySelector("a[data-item-id*='authority']")?.href ||
         ""
     );
+    const rawHours = cleanText(
+      document.querySelector("[aria-label*='Hours']")?.textContent ||
+        document.querySelector("[data-item-id*='oh']")?.textContent ||
+        ""
+    );
+
+    const coords = parseMapCoordsFromUrl(location.href);
+    const mapImageCount = document.querySelectorAll("img").length;
+
     return {
-      mapName: name,
-      mapRating: rating,
-      mapAddress: address,
-      mapPhone: phone,
-      mapWebsite: website
+      mapName: options.includeBasicInfo ? rawTitle : "",
+      mapRating: options.includeBasicInfo ? rawRating : "",
+      mapCategory: options.includeBasicInfo ? rawCategory : "",
+      mapAddress: options.includeLocation ? rawAddress : "",
+      mapLatitude: options.includeLocation ? coords.latitude : "",
+      mapLongitude: options.includeLocation ? coords.longitude : "",
+      mapPhone: options.includeContactDetails ? rawPhone : "",
+      mapWebsite: options.includeContactDetails ? rawWebsite : "",
+      mapHours: options.includeHours ? rawHours : "",
+      mapReviewCount: options.includeReviews ? parseReviewCount(rawReviewText) : 0,
+      mapImageCount: options.includeImages ? mapImageCount : 0
     };
   }
 
   const actionType = String(input?.actionType || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim().toUpperCase();
   const fields = Array.isArray(input?.fields) ? input.fields : [];
+  const emailOptions = input?.emailOptions || {};
+  const phoneOptions = input?.phoneOptions || {};
+  const textOptions = input?.textOptions || {};
+  const mapsOptions = input?.mapsOptions || {};
 
   let row = {};
   if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL) {
-    row = extractEmails();
+    row = await extractEmails(emailOptions);
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE) {
-    row = extractPhones();
+    row = extractPhones(phoneOptions);
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) {
-    row = extractText();
+    row = extractText(textOptions);
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
-    row = extractMaps();
+    row = extractMaps(mapsOptions);
   } else {
     row = extractByFields(fields);
   }
@@ -311,7 +590,11 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
               args: [
                 {
                   actionType: actionConfig.actionType,
-                  fields: actionConfig.fields
+                  fields: actionConfig.fields,
+                  emailOptions: actionConfig.emailOptions,
+                  phoneOptions: actionConfig.phoneOptions,
+                  textOptions: actionConfig.textOptions,
+                  mapsOptions: actionConfig.mapsOptions
                 }
               ],
               chromeApi
@@ -419,6 +702,12 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
           successCount: completed,
           failureCount: failed,
           actionType: actionConfig.actionType,
+          actionOptions: {
+            email: actionConfig.emailOptions,
+            phone: actionConfig.phoneOptions,
+            text: actionConfig.textOptions,
+            maps: actionConfig.mapsOptions
+          },
           queue,
           failures: failures.slice(0, 50)
         }
@@ -426,3 +715,12 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
     }
   };
 }
+
+export const __internal = Object.freeze({
+  normalizeActionConfig,
+  normalizeQueueConfig,
+  normalizeEmailOptions,
+  normalizePhoneOptions,
+  normalizeTextOptions,
+  normalizeMapsOptions
+});

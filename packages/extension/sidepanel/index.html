@@ -117,7 +117,7 @@
                 <option value="datasource">datasource</option>
               </select>
             </label>
-            <label class="field">
+            <label id="page-action-type-field" class="field">
               <span>Action Type</span>
               <select id="page-action-type">
                 <option value="EXTRACT_PAGES">EXTRACT_PAGES</option>
@@ -180,6 +180,142 @@
             <div class="button-stack">
               <button id="pick-page-fields-btn" class="btn">Pick Fields</button>
               <button id="clear-page-fields-btn" class="btn btn-ghost">Clear Fields</button>
+            </div>
+          </div>
+
+          <div id="page-email-options-panel" class="subpanel">
+            <h2>Email Deep Scanning</h2>
+            <label class="checkbox-row">
+              <input id="email-deep-scan-enabled" type="checkbox" />
+              <span>Enable deep scan (scan internal pages)</span>
+            </label>
+            <div class="grid-two">
+              <label class="field">
+                <span>Max Depth</span>
+                <input id="email-deep-max-depth" type="number" min="1" max="3" value="1" />
+              </label>
+              <label class="field">
+                <span>Max Links Per Page</span>
+                <input id="email-deep-max-links-per-page" type="number" min="1" max="60" value="20" />
+              </label>
+            </div>
+            <label class="checkbox-row">
+              <input id="email-deep-same-domain-only" type="checkbox" checked />
+              <span>Stay on same domain only</span>
+            </label>
+            <label class="field">
+              <span>Custom Link Selector (optional)</span>
+              <input id="email-deep-link-selector" type="text" placeholder="main a[href]" />
+            </label>
+            <div class="grid-two">
+              <label class="checkbox-row">
+                <input id="email-remove-duplicates" type="checkbox" checked />
+                <span>Remove duplicates</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="email-to-lowercase" type="checkbox" checked />
+                <span>Lowercase emails</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="email-basic-validation" type="checkbox" checked />
+                <span>Basic validation</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="email-include-mailto" type="checkbox" checked />
+                <span>Include mailto links</span>
+              </label>
+            </div>
+            <label class="field">
+              <span>Domain Filters (comma-separated, optional)</span>
+              <input id="email-domain-filters" type="text" placeholder="company.com, supplier.cn" />
+            </label>
+          </div>
+
+          <div id="page-phone-options-panel" class="subpanel">
+            <h2>Phone Extraction Options</h2>
+            <div class="grid-two">
+              <label class="checkbox-row">
+                <input id="phone-remove-duplicates" type="checkbox" checked />
+                <span>Remove duplicates</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="phone-basic-validation" type="checkbox" checked />
+                <span>Basic validation</span>
+              </label>
+            </div>
+            <label class="field">
+              <span>Custom Regex Patterns (optional, one per line)</span>
+              <textarea id="phone-patterns" rows="3" placeholder="\+44\s?\d{10}&#10;\(\d{3}\)\s?\d{3}-\d{4}"></textarea>
+            </label>
+          </div>
+
+          <div id="page-text-options-panel" class="subpanel">
+            <h2>Text Extraction Options</h2>
+            <div class="grid-two">
+              <label class="checkbox-row">
+                <input id="text-include-metadata" type="checkbox" checked />
+                <span>Include metadata fields</span>
+              </label>
+              <label class="field">
+                <span>Max Content Chars</span>
+                <input id="text-max-content-chars" type="number" min="1000" max="100000" value="12000" />
+              </label>
+            </div>
+          </div>
+
+          <div id="page-maps-options-panel" class="subpanel">
+            <h2>Google Maps Options</h2>
+            <div class="queue-grid">
+              <label class="checkbox-row">
+                <input id="maps-include-basic-info" type="checkbox" checked />
+                <span>Basic info (name/rating/category)</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="maps-include-contact-details" type="checkbox" checked />
+                <span>Contact details (phone/website)</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="maps-include-reviews" type="checkbox" checked />
+                <span>Review counts</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="maps-include-hours" type="checkbox" checked />
+                <span>Hours</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="maps-include-location" type="checkbox" checked />
+                <span>Location (address/lat/lng)</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="maps-include-images" type="checkbox" checked />
+                <span>Image counts</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="metadata-options-panel" class="subpanel">
+            <h2>Metadata Extractor Options</h2>
+            <div class="queue-grid">
+              <label class="checkbox-row">
+                <input id="metadata-include-meta-tags" type="checkbox" checked />
+                <span>Include meta tags</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="metadata-include-jsonld" type="checkbox" checked />
+                <span>Include JSON-LD</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="metadata-include-review-signals" type="checkbox" checked />
+                <span>Include review signals</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="metadata-include-contact-signals" type="checkbox" checked />
+                <span>Include contact signals</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="metadata-include-raw-jsonld" type="checkbox" />
+                <span>Include raw JSON-LD preview</span>
+              </label>
             </div>
           </div>
 

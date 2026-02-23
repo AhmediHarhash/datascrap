@@ -29,6 +29,10 @@
 - file export (`csv/xlsx/json`) + clipboard/sheets + image downloader + activation wiring.
 10) Tracking artifact:
 - `docs/phase5-exports-activation-2026-02-23.md`
+11) Epic 6 baseline slice implemented:
+- email deep scan options + text/maps advanced options + metadata extractor engine.
+12) Tracking artifact:
+- `docs/phase6-tool-specific-advanced-flows-2026-02-23.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.
