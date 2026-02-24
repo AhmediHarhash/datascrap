@@ -1,0 +1,60 @@
+name: Main Push Policy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  require-associated-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify Main Push Is PR-Associated
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = context.sha;
+
+            const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: sha
+            });
+
+            const prs = Array.isArray(response.data) ? response.data : [];
+            core.info(`Associated PR count for ${sha}: ${prs.length}`);
+
+            if (prs.length > 0) {
+              return;
+            }
+
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const issueTitle = "Main Push Without Associated PR";
+            const issueBody = [
+              "A commit was pushed to `main` without an associated pull request.",
+              "",
+              `- Commit: ${sha}`,
+              `- Workflow run: ${runUrl}`,
+              `- Triggered by: ${context.actor}`,
+              `- Timestamp (UTC): ${new Date().toISOString()}`,
+              "",
+              "Policy: all `main` updates should flow through PR validation."
+            ].join("\n");
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ["policy", "mainline"]
+            });
+
+            core.setFailed("Main push policy violation: no associated pull request found.");

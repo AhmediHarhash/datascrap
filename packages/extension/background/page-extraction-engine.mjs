@@ -96,13 +96,22 @@ function normalizeTextOptions(input = {}) {
 
 function normalizeMapsOptions(input = {}) {
   const source = input && typeof input === "object" ? input : {};
+  const requestedMaxResults = Number(source.maxResults);
+  const maxResults = Number.isFinite(requestedMaxResults) ? clamp(requestedMaxResults, 0, 5000, 2000) : 2000;
   return {
     includeBasicInfo: Boolean(source.includeBasicInfo !== false),
     includeContactDetails: Boolean(source.includeContactDetails !== false),
     includeReviews: Boolean(source.includeReviews !== false),
     includeHours: Boolean(source.includeHours !== false),
     includeLocation: Boolean(source.includeLocation !== false),
-    includeImages: Boolean(source.includeImages !== false)
+    includeImages: Boolean(source.includeImages !== false),
+    onlyNewResults: Boolean(source.onlyNewResults !== false),
+    autoScrollResults: Boolean(source.autoScrollResults !== false),
+    untilNoMore: Boolean(source.untilNoMore !== false),
+    maxResults,
+    maxScrollSteps: clamp(source.maxScrollSteps, 1, 500, 220),
+    stabilityPasses: clamp(source.stabilityPasses, 2, 20, 8),
+    scrollDelayMs: clamp(source.scrollDelayMs, 120, 3000, 650)
   };
 }
 
@@ -224,7 +233,141 @@ function dedupeList(list) {
   return output;
 }
 
+const MAPS_SEEN_STORAGE_PREFIX = "maps_seen_entities_v1";
+const MAPS_SEEN_ENTITY_LIMIT = 50_000;
+
+function mapScopeHash(input) {
+  const text = String(input || "");
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function normalizeMapsScopeUrl(urlValue) {
+  const raw = String(urlValue || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/\/maps\/search\//i.test(parsed.pathname)) {
+      return "";
+    }
+    parsed.searchParams.delete("entry");
+    parsed.searchParams.delete("g_ep");
+    const normalizedPath = parsed.pathname.replace(/\/@[^/]+$/i, "").replace(/\/+$/g, "");
+    return `${parsed.origin}${normalizedPath}${parsed.search || ""}`;
+  } catch (_error) {
+    return "";
+  }
+}
+
+function buildMapsSeenStorageKey(scopeUrl) {
+  const normalized = normalizeMapsScopeUrl(scopeUrl);
+  if (!normalized) return "";
+  return `${MAPS_SEEN_STORAGE_PREFIX}:${mapScopeHash(normalized)}`;
+}
+
+function mapStorageGet(chromeApi, key) {
+  return new Promise((resolve) => {
+    chromeApi.storage.local.get([key], (value) => {
+      if (chromeApi.runtime?.lastError) {
+        resolve(null);
+        return;
+      }
+      resolve(value || null);
+    });
+  });
+}
+
+function mapStorageSet(chromeApi, value) {
+  return new Promise((resolve) => {
+    chromeApi.storage.local.set(value, () => {
+      if (chromeApi.runtime?.lastError) {
+        resolve(false);
+        return;
+      }
+      resolve(true);
+    });
+  });
+}
+
+async function loadMapsSeenEntities({ chromeApi, scopeUrl }) {
+  const storageKey = buildMapsSeenStorageKey(scopeUrl);
+  if (!storageKey || !chromeApi?.storage?.local?.get) {
+    return {
+      storageKey,
+      entities: new Set()
+    };
+  }
+  const payload = await mapStorageGet(chromeApi, storageKey);
+  const list = Array.isArray(payload?.[storageKey]) ? payload[storageKey] : [];
+  return {
+    storageKey,
+    entities: new Set(
+      list.map((item) => String(item || "").trim()).filter(Boolean)
+    )
+  };
+}
+
+async function persistMapsSeenEntities({ chromeApi, storageKey, entities }) {
+  if (!storageKey || !chromeApi?.storage?.local?.set) {
+    return false;
+  }
+  const list = Array.from(entities)
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .slice(-MAPS_SEEN_ENTITY_LIMIT);
+  return mapStorageSet(chromeApi, {
+    [storageKey]: list
+  });
+}
+
+function normalizeMapEntityKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\w:/?&.=+-]+/g, "_");
+}
+
+function buildMapsEntityKey(row = {}) {
+  const mapUrl = String(row?.url || "").trim();
+  if (mapUrl) {
+    try {
+      const parsed = new URL(mapUrl);
+      const cid = String(parsed.searchParams.get("cid") || "").trim();
+      if (cid) {
+        return `cid:${normalizeMapEntityKey(cid)}`;
+      }
+      const pathname = String(parsed.pathname || "").trim();
+      if (pathname) {
+        return `path:${normalizeMapEntityKey(`${parsed.origin}${pathname}`)}`;
+      }
+    } catch (_error) {
+      return `url:${normalizeMapEntityKey(mapUrl)}`;
+    }
+  }
+
+  const name = normalizeMapEntityKey(row?.mapName);
+  const address = normalizeMapEntityKey(row?.mapAddress);
+  const phone = normalizeMapEntityKey(row?.mapPhone);
+  if (name && address) return `name_addr:${name}|${address}`;
+  if (name && phone) return `name_phone:${name}|${phone}`;
+  if (name) return `name:${name}`;
+  return "";
+}
+
 async function pageExtractInDom(input) {
+  const PAGE_ACTION_TYPES = Object.freeze({
+    EXTRACT_PAGES: "EXTRACT_PAGES",
+    EXTRACT_PAGES_EMAIL: "EXTRACT_PAGES_EMAIL",
+    EXTRACT_PAGES_PHONE: "EXTRACT_PAGES_PHONE",
+    EXTRACT_PAGES_TEXT: "EXTRACT_PAGES_TEXT",
+    EXTRACT_PAGES_GOOGLE_MAPS: "EXTRACT_PAGES_GOOGLE_MAPS"
+  });
+
   function cleanText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
@@ -490,15 +633,22 @@ async function pageExtractInDom(input) {
   function parseMapCoordsFromUrl(urlValue) {
     const raw = String(urlValue || "");
     const match = raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (!match) {
+    if (match) {
       return {
-        latitude: "",
-        longitude: ""
+        latitude: match[1],
+        longitude: match[2]
+      };
+    }
+    const placePattern = raw.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    if (placePattern) {
+      return {
+        latitude: placePattern[1],
+        longitude: placePattern[2]
       };
     }
     return {
-      latitude: match[1],
-      longitude: match[2]
+      latitude: "",
+      longitude: ""
     };
   }
 
@@ -510,7 +660,139 @@ async function pageExtractInDom(input) {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  function extractMaps(options) {
+  function normalizeMapResultUrl(rawUrl) {
+    const raw = String(rawUrl || "").trim();
+    if (!raw) return "";
+    const absolute = absoluteUrl(raw, location.href);
+    if (!absolute) return "";
+    try {
+      const parsed = new URL(absolute);
+      parsed.searchParams.delete("entry");
+      parsed.searchParams.delete("g_ep");
+      return parsed.toString();
+    } catch (_error) {
+      return absolute;
+    }
+  }
+
+  function extractMapResultRowFromAnchor(anchorNode, options) {
+    if (!(anchorNode instanceof HTMLElement)) return null;
+    const normalizedUrl = normalizeMapResultUrl(anchorNode.href || anchorNode.getAttribute("href") || "");
+    if (!normalizedUrl) return null;
+
+    const card =
+      anchorNode.closest("[role='article']") ||
+      anchorNode.closest(".Nv2PK") ||
+      anchorNode.closest("div[jsaction*='mouseover:pane']") ||
+      anchorNode.parentElement;
+
+    const headlineCandidate = cleanText(
+      anchorNode.getAttribute("aria-label") ||
+        anchorNode.querySelector?.("[aria-label]")?.getAttribute?.("aria-label") ||
+        card?.querySelector?.(".qBF1Pd")?.textContent ||
+        card?.querySelector?.(".fontHeadlineSmall")?.textContent ||
+        anchorNode.textContent ||
+        ""
+    );
+    const ratingAria = cleanText(
+      card?.querySelector?.("[role='img'][aria-label*='star']")?.getAttribute?.("aria-label") ||
+        card?.querySelector?.("[aria-label*='stars']")?.getAttribute?.("aria-label") ||
+        ""
+    );
+    const ratingText = cleanText(ratingAria || card?.querySelector?.(".MW4etd")?.textContent || "");
+    const cardText = cleanText(card?.textContent || "");
+
+    const infoLine = cardText
+      .split("\n")
+      .map((line) => cleanText(line))
+      .find((line) => line.includes("·"));
+    const infoParts = String(infoLine || "")
+      .split("·")
+      .map((part) => cleanText(part))
+      .filter(Boolean);
+    const category = infoParts[0] || "";
+    const address = infoParts.slice(1).join(" · ");
+    const reviewMatch = cardText.match(/\(([0-9][0-9,.]*)\)/);
+    const reviewsFromCard = reviewMatch ? Number(String(reviewMatch[1]).replace(/,/g, "")) : 0;
+
+    const coords = parseMapCoordsFromUrl(normalizedUrl);
+    return {
+      url: normalizedUrl,
+      mapName: options.includeBasicInfo ? headlineCandidate : "",
+      mapRating: options.includeBasicInfo ? ratingText : "",
+      mapCategory: options.includeBasicInfo ? category : "",
+      mapAddress: options.includeLocation ? address : "",
+      mapLatitude: options.includeLocation ? coords.latitude : "",
+      mapLongitude: options.includeLocation ? coords.longitude : "",
+      mapPhone: options.includeContactDetails ? "" : "",
+      mapWebsite: options.includeContactDetails ? "" : "",
+      mapHours: options.includeHours ? "" : "",
+      mapReviewCount: options.includeReviews ? (Number.isFinite(reviewsFromCard) ? reviewsFromCard : 0) : 0,
+      mapImageCount: options.includeImages ? Number(card?.querySelectorAll?.("img")?.length || 0) : 0
+    };
+  }
+
+  function collectMapsResultRows(feedNode, options, rowsByUrl) {
+    if (!(feedNode instanceof HTMLElement) || !(rowsByUrl instanceof Map)) return;
+    const anchors = Array.from(feedNode.querySelectorAll("a[href*='/maps/place/']"));
+    for (const anchor of anchors) {
+      if (!(anchor instanceof HTMLElement)) continue;
+      const row = extractMapResultRowFromAnchor(anchor, options);
+      const rowUrl = String(row?.url || "").trim();
+      if (!rowUrl) continue;
+      if (!rowsByUrl.has(rowUrl)) {
+        rowsByUrl.set(rowUrl, row);
+      }
+    }
+  }
+
+  function readMapsResultFeedNode() {
+    return (
+      document.querySelector("[role='feed']") ||
+      document.querySelector("div[aria-label*='Results']") ||
+      document.querySelector("div[aria-label*='results']")
+    );
+  }
+
+  async function extractMaps(options) {
+    const href = String(location.href || "");
+    const isMapsSearchPage = /\/maps\/search\//i.test(href);
+    if (isMapsSearchPage && options.autoScrollResults) {
+      const feedNode = readMapsResultFeedNode();
+      if (feedNode instanceof HTMLElement) {
+        const rowsByUrl = new Map();
+        let stablePasses = 0;
+        let previousCount = 0;
+        const stopOnStable = Boolean(options.untilNoMore);
+        const maxResults = Number(options.maxResults || 0);
+        const hasResultCap = Number.isFinite(maxResults) && maxResults > 0;
+        const stableTarget = clamp(options.stabilityPasses, 2, 20, 8);
+        for (let step = 0; step < options.maxScrollSteps; step += 1) {
+          collectMapsResultRows(feedNode, options, rowsByUrl);
+          const currentCount = rowsByUrl.size;
+          if (hasResultCap && currentCount >= maxResults) break;
+          if (currentCount === previousCount) {
+            stablePasses += 1;
+          } else {
+            stablePasses = 0;
+          }
+          previousCount = currentCount;
+          if (stopOnStable && stablePasses >= stableTarget) break;
+          feedNode.scrollTop = feedNode.scrollHeight;
+          await new Promise((resolve) => setTimeout(resolve, options.scrollDelayMs));
+        }
+        collectMapsResultRows(feedNode, options, rowsByUrl);
+        const rows = hasResultCap
+          ? Array.from(rowsByUrl.values()).slice(0, maxResults)
+          : Array.from(rowsByUrl.values());
+        if (rows.length > 0) {
+          return {
+            rows
+          };
+        }
+      }
+    }
+
     const rawTitle = cleanText(
       document.querySelector("h1")?.innerText ||
         document.querySelector("[role='main'] h1")?.innerText ||
@@ -556,17 +838,19 @@ async function pageExtractInDom(input) {
     const mapImageCount = document.querySelectorAll("img").length;
 
     return {
-      mapName: options.includeBasicInfo ? rawTitle : "",
-      mapRating: options.includeBasicInfo ? rawRating : "",
-      mapCategory: options.includeBasicInfo ? rawCategory : "",
-      mapAddress: options.includeLocation ? rawAddress : "",
-      mapLatitude: options.includeLocation ? coords.latitude : "",
-      mapLongitude: options.includeLocation ? coords.longitude : "",
-      mapPhone: options.includeContactDetails ? rawPhone : "",
-      mapWebsite: options.includeContactDetails ? rawWebsite : "",
-      mapHours: options.includeHours ? rawHours : "",
-      mapReviewCount: options.includeReviews ? parseReviewCount(rawReviewText) : 0,
-      mapImageCount: options.includeImages ? mapImageCount : 0
+      row: {
+        mapName: options.includeBasicInfo ? rawTitle : "",
+        mapRating: options.includeBasicInfo ? rawRating : "",
+        mapCategory: options.includeBasicInfo ? rawCategory : "",
+        mapAddress: options.includeLocation ? rawAddress : "",
+        mapLatitude: options.includeLocation ? coords.latitude : "",
+        mapLongitude: options.includeLocation ? coords.longitude : "",
+        mapPhone: options.includeContactDetails ? rawPhone : "",
+        mapWebsite: options.includeContactDetails ? rawWebsite : "",
+        mapHours: options.includeHours ? rawHours : "",
+        mapReviewCount: options.includeReviews ? parseReviewCount(rawReviewText) : 0,
+        mapImageCount: options.includeImages ? mapImageCount : 0
+      }
     };
   }
 
@@ -578,18 +862,36 @@ async function pageExtractInDom(input) {
   const mapsOptions = input?.mapsOptions || {};
 
   let row = {};
-  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL) {
-    row = await extractEmails(emailOptions);
-  } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE) {
-    row = extractPhones(phoneOptions);
-  } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) {
-    row = extractText(textOptions);
-  } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
-    row = extractMaps(mapsOptions);
-  } else {
-    row = extractByFields(fields);
+  let rows = [];
+  try {
+    if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL) {
+      row = await extractEmails(emailOptions);
+    } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE) {
+      row = extractPhones(phoneOptions);
+    } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) {
+      row = extractText(textOptions);
+    } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
+      const mapsExtraction = await extractMaps(mapsOptions);
+      rows = Array.isArray(mapsExtraction?.rows) ? mapsExtraction.rows : [];
+      row = mapsExtraction?.row && typeof mapsExtraction.row === "object" ? mapsExtraction.row : {};
+    } else {
+      row = extractByFields(fields);
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      actionType,
+      error: String(error?.message || error || "Page extraction script failed")
+    };
   }
 
+  if (rows.length > 0) {
+    return {
+      ok: true,
+      actionType,
+      rows
+    };
+  }
   return {
     ok: true,
     actionType,
@@ -627,6 +929,20 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
       const urls = normalizeUrls(config || {});
       const queue = normalizeQueueConfig(config || {});
       const actionConfig = normalizeActionConfig(config || {});
+      const isMapsAction = actionConfig.actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS;
+      const mapsOnlyNewResults = isMapsAction && Boolean(actionConfig?.mapsOptions?.onlyNewResults);
+      const mapsScopeUrl = mapsOnlyNewResults
+        ? normalizeMapsScopeUrl(String(config?.startUrl || urls[0] || ""))
+        : "";
+      const mapsSeenState = mapsOnlyNewResults
+        ? await loadMapsSeenEntities({
+            chromeApi,
+            scopeUrl: mapsScopeUrl
+          })
+        : {
+            storageKey: "",
+            entities: new Set()
+          };
 
       if (urls.length === 0) {
         return {
@@ -652,6 +968,11 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
       let retryCount = 0;
       const rows = [];
       const failures = [];
+      const mapsSeenEntities = mapsSeenState.entities;
+      const initialMapsSeenCount = mapsSeenEntities.size;
+      let mapsSkippedKnownEntities = 0;
+      let mapsAcceptedNewEntities = 0;
+      let mapsSeenPersisted = false;
 
       async function openJobTab(job, workerContext) {
         if (!workerContext.stickySession) {
@@ -744,19 +1065,32 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
               chromeApi
             });
 
-            const payload = extractResult?.[0]?.result || {};
+            const scriptEntry = extractResult?.[0] || {};
+            const payload = scriptEntry?.result || {};
             if (!payload.ok) {
-              throw new Error("Page extraction script failed");
+              const scriptError = String(
+                payload?.error ||
+                  scriptEntry?.error ||
+                  scriptEntry?.exceptionDetails?.text ||
+                  scriptEntry?.exceptionDetails?.exception?.description ||
+                  ""
+              ).trim();
+              throw new Error(scriptError || "Page extraction script failed");
             }
 
-            const row = {
+            const payloadRows = Array.isArray(payload.rows)
+              ? payload.rows
+              : payload.row && typeof payload.row === "object"
+                ? [payload.row]
+                : [];
+            const resolvedRows = payloadRows.map((payloadRow) => ({
               url: job.url,
               actionType: actionConfig.actionType,
-              ...payload.row
-            };
+              ...payloadRow
+            }));
             return {
               ok: true,
-              row,
+              rows: resolvedRows,
               attempts: attempt + 1
             };
           } catch (error) {
@@ -818,7 +1152,30 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
 
             const result = await processJob(job, workerId, workerContext);
             if (result.ok) {
-              rows.push(result.row);
+              const resultRows = Array.isArray(result.rows) ? result.rows : [];
+              if (mapsOnlyNewResults) {
+                const acceptedRows = [];
+                for (const row of resultRows) {
+                  const entityKey = buildMapsEntityKey(row);
+                  if (!entityKey) {
+                    acceptedRows.push(row);
+                    continue;
+                  }
+                  if (mapsSeenEntities.has(entityKey)) {
+                    mapsSkippedKnownEntities += 1;
+                    continue;
+                  }
+                  mapsSeenEntities.add(entityKey);
+                  mapsAcceptedNewEntities += 1;
+                  acceptedRows.push({
+                    ...row,
+                    mapEntityKey: entityKey
+                  });
+                }
+                rows.push(...acceptedRows);
+              } else {
+                rows.push(...resultRows);
+              }
               completed += 1;
             } else {
               failed += 1;
@@ -864,6 +1221,14 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
         workers.push(workerLoop(workerIndex + 1));
       }
       await Promise.all(workers);
+
+      if (mapsOnlyNewResults && mapsSeenEntities.size > initialMapsSeenCount) {
+        mapsSeenPersisted = await persistMapsSeenEntities({
+          chromeApi,
+          storageKey: mapsSeenState.storageKey,
+          entities: mapsSeenEntities
+        });
+      }
 
       throwIfAborted(signal);
       emitProgress?.({
@@ -918,6 +1283,16 @@ export function createPageExtractionEngine({ chromeApi = chrome } = {}) {
           successfulUrls,
           failedUrls,
           failures: failures.slice(0, 200),
+          mapsDeduplication: isMapsAction
+            ? {
+                onlyNewResults: mapsOnlyNewResults,
+                scopeUrl: mapsScopeUrl || "",
+                knownEntitiesBeforeRun: initialMapsSeenCount,
+                skippedKnownEntities: mapsSkippedKnownEntities,
+                acceptedNewEntities: mapsAcceptedNewEntities,
+                persisted: mapsSeenPersisted
+              }
+            : null,
           checkpoint: {
             totalUrls: inputUrls.length,
             attemptedCount: completed + failed,

@@ -54,16 +54,11 @@ function inferPermission(operation, context = {}) {
   }
 
   if (operation === "extract.list" || operation === "extract.page" || operation === "extract.metadata") {
-    const pattern = toHostPattern(context.startUrl || context.url || "");
-    if (!pattern) {
-      return {
-        permissions: [],
-        origins: []
-      };
-    }
+    // Extraction host access is requested by the sidepanel preflight flow.
+    // Avoid duplicate runtime prompts on START, especially in quick/simple mode.
     return {
       permissions: [],
-      origins: [pattern]
+      origins: []
     };
   }
 

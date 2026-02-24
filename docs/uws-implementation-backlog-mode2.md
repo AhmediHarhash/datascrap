@@ -8,7 +8,7 @@
 - no cloud row storage for extracted datasets by default
 - local-first tables/exports and user-linked destinations only
 
-## Execution Snapshot (2026-02-23)
+## Execution Snapshot (2026-02-24)
 1) Epic 0 bootstrap slice implemented:
 - package skeleton + contracts + storage migration model landed.
 2) Epic 1 bootstrap slice implemented:
@@ -77,6 +77,24 @@
 - runtime telemetry + diagnostics depth v1 (event taxonomy + error packets + run artifacts + diagnostics summary enrichment).
 33) Tracking artifact:
 - `docs/phase10-sprintA-telemetry-diagnostics-slice-2026-02-23.md`
+34) Epic 11 Sprint A slice 1 implemented:
+- simple-mode first-run flow (intent command + quick extract + point-and-follow fallback + access preflight)
+- maps quick-flow defaults tuned for exhaustive runs (`untilNoMore` + scroll stability controls)
+- extension e2e harness added (`simple` + `maps`) and optional hardening integration via env flags
+35) Tracking artifact:
+- `docs/phase11-sprintA-simple-mode-e2e-slice-2026-02-24.md`
+36) Epic 11 Sprint A slice 2 implemented:
+- cross-platform hardening wrappers for extension e2e gates (`local`, `railway`, optional `maps`)
+- full release gate variants with extension e2e coverage (`release:full:e2e`, `release:full:e2e:maps`)
+- CI workflow gate wired (`.github/workflows/extension-hardening.yml`)
+37) Tracking artifact:
+- `docs/phase11-sprintA-e2e-gate-command-slice-2026-02-24.md`
+38) Epic 11 Sprint A slice 3 implemented:
+- branch protection automation script + playbook for required merge check enforcement
+- required check lock: `Extension Hardening / local-hardening-e2e`
+- mainline policy workflows added for defense-in-depth enforcement
+39) Tracking artifact:
+- `docs/phase11-sprintA-branch-protection-gate-slice-2026-02-24.md`
 
 ## Epic 0 - Foundation
 1) Repository/package skeleton for extension + shared core + storage.

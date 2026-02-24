@@ -142,6 +142,8 @@ async function main() {
   const baseUrl = process.env.API_BASE_URL || "http://127.0.0.1:3000";
   const hasDatabase = hasValue(process.env.DATABASE_URL);
   const runCloudPass = hasDatabase && !toBool(process.env.SKIP_CLOUD_HARDENING);
+  const runExtensionE2EMaps = toBool(process.env.RUN_EXTENSION_E2E_MAPS);
+  const runExtensionE2E = toBool(process.env.RUN_EXTENSION_E2E) || runExtensionE2EMaps;
 
   const baseEnv = {
     ...process.env,
@@ -154,6 +156,9 @@ async function main() {
     baseUrl,
     hasDatabase,
     extensionSmoke: false,
+    extensionE2E: false,
+    extensionE2EMaps: false,
+    skippedE2EReason: null,
     controlApiSmoke: false,
     cloudSmoke: false,
     skippedCloudReason: null
@@ -166,6 +171,28 @@ async function main() {
     env: baseEnv
   });
   summary.extensionSmoke = true;
+
+  if (runExtensionE2E) {
+    await runCommand({
+      label: "extension e2e simple",
+      command: npmCommand(),
+      args: ["run", "e2e:extension:simple"],
+      env: baseEnv
+    });
+    summary.extensionE2E = true;
+  } else {
+    summary.skippedE2EReason = "RUN_EXTENSION_E2E not set";
+  }
+
+  if (runExtensionE2EMaps) {
+    await runCommand({
+      label: "extension e2e maps",
+      command: npmCommand(),
+      args: ["run", "e2e:extension:maps"],
+      env: baseEnv
+    });
+    summary.extensionE2EMaps = true;
+  }
 
   await runBasicApiPass({
     baseEnv,

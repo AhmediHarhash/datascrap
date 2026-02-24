@@ -11,6 +11,8 @@
     "package:extension": "node scripts/package-extension.mjs",
     "release:extension": "npm run sync:extension && npm run smoke:extension && npm run package:extension",
     "release:full": "npm run hardening:railway && npm run release:extension",
+    "release:full:e2e": "npm run hardening:railway:e2e && npm run release:extension",
+    "release:full:e2e:maps": "npm run hardening:railway:e2e:maps && npm run release:extension",
     "smoke:extension:storage": "node scripts/smoke-extension-storage.mjs",
     "smoke:extension:table-advanced": "node scripts/smoke-extension-table-advanced.mjs",
     "smoke:extension:runtime": "node scripts/smoke-extension-runtime.mjs",
@@ -24,9 +26,18 @@
     "smoke:extension:epic12": "node scripts/smoke-extension-epic12.mjs",
     "smoke:extension:epic13": "node scripts/smoke-extension-epic13.mjs",
     "smoke:extension:epic14": "node scripts/smoke-extension-epic14.mjs",
-    "smoke:extension": "npm run smoke:extension:storage && npm run smoke:extension:table-advanced && npm run smoke:extension:runtime && npm run smoke:extension:epic5 && npm run smoke:extension:epic6 && npm run smoke:extension:epic7 && npm run smoke:extension:epic8 && npm run smoke:extension:epic9 && npm run smoke:extension:epic10 && npm run smoke:extension:epic11 && npm run smoke:extension:epic12 && npm run smoke:extension:epic13 && npm run smoke:extension:epic14",
+    "smoke:extension:epic15": "node scripts/smoke-extension-epic15.mjs",
+    "e2e:extension:simple": "node scripts/e2e-extension-simple.mjs",
+    "e2e:extension:maps": "node scripts/e2e-extension-google-maps.mjs",
+    "smoke:extension": "npm run smoke:extension:storage && npm run smoke:extension:table-advanced && npm run smoke:extension:runtime && npm run smoke:extension:epic5 && npm run smoke:extension:epic6 && npm run smoke:extension:epic7 && npm run smoke:extension:epic8 && npm run smoke:extension:epic9 && npm run smoke:extension:epic10 && npm run smoke:extension:epic11 && npm run smoke:extension:epic12 && npm run smoke:extension:epic13 && npm run smoke:extension:epic14 && npm run smoke:extension:epic15",
     "test:local:hardening": "node scripts/local-hardening-pass.mjs",
+    "test:local:hardening:e2e": "node scripts/run-hardening-with-flags.mjs --target=local",
+    "test:local:hardening:e2e:maps": "node scripts/run-hardening-with-flags.mjs --target=local --maps",
     "hardening:railway": "node scripts/hardening-railway.mjs",
+    "hardening:railway:e2e": "node scripts/run-hardening-with-flags.mjs --target=railway",
+    "hardening:railway:e2e:maps": "node scripts/run-hardening-with-flags.mjs --target=railway --maps",
+    "github:branch-protection:plan": "node scripts/apply-branch-protection.mjs --dry-run",
+    "github:branch-protection:apply": "node scripts/apply-branch-protection.mjs --apply",
     "smoke:control-api": "node services/control-api/scripts/smoke.js",
     "migrate:control-api": "node services/control-api/scripts/migrate.js",
     "uptime:control-api": "node services/control-api/scripts/uptime-monitor.js",
@@ -49,5 +60,9 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.2"
   }
 }

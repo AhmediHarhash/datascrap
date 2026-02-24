@@ -45,19 +45,34 @@ const elements = {
   toolWelcomeSkipBtn: document.getElementById("tool-welcome-skip-btn"),
   latestChangesPanel: document.getElementById("latest-changes-panel"),
   openWelcomeBtn: document.getElementById("open-welcome-btn"),
+  runnerField: document.getElementById("runner-field"),
+  startUrlField: document.getElementById("start-url-field"),
+  selectedToolField: document.getElementById("selected-tool-field"),
   activeToolHeading: document.getElementById("active-tool-heading"),
   selectedToolName: document.getElementById("selected-tool-name"),
+  simpleModeToggle: document.getElementById("simple-mode-toggle"),
+  simpleModeHint: document.getElementById("simple-mode-hint"),
+  intentCommandInput: document.getElementById("intent-command-input"),
+  intentRunBtn: document.getElementById("intent-run-btn"),
+  intentCommandHint: document.getElementById("intent-command-hint"),
+  setupAccessBtn: document.getElementById("setup-access-btn"),
+  pointFollowBtn: document.getElementById("point-follow-btn"),
+  setupAccessStatusLine: document.getElementById("setup-access-status-line"),
+  quickFlowStatusLine: document.getElementById("quick-flow-status-line"),
   runnerType: document.getElementById("runner-type"),
   startUrl: document.getElementById("start-url"),
+  quickExtractBtn: document.getElementById("quick-extract-btn"),
   startBtn: document.getElementById("start-btn"),
   stopBtn: document.getElementById("stop-btn"),
   rerunBtn: document.getElementById("rerun-btn"),
+  automationActionsRow: document.getElementById("automation-actions-row"),
   statusPill: document.getElementById("status-pill"),
   eventLog: document.getElementById("event-log"),
   clearLogBtn: document.getElementById("clear-log-btn"),
   pickerStatus: document.getElementById("picker-status"),
 
   listConfigPanel: document.getElementById("list-config-panel"),
+  listAdvancedControls: document.getElementById("list-advanced-controls"),
   containerSelector: document.getElementById("container-selector"),
   pickContainerBtn: document.getElementById("pick-container-btn"),
   listAutoDetectBtn: document.getElementById("list-autodetect-btn"),
@@ -100,6 +115,7 @@ const elements = {
   pageDatasourceColumn: document.getElementById("page-datasource-column"),
   pageDatasourceCount: document.getElementById("page-datasource-count"),
   pageResolvedUrlsPreview: document.getElementById("page-resolved-urls-preview"),
+  pageUrlGeneratorPanel: document.getElementById("page-url-generator-panel"),
   urlgenTemplate: document.getElementById("urlgen-template"),
   urlgenRangeStart: document.getElementById("urlgen-range-start"),
   urlgenRangeEnd: document.getElementById("urlgen-range-end"),
@@ -118,6 +134,7 @@ const elements = {
   pageFailureReportJsonBtn: document.getElementById("page-failure-report-json-btn"),
   pageRecoveryPreview: document.getElementById("page-recovery-preview"),
   pageRecoveryStatusLine: document.getElementById("page-recovery-status-line"),
+  pageRecoveryPanel: document.getElementById("page-recovery-panel"),
   pageFieldsPanel: document.getElementById("page-fields-panel"),
   pageFieldList: document.getElementById("page-field-list"),
   pickPageFieldsBtn: document.getElementById("pick-page-fields-btn"),
@@ -169,7 +186,10 @@ const elements = {
   queueWaitSelectorTimeoutMs: document.getElementById("queue-wait-selector-timeout-ms"),
   queueWaitPageLoad: document.getElementById("queue-wait-page-load"),
   reliabilityProfileStatusLine: document.getElementById("reliability-profile-status-line"),
+  queueAdvancedControls: document.getElementById("queue-advanced-controls"),
 
+  dataTablePanel: document.getElementById("data-table-panel"),
+  tableAdvancedControls: document.getElementById("table-advanced-controls"),
   tableRefreshBtn: document.getElementById("table-refresh-btn"),
   tableHistorySelect: document.getElementById("table-history-select"),
   tableLimit: document.getElementById("table-limit"),
@@ -199,6 +219,7 @@ const elements = {
   tableStatusLine: document.getElementById("table-status-line"),
   tableGrid: document.getElementById("table-grid"),
 
+  exportPanel: document.getElementById("export-panel"),
   exportTableSelect: document.getElementById("export-table-select"),
   exportFormat: document.getElementById("export-format"),
   exportUseCurrentFilters: document.getElementById("export-use-current-filters"),
@@ -207,6 +228,7 @@ const elements = {
   exportSheetsBtn: document.getElementById("export-sheets-btn"),
   exportStatusLine: document.getElementById("export-status-line"),
 
+  imagePanel: document.getElementById("image-panel"),
   imageScanBtn: document.getElementById("image-scan-btn"),
   imageSearch: document.getElementById("image-search"),
   imageMinWidth: document.getElementById("image-min-width"),
@@ -222,6 +244,7 @@ const elements = {
   imageStatusLine: document.getElementById("image-status-line"),
   imagePreview: document.getElementById("image-preview"),
 
+  activationPanel: document.getElementById("activation-panel"),
   activationApiBase: document.getElementById("activation-api-base"),
   activationDeviceName: document.getElementById("activation-device-name"),
   activationLicenseKey: document.getElementById("activation-license-key"),
@@ -242,6 +265,7 @@ const elements = {
   activationSessionSummary: document.getElementById("activation-session-summary"),
   activationDeviceList: document.getElementById("activation-device-list"),
 
+  cloudControlPanel: document.getElementById("cloud-control-panel"),
   cloudPolicyLoadBtn: document.getElementById("cloud-policy-load-btn"),
   cloudFeaturesOptIn: document.getElementById("cloud-features-opt-in"),
   cloudWebhookOptIn: document.getElementById("cloud-webhook-opt-in"),
@@ -327,7 +351,8 @@ const elements = {
   diagnosticsSnapshotBtn: document.getElementById("diagnostics-snapshot-btn"),
   diagnosticsReportBtn: document.getElementById("diagnostics-report-btn"),
   diagnosticsCopyBtn: document.getElementById("diagnostics-copy-btn"),
-  diagnosticsOutput: document.getElementById("diagnostics-output")
+  diagnosticsOutput: document.getElementById("diagnostics-output"),
+  templatesDiagnosticsPanel: document.getElementById("templates-diagnostics-panel")
 };
 
 const state = {
@@ -364,7 +389,15 @@ const state = {
   dismissedWelcomeTools: new Set(),
   welcomeVisits: {},
   speedProfiles: {},
-  reliabilitySettings: null
+  reliabilitySettings: null,
+  simpleMode: true,
+  pointFollowActive: false,
+  lastStartError: "",
+  statusProgressPct: 0,
+  statusPhase: "",
+  intentAutoExport: false,
+  intentAutoExportFormat: "csv",
+  intentLastCommand: ""
 };
 
 const SHELL_VIEWS = Object.freeze({
@@ -374,9 +407,11 @@ const SHELL_VIEWS = Object.freeze({
   TOOLS: "tools",
   LATEST: "latest"
 });
+const SIMPLE_MODE_ALLOWED_VIEWS = new Set([SHELL_VIEWS.MENU, SHELL_VIEWS.TOOLS, SHELL_VIEWS.DATA]);
 
 const WELCOME_VISIT_LIMIT = 3;
 const WELCOME_VISITS_STORAGE_KEY = "datascrap.sidepanel.welcome-visits.v1";
+const SIMPLE_MODE_STORAGE_KEY = "datascrap.sidepanel.simple-mode.v1";
 const TEMPLATES_STORAGE_KEY = "datascrap.sidepanel.templates.v1";
 const SPEED_PROFILES_STORAGE_KEY = "datascrap.sidepanel.speed-profiles.v1";
 const RELIABILITY_SETTINGS_STORAGE_KEY = "datascrap.sidepanel.reliability-settings.v1";
@@ -624,6 +659,57 @@ function normalizeEnumValue(value, allowedValues, fallback) {
   return allowedValues.includes(normalized) ? normalized : fallback;
 }
 
+function friendlyErrorText(message, { cloud = false } = {}) {
+  const raw = String(message || "").trim();
+  if (!raw) return "Unknown error";
+
+  if (raw.includes("Host permission denied by user") || raw.includes("API host permission denied by user")) {
+    return cloud
+      ? "Access to this API host was denied. Allow browser access and retry."
+      : "Access to this site was denied. Allow browser access and retry.";
+  }
+  if (raw.includes("Permission API timeout")) {
+    return "Permission prompt timed out. Click Enable All Access again and approve the browser prompt.";
+  }
+  if (raw.includes("must be called during a user gesture")) {
+    return "Permission request must be triggered by a click. Click Enable All Access again.";
+  }
+  if (raw.includes("Extension manifest must request permission to access this host")) {
+    return "Access to this site is missing. Click Enable All Access, allow permission, then retry.";
+  }
+  if (raw.includes("Required permission was denied by the user")) {
+    return "Access to this site was denied. Use Enable All Access and allow permission, then retry.";
+  }
+  if (raw.includes("Missing bearer token") || raw.includes("Invalid or expired token")) {
+    return "Login required. Open Activation, sign in, then retry.";
+  }
+  if (raw.includes("Cloud features are not enabled for this account")) {
+    return "Enable Cloud features opt-in in Cloud Control, then retry.";
+  }
+  if (raw.includes("Webhook delivery is not enabled for this account")) {
+    return "Enable Webhook delivery opt-in in Cloud Control, then retry.";
+  }
+  if (raw.includes("Optional cloud features are disabled")) {
+    return "Cloud features are disabled on the server. Local extraction still works.";
+  }
+  return raw;
+}
+
+function formatStatusErrorText(text, { cloud = false, error = false } = {}) {
+  const raw = String(text || "");
+  if (!error) return raw;
+  const friendly = friendlyErrorText(raw, {
+    cloud
+  });
+  if (!friendly || friendly === raw) return raw;
+  const separatorIndex = raw.indexOf(":");
+  if (separatorIndex >= 0) {
+    const prefix = raw.slice(0, separatorIndex + 1).trim();
+    return `${prefix} ${friendly}`;
+  }
+  return friendly;
+}
+
 function toCellText(value) {
   return String(value === undefined || value === null ? "" : value);
 }
@@ -705,14 +791,58 @@ function createFieldFromAutoDetect(field, index) {
   };
 }
 
+function toProgressPercent(value, fallback = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return clamp(Number(fallback || 0), 0, 100);
+  return clamp(Math.round(parsed), 0, 100);
+}
+
+function renderStatusPill() {
+  const status = String(state.currentStatus || AUTOMATION_STATES.IDLE);
+  const isRunning = status === AUTOMATION_STATES.RUNNING || status === AUTOMATION_STATES.STOPPING;
+  const isError = status === AUTOMATION_STATES.ERROR;
+  const isCompleted = status === AUTOMATION_STATES.COMPLETED;
+  const pct = toProgressPercent(state.statusProgressPct, 0);
+  const visualPct = isCompleted ? 100 : isRunning ? pct : pct;
+  const label = isRunning ? `${status} ${visualPct}%` : isCompleted ? "completed 100%" : status;
+
+  elements.statusPill.textContent = label;
+  elements.statusPill.classList.toggle("status-running", isRunning);
+  elements.statusPill.classList.toggle("status-error", isError);
+  elements.statusPill.style.setProperty("--progress-pct", `${visualPct}%`);
+  const phase = String(state.statusPhase || "").trim();
+  if (phase) {
+    elements.statusPill.title = phase;
+  } else {
+    elements.statusPill.removeAttribute("title");
+  }
+}
+
 function setStatus(status) {
-  state.currentStatus = String(status || AUTOMATION_STATES.IDLE);
-  elements.statusPill.textContent = state.currentStatus;
-  elements.statusPill.classList.toggle(
-    "status-running",
-    state.currentStatus === AUTOMATION_STATES.RUNNING || state.currentStatus === AUTOMATION_STATES.STOPPING
-  );
-  elements.statusPill.classList.toggle("status-error", state.currentStatus === AUTOMATION_STATES.ERROR);
+  const nextStatus = String(status || AUTOMATION_STATES.IDLE);
+  state.currentStatus = nextStatus;
+  if (nextStatus === AUTOMATION_STATES.IDLE) {
+    state.statusProgressPct = 0;
+    state.statusPhase = "";
+  } else if (nextStatus === AUTOMATION_STATES.RUNNING || nextStatus === AUTOMATION_STATES.STOPPING) {
+    if (state.statusProgressPct <= 0) {
+      state.statusProgressPct = 2;
+    }
+  } else if (nextStatus === AUTOMATION_STATES.COMPLETED) {
+    state.statusProgressPct = 100;
+    if (!state.statusPhase) {
+      state.statusPhase = "Extraction complete";
+    }
+  }
+  renderStatusPill();
+}
+
+function setStatusProgress(progressValue, { phase = "" } = {}) {
+  state.statusProgressPct = toProgressPercent(progressValue, state.statusProgressPct);
+  if (phase) {
+    state.statusPhase = String(phase || "").trim();
+  }
+  renderStatusPill();
 }
 
 function setPickerStatus(text) {
@@ -720,9 +850,17 @@ function setPickerStatus(text) {
 }
 
 function setListAutoDetectStatus(text, { error = false } = {}) {
-  if (!elements.listAutoDetectStatusLine) return;
-  elements.listAutoDetectStatusLine.textContent = String(text || "");
-  elements.listAutoDetectStatusLine.classList.toggle("status-error", Boolean(error));
+  const next = formatStatusErrorText(text, {
+    error
+  });
+  if (elements.listAutoDetectStatusLine) {
+    elements.listAutoDetectStatusLine.textContent = next;
+    elements.listAutoDetectStatusLine.classList.toggle("status-error", Boolean(error));
+  }
+  if (elements.quickFlowStatusLine) {
+    elements.quickFlowStatusLine.textContent = next;
+    elements.quickFlowStatusLine.classList.toggle("status-error", Boolean(error));
+  }
 }
 
 function renderListAutoDetectPreview(payload) {
@@ -1143,15 +1281,147 @@ function buildQueueReliabilityConfig() {
   };
 }
 
+function applySimpleModeUi() {
+  if (elements.simpleModeToggle) {
+    elements.simpleModeToggle.checked = true;
+    elements.simpleModeToggle.disabled = true;
+    const toggleRow = elements.simpleModeToggle.closest("label");
+    if (toggleRow) {
+      toggleRow.style.display = "none";
+    }
+  }
+
+  if (elements.simpleModeHint) {
+    elements.simpleModeHint.textContent =
+      "Simple mode active: type one command and run. Example: extract all in this search until no more.";
+  }
+
+  const showAdvanced = !state.simpleMode;
+  if (elements.runnerField) {
+    elements.runnerField.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.selectedToolField) {
+    elements.selectedToolField.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.openWelcomeBtn) {
+    elements.openWelcomeBtn.style.display = showAdvanced ? "" : "none";
+  }
+  if (elements.automationActionsRow) {
+    elements.automationActionsRow.style.display = showAdvanced ? "grid" : "none";
+  }
+
+  const isListRunner = String(elements.runnerType.value || "") === RUNNER_TYPES.LIST_EXTRACTOR;
+  const showListAdvanced = isListRunner && showAdvanced;
+  if (elements.listAdvancedControls) {
+    elements.listAdvancedControls.style.display = showListAdvanced ? "grid" : "none";
+  }
+  if (elements.listConfigPanel) {
+    elements.listConfigPanel.style.display = state.simpleMode ? "none" : isListRunner ? "grid" : "none";
+  }
+  if (elements.pageConfigPanel) {
+    if (state.simpleMode) {
+      elements.pageConfigPanel.style.display = "none";
+    }
+  }
+  if (elements.queueAdvancedControls) {
+    elements.queueAdvancedControls.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.pageUrlGeneratorPanel) {
+    elements.pageUrlGeneratorPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.pageRecoveryPanel) {
+    elements.pageRecoveryPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.activationPanel) {
+    elements.activationPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.cloudControlPanel) {
+    elements.cloudControlPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.templatesDiagnosticsPanel) {
+    elements.templatesDiagnosticsPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.tableAdvancedControls) {
+    elements.tableAdvancedControls.style.display = showAdvanced ? "" : "none";
+  }
+
+  const exportUseFiltersRow = elements.exportUseCurrentFilters?.closest("label");
+  if (exportUseFiltersRow) {
+    exportUseFiltersRow.style.display = showAdvanced ? "" : "none";
+  }
+  if (elements.exportClipboardBtn) {
+    elements.exportClipboardBtn.style.display = showAdvanced ? "" : "none";
+  }
+  if (elements.exportSheetsBtn) {
+    elements.exportSheetsBtn.style.display = showAdvanced ? "" : "none";
+  }
+
+  if (state.simpleMode) {
+    const imageOnlyTool = state.activeTool === "image";
+    if (elements.dataTablePanel) {
+      elements.dataTablePanel.style.display = imageOnlyTool ? "none" : "";
+    }
+    if (elements.exportPanel) {
+      elements.exportPanel.style.display = imageOnlyTool ? "none" : "";
+    }
+    if (elements.imagePanel) {
+      elements.imagePanel.style.display = imageOnlyTool ? "" : "none";
+    }
+  } else {
+    if (elements.dataTablePanel) {
+      elements.dataTablePanel.style.display = "";
+    }
+    if (elements.exportPanel) {
+      elements.exportPanel.style.display = "";
+    }
+    if (elements.imagePanel) {
+      elements.imagePanel.style.display = "";
+    }
+  }
+
+  if (elements.quickExtractBtn) {
+    elements.quickExtractBtn.classList.toggle("btn-primary", true);
+  }
+  if (elements.startBtn) {
+    elements.startBtn.classList.toggle("btn-primary", false);
+  }
+
+  for (const button of elements.shellNavButtons || []) {
+    const view = String(button.dataset.shellView || "").trim();
+    const show = !state.simpleMode || SIMPLE_MODE_ALLOWED_VIEWS.has(view);
+    button.style.display = show ? "" : "none";
+  }
+  if (state.simpleMode && !SIMPLE_MODE_ALLOWED_VIEWS.has(state.activeShellView)) {
+    setShellView(SHELL_VIEWS.MENU);
+  }
+}
+
+function onSimpleModeToggle() {
+  state.simpleMode = true;
+  if (elements.simpleModeToggle) {
+    elements.simpleModeToggle.checked = true;
+  }
+  saveSimpleModeToStorage();
+  applySimpleModeUi();
+  trackUiEvent("simple_mode_toggled", {
+    enabled: state.simpleMode
+  });
+}
+
 function updateRunnerUi() {
   const runnerType = elements.runnerType.value;
   const isListRunner = runnerType === RUNNER_TYPES.LIST_EXTRACTOR;
   const isPageRunner = runnerType === RUNNER_TYPES.PAGE_EXTRACTOR;
   const isMetadataRunner = runnerType === RUNNER_TYPES.METADATA_EXTRACTOR;
+  const showListAdvanced = isListRunner && !state.simpleMode;
   elements.listConfigPanel.style.display = isListRunner ? "grid" : "none";
-  elements.speedProfileEditor.style.display = isListRunner ? "grid" : "none";
+  elements.speedProfileEditor.style.display = showListAdvanced ? "grid" : "none";
+  if (elements.listAdvancedControls) {
+    elements.listAdvancedControls.style.display = showListAdvanced ? "grid" : "none";
+  }
   elements.pageConfigPanel.style.display = isPageRunner || isMetadataRunner ? "grid" : "none";
   elements.pageActionTypeField.style.display = isMetadataRunner ? "none" : "grid";
+  applySimpleModeUi();
   updatePageActionUi();
 }
 
@@ -1213,7 +1483,9 @@ function setImageStatus(text, { error = false } = {}) {
 }
 
 function setActivationStatus(text, { error = false } = {}) {
-  elements.activationStatusLine.textContent = String(text || "");
+  elements.activationStatusLine.textContent = formatStatusErrorText(text, {
+    error
+  });
   elements.activationStatusLine.classList.toggle("status-error", Boolean(error));
 }
 
@@ -1224,7 +1496,10 @@ function setRoadmapStatus(text, { error = false } = {}) {
 }
 
 function setCloudStatus(text, { error = false } = {}) {
-  elements.cloudStatusLine.textContent = String(text || "");
+  elements.cloudStatusLine.textContent = formatStatusErrorText(text, {
+    cloud: true,
+    error
+  });
   elements.cloudStatusLine.classList.toggle("status-error", Boolean(error));
 }
 
@@ -1395,6 +1670,24 @@ function saveWelcomeVisits() {
   }
 }
 
+function loadSimpleModeFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(SIMPLE_MODE_STORAGE_KEY);
+    if (raw === null || raw === undefined || raw === "") return true;
+    return raw !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function saveSimpleModeToStorage() {
+  try {
+    globalThis.localStorage?.setItem(SIMPLE_MODE_STORAGE_KEY, state.simpleMode ? "true" : "false");
+  } catch {
+    // no-op: localStorage may be unavailable in some contexts
+  }
+}
+
 function normalizeShellView(value) {
   const next = String(value || "").trim();
   if (Object.values(SHELL_VIEWS).includes(next)) return next;
@@ -1402,7 +1695,8 @@ function normalizeShellView(value) {
 }
 
 function setShellView(view) {
-  const next = normalizeShellView(view);
+  const normalized = normalizeShellView(view);
+  const next = state.simpleMode && !SIMPLE_MODE_ALLOWED_VIEWS.has(normalized) ? SHELL_VIEWS.MENU : normalized;
   state.activeShellView = next;
 
   for (const button of elements.shellNavButtons) {
@@ -1508,6 +1802,13 @@ function updateWelcomeVisibility() {
   renderWelcomeCard(toolId);
   setToolHeadingText(getToolPreset(toolId).label);
   renderToolCardState();
+
+  if (state.simpleMode) {
+    if (elements.toolWelcomePanel) {
+      elements.toolWelcomePanel.hidden = true;
+    }
+    return;
+  }
 
   const welcomeViews = String(elements.toolWelcomePanel?.dataset.views || "")
     .trim()
@@ -1672,9 +1973,22 @@ function buildExportFilterPayload() {
   };
 }
 
-function callChromePermissions(method, details) {
+function callChromePermissions(method, details, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new Error("Permission API timeout"));
+        }, timeoutMs)
+      : null;
     chrome.permissions[method](details, (result) => {
+      if (settled) return;
+      settled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
       const lastError = chrome.runtime.lastError;
       if (lastError) {
         reject(new Error(lastError.message || "Permission API failed"));
@@ -1693,6 +2007,261 @@ async function ensureClipboardPermission() {
   const hasAccess = await callChromePermissions("contains", details).catch(() => false);
   if (hasAccess) return true;
   return callChromePermissions("request", details);
+}
+
+function normalizePermissionRequest({ origins = [], permissions = [] } = {}) {
+  const normalizedOrigins = Array.from(
+    new Set((Array.isArray(origins) ? origins : []).map((value) => String(value || "").trim()).filter(Boolean))
+  );
+  const normalizedPermissions = Array.from(
+    new Set((Array.isArray(permissions) ? permissions : []).map((value) => String(value || "").trim()).filter(Boolean))
+  );
+  const details = {};
+  if (normalizedOrigins.length > 0) {
+    details.origins = normalizedOrigins;
+  }
+  if (normalizedPermissions.length > 0) {
+    details.permissions = normalizedPermissions;
+  }
+  return {
+    origins: normalizedOrigins,
+    permissions: normalizedPermissions,
+    details,
+    hasRequest: normalizedOrigins.length > 0 || normalizedPermissions.length > 0
+  };
+}
+
+async function containsPermissionRequest(request) {
+  if (!request?.hasRequest || !chrome.permissions) {
+    return {
+      granted: !request?.hasRequest,
+      skipped: true,
+      error: ""
+    };
+  }
+  let errorText = "";
+  const granted = await callChromePermissions("contains", request.details).catch((error) => {
+    errorText = error?.message || "Permission check failed";
+    return false;
+  });
+  return {
+    granted: Boolean(granted),
+    skipped: false,
+    error: errorText
+  };
+}
+
+async function requestPermissionRequest(request) {
+  if (!request?.hasRequest || !chrome.permissions) {
+    return {
+      granted: !request?.hasRequest,
+      skipped: true,
+      error: ""
+    };
+  }
+  let errorText = "";
+  const granted = await callChromePermissions("request", request.details).catch((error) => {
+    errorText = error?.message || "Permission request failed";
+    return false;
+  });
+  return {
+    granted: Boolean(granted),
+    skipped: false,
+    error: errorText
+  };
+}
+
+function setSetupAccessStatus(text, { error = false } = {}) {
+  if (!elements.setupAccessStatusLine) return;
+  elements.setupAccessStatusLine.textContent = formatStatusErrorText(text, {
+    cloud: true,
+    error
+  });
+  elements.setupAccessStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function toOriginPattern(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/i.test(parsed.protocol)) return "";
+    return `${parsed.protocol}//${parsed.host}/*`;
+  } catch {
+    return "";
+  }
+}
+
+function hasManifestAllHostAccess() {
+  try {
+    const manifest = chrome.runtime?.getManifest?.();
+    const hostPermissions = Array.isArray(manifest?.host_permissions) ? manifest.host_permissions : [];
+    return hostPermissions.some((pattern) => String(pattern || "").trim() === "<all_urls>");
+  } catch {
+    return false;
+  }
+}
+
+async function getActiveTabUrl() {
+  if (!chrome.tabs?.query) return "";
+  return new Promise((resolve) => {
+    chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true
+      },
+      (tabs) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          resolve("");
+          return;
+        }
+        const url = String(tabs?.[0]?.url || "").trim();
+        resolve(url);
+      }
+    );
+  });
+}
+
+async function maybeHydrateStartUrlFromActiveTab({ force = false } = {}) {
+  const current = String(elements.startUrl.value || "").trim();
+  if (!force && current) {
+    return current;
+  }
+  const activeUrl = await getActiveTabUrl();
+  const pattern = toOriginPattern(activeUrl);
+  if (!pattern) return current;
+  elements.startUrl.value = activeUrl;
+  return activeUrl;
+}
+
+async function onSetupAccess({
+  includeApi = false,
+  includeDownloads = false,
+  includeClipboard = false,
+  silent = false,
+  preferFullHostAccess = false
+} = {}) {
+  if (!silent) {
+    setSetupAccessStatus("Checking browser access...");
+  }
+  let startUrl = String(elements.startUrl.value || "").trim();
+  if (!startUrl && !preferFullHostAccess) {
+    startUrl = await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
+  }
+  const apiBaseUrl = String(elements.activationApiBase.value || "").trim();
+  const builtInAllHostAccess = hasManifestAllHostAccess();
+
+  const requestedOrigins = preferFullHostAccess
+    ? ["<all_urls>"]
+    : Array.from(new Set([toOriginPattern(startUrl), includeApi ? toOriginPattern(apiBaseUrl) : ""].filter(Boolean)));
+  const originPatterns = requestedOrigins.length > 0 ? requestedOrigins : builtInAllHostAccess ? ["<all_urls>"] : [];
+  const optionalPermissionList = Array.from(
+    new Set([includeDownloads ? "downloads" : "", includeClipboard ? "clipboardWrite" : ""].filter(Boolean))
+  );
+
+  if (originPatterns.length === 0) {
+    if (!silent) {
+      setSetupAccessStatus("Open a normal website tab first, then click Enable All Access.", {
+        error: true
+      });
+    }
+    return {
+      ok: false,
+      hostGranted: 0,
+      hostDenied: 1,
+      hostRequested: preferFullHostAccess ? 1 : 0,
+      optionalDenied: 0,
+      fullHostAccess: false
+    };
+  }
+
+  const hostRequest = normalizePermissionRequest({
+    origins: originPatterns
+  });
+  const optionalRequest = normalizePermissionRequest({
+    permissions: optionalPermissionList
+  });
+
+  let hostState = builtInAllHostAccess
+    ? {
+        granted: true,
+        skipped: true,
+        error: ""
+      }
+    : await containsPermissionRequest(hostRequest);
+  let optionalState =
+    optionalPermissionList.length > 0
+      ? await containsPermissionRequest(optionalRequest)
+      : {
+          granted: true,
+          skipped: true,
+          error: ""
+        };
+
+  const missingRequest = normalizePermissionRequest({
+    origins: builtInAllHostAccess || hostState.granted ? [] : originPatterns,
+    permissions: optionalState.granted ? [] : optionalPermissionList
+  });
+  let requestErrorText = "";
+
+  if (missingRequest.hasRequest) {
+    const requested = await requestPermissionRequest(missingRequest);
+    if (!requested.granted && requested.error) {
+        requestErrorText = requested.error;
+    }
+    hostState = builtInAllHostAccess
+      ? {
+          granted: true,
+          skipped: true,
+          error: ""
+        }
+      : await containsPermissionRequest(hostRequest);
+    optionalState =
+      optionalPermissionList.length > 0
+        ? await containsPermissionRequest(optionalRequest)
+        : {
+            granted: true,
+            skipped: true,
+            error: ""
+          };
+  }
+
+  const hostGranted = hostState.granted ? originPatterns.length : 0;
+  const hostDenied = originPatterns.length - hostGranted;
+  const optionalDenied = optionalPermissionList.length > 0 && !optionalState.granted ? optionalPermissionList.length : 0;
+  const ok = hostGranted > 0 && hostDenied === 0;
+
+  if (!silent) {
+    if (ok) {
+      if (optionalDenied > 0) {
+        setSetupAccessStatus("Site access ready. Optional export permissions were skipped.");
+      } else if (builtInAllHostAccess) {
+        setSetupAccessStatus("Access ready: all-site host access is already enabled.");
+      } else if (preferFullHostAccess) {
+        setSetupAccessStatus("Access ready: full-site permission granted.");
+      } else {
+        setSetupAccessStatus("Access ready for this site.");
+      }
+    } else {
+      const suffix = requestErrorText ? ` (${friendlyErrorText(requestErrorText)})` : "";
+      setSetupAccessStatus(`Access setup incomplete. Click Enable All Access and approve browser permission.${suffix}`, {
+        error: true
+      });
+    }
+  }
+
+  return {
+    ok,
+    hostGranted,
+    hostDenied,
+    hostRequested: originPatterns.length,
+    optionalDenied,
+    fullHostAccess: preferFullHostAccess && ok,
+    builtInHostAccess: builtInAllHostAccess
+  };
 }
 
 function getSelectedTableDataId() {
@@ -1734,8 +2303,38 @@ function renderTableHistoryOptions(items, preferredTableDataId = "") {
   const hasDesired = list.some((item) => String(item?.tableDataId || "").trim() === desired);
   if (hasDesired) {
     elements.tableHistorySelect.value = desired;
+  } else {
+    const fallbackTableDataId = String(list[0]?.tableDataId || "").trim();
+    if (fallbackTableDataId) {
+      elements.tableHistorySelect.value = fallbackTableDataId;
+    }
   }
   state.activeTableDataId = getSelectedTableDataId() || String(list[0]?.tableDataId || "").trim() || null;
+}
+
+function resolveCurrentTableDataId() {
+  const selected = getSelectedTableDataId();
+  if (selected) return selected;
+
+  const active = String(state.activeTableDataId || "").trim();
+  if (active) {
+    elements.tableHistorySelect.value = active;
+    return active;
+  }
+
+  const optionFallback = String(elements.tableHistorySelect?.options?.[0]?.value || "").trim();
+  if (optionFallback) {
+    elements.tableHistorySelect.value = optionFallback;
+    return optionFallback;
+  }
+
+  const historyFallback = String(state.tableHistory?.[0]?.tableDataId || "").trim();
+  if (historyFallback) {
+    elements.tableHistorySelect.value = historyFallback;
+    return historyFallback;
+  }
+
+  return "";
 }
 
 function renderTableColumnOptions(columns) {
@@ -1922,7 +2521,7 @@ async function hydrateTableHistory({ preserveSelection = true } = {}) {
 }
 
 async function loadSelectedTableRows({ silent = false } = {}) {
-  const tableDataId = getSelectedTableDataId();
+  const tableDataId = resolveCurrentTableDataId();
   if (!tableDataId) {
     state.activeTableDataId = null;
     state.tableRows = [];
@@ -2721,7 +3320,59 @@ function resolveStatusFromEvent(eventPayload) {
   return state.currentStatus;
 }
 
+function resolveSimpleModeTerminalStatusLine(eventPayload, nextStatus) {
+  if (nextStatus === AUTOMATION_STATES.STOPPED) {
+    return {
+      text: "Extraction stopped.",
+      error: true
+    };
+  }
+
+  if (nextStatus === AUTOMATION_STATES.ERROR) {
+    const failedMessage = friendlyErrorText(
+      eventPayload?.payload?.error?.message || eventPayload?.payload?.errorPacket?.message || "Extraction failed"
+    );
+    return {
+      text: `Extraction failed: ${failedMessage}`,
+      error: true
+    };
+  }
+
+  if (nextStatus !== AUTOMATION_STATES.COMPLETED) {
+    return null;
+  }
+
+  const result = eventPayload?.payload?.result || {};
+  const successCount = Number(result?.successCount || result?.rowCount || 0);
+  const rowCount = Number(result?.rowCount || 0);
+  const failureCount = Number(result?.failureCount || 0);
+  const urlCount = Number(result?.urlCount || successCount + failureCount || 0);
+  const duplicateSkipped = Number(result?.mapsDeduplication?.skippedKnownEntities || 0);
+  const firstFailure = String(result?.failures?.[0]?.error || "").trim();
+
+  if (successCount <= 0 && failureCount > 0) {
+    const friendly = friendlyErrorText(firstFailure || "All URLs failed");
+    return {
+      text: `No rows extracted: ${friendly}`,
+      error: true
+    };
+  }
+
+  if (rowCount <= 0 && duplicateSkipped > 0 && failureCount <= 0) {
+    return {
+      text: `No new companies found. Skipped ${duplicateSkipped} duplicates.`,
+      error: false
+    };
+  }
+
+  return {
+    text: `Extraction completed: ${rowCount} rows from ${urlCount} URL${urlCount === 1 ? "" : "s"}.`,
+    error: false
+  };
+}
+
 function handleRuntimeEvent(eventPayload) {
+  const eventType = String(eventPayload?.eventType || "").trim();
   const automationId = eventPayload?.payload?.automationId || null;
   if (automationId) {
     state.currentAutomationId = automationId;
@@ -2729,6 +3380,13 @@ function handleRuntimeEvent(eventPayload) {
 
   const nextStatus = resolveStatusFromEvent(eventPayload);
   setStatus(nextStatus);
+  if (eventType === AUTOMATION_EVENT_TYPES.PROGRESS) {
+    const progressPct = toProgressPercent(eventPayload?.payload?.progress, state.statusProgressPct);
+    const phase = String(eventPayload?.payload?.phase || "").trim();
+    setStatusProgress(progressPct, {
+      phase
+    });
+  }
 
   if (
     nextStatus === AUTOMATION_STATES.COMPLETED ||
@@ -2736,20 +3394,62 @@ function handleRuntimeEvent(eventPayload) {
     nextStatus === AUTOMATION_STATES.ERROR
   ) {
     state.lastTerminalAutomationId = automationId || state.lastTerminalAutomationId;
-    void hydrateDataSources().catch(() => {
-      appendLog("datasource refresh failed after terminal event");
-    });
-    void hydrateTableHistory({
-      preserveSelection: true
-    }).catch(() => {
-      appendLog("table history refresh failed after terminal event");
-    });
+    void (async () => {
+      try {
+        await hydrateDataSources();
+      } catch {
+        appendLog("datasource refresh failed after terminal event");
+      }
+
+      try {
+        await hydrateTableHistory({
+          preserveSelection: true
+        });
+      } catch {
+        appendLog("table history refresh failed after terminal event");
+      }
+
+      if (state.simpleMode && nextStatus === AUTOMATION_STATES.COMPLETED) {
+        setShellView(SHELL_VIEWS.DATA);
+        try {
+          await loadSelectedTableRows({
+            silent: true
+          });
+        } catch {
+          appendLog("table load failed after completion");
+        }
+
+        if (state.intentAutoExport) {
+          const exportFormat = String(state.intentAutoExportFormat || "csv").trim().toLowerCase();
+          state.intentAutoExport = false;
+          state.intentAutoExportFormat = "csv";
+          elements.exportFormat.value = exportFormat || "csv";
+          await onExportFile();
+        }
+      }
+    })();
+  }
+
+  if (state.simpleMode) {
+    if (eventType === AUTOMATION_EVENT_TYPES.PROGRESS && nextStatus === AUTOMATION_STATES.RUNNING) {
+      const progressPct = toProgressPercent(eventPayload?.payload?.progress, state.statusProgressPct);
+      const phase = String(eventPayload?.payload?.phase || "").trim();
+      setListAutoDetectStatus(
+        phase ? `Working ${progressPct}%: ${phase}` : `Working ${progressPct}%: extracting...`
+      );
+    }
+    const terminalLine = resolveSimpleModeTerminalStatusLine(eventPayload, nextStatus);
+    if (terminalLine?.text) {
+      setListAutoDetectStatus(terminalLine.text, {
+        error: Boolean(terminalLine.error)
+      });
+    }
   }
 
   appendLog(`event: ${eventPayload.eventType}`, eventPayload.payload || {});
 }
 
-function applyPickerSessionResult(session, purpose) {
+async function applyPickerSessionResult(session, purpose) {
   const selections = Array.isArray(session?.selections) ? session.selections : [];
   if (purpose === "list_container" && selections.length > 0) {
     const selected = selections[0];
@@ -2781,6 +3481,74 @@ function applyPickerSessionResult(session, purpose) {
     appendLog("page fields selected", {
       added: fields.length
     });
+    return;
+  }
+
+  if (purpose === "guided_container" && selections.length > 0) {
+    const selected = selections[0];
+    const normalizedSelector = normalizePickedContainerSelector(selected.selector || "");
+    elements.containerSelector.value = normalizedSelector || selected.selector || "";
+    setListAutoDetectStatus("Point & Follow: now click one field inside a row to follow.");
+    appendLog("guided container selected", {
+      original: selected.selector || "",
+      normalized: elements.containerSelector.value
+    });
+    await startPicker({
+      mode: PICKER_MODES.FIELD,
+      multiSelect: false,
+      anchorSelector: String(elements.containerSelector.value || "").trim(),
+      prompt: "Click one value (name/title/price). Datascrap will follow this pattern across rows.",
+      purpose: "guided_field"
+    });
+    return;
+  }
+
+  if (purpose === "guided_seed" && selections.length > 0) {
+    const selected = selections[0];
+    setListAutoDetectStatus("Point & Follow: learning from your click...");
+    appendLog("guided seed selected", {
+      selector: selected.selector || "",
+      relativeSelector: selected.relativeSelector || "",
+      textPreview: selected.textPreview || ""
+    });
+    const detected = await onListAutoDetect({
+      anchorSelector: String(selected.selector || "").trim(),
+      minItems: 2
+    });
+    if (detected) {
+      setListAutoDetectStatus("Point & Follow learned pattern. Starting extraction...");
+      const started = await onStart();
+      if (started) {
+        setListAutoDetectStatus("Point & Follow running. Open DATA to see results.");
+      }
+      state.pointFollowActive = false;
+      return;
+    }
+    setListAutoDetectStatus("Need one extra hint. Click one full row/item.");
+    await startPicker({
+      mode: PICKER_MODES.CONTAINER,
+      multiSelect: false,
+      prompt: "Click one full row/item so Datascrap can map repeating records.",
+      purpose: "guided_container"
+    });
+    return;
+  }
+
+  if (purpose === "guided_field" && selections.length > 0) {
+    const field = createFieldFromSelection(selections[0], 0, 0);
+    state.listFields = [field];
+    renderListFields();
+    setListAutoDetectStatus("Point & Follow captured your pattern. Starting extraction...");
+    appendLog("guided field selected", {
+      selector: field.selector,
+      relativeSelector: field.relativeSelector,
+      extractMode: field.extractMode
+    });
+    const started = await onStart();
+    if (started) {
+      setListAutoDetectStatus("Point & Follow running. Open DATA to see results.");
+    }
+    state.pointFollowActive = false;
   }
 }
 
@@ -2811,7 +3579,7 @@ function handlePickerEvent(payload) {
       count: session.selections.length
     });
     if (purpose) {
-      applyPickerSessionResult(session, purpose);
+      void applyPickerSessionResult(session, purpose);
     }
     state.pickerSessionPurposeById.delete(session.sessionId);
     return;
@@ -2822,6 +3590,12 @@ function handlePickerEvent(payload) {
     appendLog("picker canceled", {
       sessionId: session.sessionId
     });
+    if (state.pointFollowActive && (purpose === "guided_seed" || purpose === "guided_container" || purpose === "guided_field")) {
+      state.pointFollowActive = false;
+      setListAutoDetectStatus("Point & Follow canceled.", {
+        error: true
+      });
+    }
     state.pickerSessionPurposeById.delete(session.sessionId);
     return;
   }
@@ -2829,6 +3603,12 @@ function handlePickerEvent(payload) {
   if (eventType === "error") {
     setPickerStatus("error");
     appendLog("picker error", session);
+    if (state.pointFollowActive) {
+      state.pointFollowActive = false;
+      setListAutoDetectStatus("Point & Follow failed due to picker error.", {
+        error: true
+      });
+    }
     state.pickerSessionPurposeById.delete(session.sessionId);
   }
 }
@@ -3337,7 +4117,14 @@ function buildMapsOptions() {
     includeReviews: Boolean(elements.mapsIncludeReviews.checked),
     includeHours: Boolean(elements.mapsIncludeHours.checked),
     includeLocation: Boolean(elements.mapsIncludeLocation.checked),
-    includeImages: Boolean(elements.mapsIncludeImages.checked)
+    includeImages: Boolean(elements.mapsIncludeImages.checked),
+    onlyNewResults: true,
+    autoScrollResults: true,
+    untilNoMore: true,
+    maxResults: 0,
+    maxScrollSteps: 220,
+    stabilityPasses: 8,
+    scrollDelayMs: 650
   };
 }
 
@@ -4553,13 +5340,17 @@ async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = ""
   }
 }
 
-async function onListAutoDetect() {
+async function onListAutoDetect(options = {}) {
   setListAutoDetectStatus("Auto-detecting list setup...");
   try {
-    const response = await sendMessage(MESSAGE_TYPES.LIST_AUTODETECT_REQUEST, {
+    const nextOptions = {
       maxFields: 8,
       maxPreviewRows: 5,
-      minItems: 3
+      minItems: 3,
+      ...(options && typeof options === "object" ? options : {})
+    };
+    const response = await sendMessage(MESSAGE_TYPES.LIST_AUTODETECT_REQUEST, {
+      ...nextOptions
     });
 
     const fields = Array.isArray(response.fields) ? response.fields : [];
@@ -4608,11 +5399,14 @@ async function onListAutoDetect() {
       loadMore: response.loadMore || null,
       detectionMs: Number(response.detectionMs || 0)
     });
+    return true;
   } catch (error) {
-    setListAutoDetectStatus(`Auto-detect failed: ${error.message}`, {
+    const message = friendlyErrorText(error?.message || "");
+    setListAutoDetectStatus(`Auto-detect failed: ${message}`, {
       error: true
     });
-    appendLog(`list auto-detect failed: ${error.message}`);
+    appendLog(`list auto-detect failed: ${message}`);
+    return false;
   }
 }
 
@@ -4788,8 +5582,263 @@ function resolveToolStartEventName(runnerType, actionType) {
   return "page_extraction_started";
 }
 
+function parseIntentExportFormat(lowerText) {
+  const lower = String(lowerText || "");
+  if (lower.includes("xlsx") || lower.includes("excel")) return "xlsx";
+  if (lower.includes("json")) return "json";
+  return "csv";
+}
+
+function parseIntentCommand(commandText) {
+  const raw = String(commandText || "").trim();
+  const lower = raw.toLowerCase();
+  const hasText = raw.length > 0;
+  const wantsExtract =
+    /\b(extract|scrape|collect|gather|run|get)\b/.test(lower) ||
+    lower.includes("quick extract");
+  const wantsAccess =
+    lower.includes("permission") ||
+    lower.includes("access") ||
+    lower.includes("enable all access") ||
+    lower.includes("allow all access");
+  const wantsPointFollow = lower.includes("point") && lower.includes("follow");
+  const wantsExport = /\bexport\b/.test(lower);
+  const wantsMaps = lower.includes("maps") || lower.includes("google maps");
+  const wantsExhaustive =
+    lower.includes("until no more") ||
+    lower.includes("keep going") ||
+    lower.includes("extract all") ||
+    lower.includes("all in this search");
+
+  return {
+    hasText,
+    wantsExtract,
+    wantsAccess,
+    wantsPointFollow,
+    wantsExport,
+    wantsMaps,
+    wantsExhaustive,
+    exportFormat: parseIntentExportFormat(lower)
+  };
+}
+
+async function onIntentCommandRun() {
+  const commandText = String(elements.intentCommandInput?.value || "").trim();
+  const intent = parseIntentCommand(commandText);
+  if (!intent.hasText) {
+    setListAutoDetectStatus("Type a command first. Example: extract all in this search until no more.", {
+      error: true
+    });
+    elements.intentCommandInput?.focus();
+    return;
+  }
+
+  state.intentLastCommand = commandText;
+  if (elements.intentCommandHint) {
+    elements.intentCommandHint.textContent = `Command: ${commandText}`;
+  }
+
+  if (intent.wantsAccess && !intent.wantsExtract && !intent.wantsPointFollow && !intent.wantsExport) {
+    await onSetupAccess({
+      includeApi: false,
+      includeDownloads: false,
+      includeClipboard: false,
+      silent: false,
+      preferFullHostAccess: true
+    });
+    return;
+  }
+
+  if (intent.wantsExport && !intent.wantsExtract) {
+    elements.exportFormat.value = intent.exportFormat;
+    await onExportFile();
+    return;
+  }
+
+  if (intent.wantsPointFollow) {
+    await onPointAndFollow();
+    return;
+  }
+
+  if (intent.wantsExtract) {
+    if (intent.wantsExport) {
+      state.intentAutoExport = true;
+      state.intentAutoExportFormat = intent.exportFormat;
+    } else {
+      state.intentAutoExport = false;
+      state.intentAutoExportFormat = "csv";
+    }
+
+    await onQuickExtract({
+      forceMapsExhaustive: intent.wantsMaps || intent.wantsExhaustive
+    });
+    return;
+  }
+
+  setListAutoDetectStatus("Command not recognized. Try: extract all in this search until no more.", {
+    error: true
+  });
+}
+
+async function onQuickExtract(options = {}) {
+  try {
+    await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
+    const startUrl = String(elements.startUrl.value || "").trim();
+    if (!startUrl) {
+      throw new Error("Start URL is required");
+    }
+
+    const setup = await onSetupAccess({
+      includeApi: false,
+      includeDownloads: false,
+      includeClipboard: false,
+      silent: true,
+      preferFullHostAccess: false
+    });
+    if (!setup.ok) {
+      throw new Error("Access was denied for this site");
+    }
+
+    const lowerUrl = startUrl.toLowerCase();
+    const isGoogleMaps = lowerUrl.includes("google.com/maps") || lowerUrl.includes("maps.google.");
+    if (isGoogleMaps) {
+      applyToolPreset("page_details", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      setRunnerTypeIfAvailable(RUNNER_TYPES.PAGE_EXTRACTOR);
+      elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+      elements.pageManualUrls.value = startUrl;
+      elements.pageActionType.value = PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS;
+      elements.queueConcurrency.value = "1";
+      elements.queueDelayMs.value = "900";
+      elements.queueRetries.value = "1";
+      elements.queueRetryDelayMs.value = "1200";
+      elements.queueJitterMs.value = "250";
+      if (options?.forceMapsExhaustive) {
+        elements.mapsIncludeBasicInfo.checked = true;
+        elements.mapsIncludeContactDetails.checked = true;
+        elements.mapsIncludeReviews.checked = true;
+        elements.mapsIncludeHours.checked = true;
+        elements.mapsIncludeLocation.checked = true;
+        elements.mapsIncludeImages.checked = true;
+      }
+      updatePageSourceUi();
+      updatePageActionUi();
+      updateRunnerUi();
+
+      setListAutoDetectStatus("Quick extract: Google Maps detected. Starting maps extraction...");
+      const started = await onStart();
+      if (!started) {
+        throw new Error(state.lastStartError || "Google Maps extraction could not start.");
+      }
+      setListAutoDetectStatus("Google Maps extraction running. DATA will open when complete.");
+      trackUiEvent("quick_extract_started", {
+        strategy: "google_maps",
+        runnerType: elements.runnerType.value,
+        toolId: state.activeTool
+      });
+      return;
+    }
+
+    if (elements.runnerType.value !== RUNNER_TYPES.LIST_EXTRACTOR) {
+      applyToolPreset("list", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      updateRunnerUi();
+    }
+
+    const hasManualListSetup = Boolean(String(elements.containerSelector.value || "").trim()) && state.listFields.length > 0;
+    if (!hasManualListSetup) {
+      const detected = await onListAutoDetect();
+      if (!detected) {
+        setListAutoDetectStatus("Auto-detect needs help. Starting Point & Follow...");
+        await onPointAndFollow();
+        return;
+      }
+    }
+
+    setListAutoDetectStatus("Quick extract starting...");
+    const started = await onStart();
+    if (!started) {
+      throw new Error(state.lastStartError || "Extraction could not start. Check access permissions and retry.");
+    }
+    setListAutoDetectStatus("Quick extract running. Open DATA to view rows.");
+    trackUiEvent("quick_extract_started", {
+      runnerType: elements.runnerType.value,
+      toolId: state.activeTool
+    });
+  } catch (error) {
+    const message = friendlyErrorText(error?.message || "");
+    setListAutoDetectStatus(`Quick extract failed: ${message}`, {
+      error: true
+    });
+    appendLog(`quick extract failed: ${message}`);
+    setStatus(AUTOMATION_STATES.ERROR);
+  }
+}
+
+function normalizePickedContainerSelector(selector) {
+  const raw = String(selector || "").trim();
+  if (!raw) return "";
+  return raw.replace(/:nth-of-type\(\d+\)/g, "").replace(/\s{2,}/g, " ").trim();
+}
+
+async function onPointAndFollow() {
+  try {
+    await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
+    const startUrl = String(elements.startUrl.value || "").trim();
+    if (!startUrl) {
+      throw new Error("Start URL is required");
+    }
+
+    const setup = await onSetupAccess({
+      includeApi: false,
+      includeDownloads: false,
+      includeClipboard: false,
+      silent: true,
+      preferFullHostAccess: false
+    });
+    if (!setup.ok) {
+      throw new Error("Access was denied for this site");
+    }
+
+    state.pointFollowActive = true;
+    applyToolPreset("list", {
+      navigate: false,
+      forceWelcome: false,
+      track: false
+    });
+    setListAutoDetectStatus("Point & Follow: click one data item on the page...");
+    await startPicker({
+      mode: PICKER_MODES.CONTAINER,
+      multiSelect: false,
+      prompt: "Click one value you want to extract. Datascrap will infer the repeating pattern.",
+      purpose: "guided_seed"
+    });
+  } catch (error) {
+    state.pointFollowActive = false;
+    const message = friendlyErrorText(error?.message || "");
+    setListAutoDetectStatus(`Point & Follow failed: ${message}`, {
+      error: true
+    });
+    appendLog(`point and follow failed: ${message}`);
+  }
+}
+
 async function onStart() {
   try {
+    state.lastStartError = "";
+    await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
     const runnerType = elements.runnerType.value;
     const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
     const config =
@@ -4815,9 +5864,22 @@ async function onStart() {
       actionType
     });
     appendLog("start accepted", payload);
+    setStatus(AUTOMATION_STATES.RUNNING);
+    setStatusProgress(5, {
+      phase: "Start accepted"
+    });
+    return true;
   } catch (error) {
-    appendLog(`start failed: ${error.message}`);
+    const message = friendlyErrorText(error?.message || "");
+    state.lastStartError = message;
+    appendLog(`start failed: ${message}`);
+    if (state.simpleMode || String(elements.runnerType.value || "") === RUNNER_TYPES.LIST_EXTRACTOR) {
+      setListAutoDetectStatus(`Start failed: ${message}`, {
+        error: true
+      });
+    }
     setStatus(AUTOMATION_STATES.ERROR);
+    return false;
   }
 }
 
@@ -4874,6 +5936,14 @@ for (const button of elements.shellNavButtons) {
 for (const card of elements.toolCards) {
   card.addEventListener("click", () => {
     const toolId = String(card.dataset.tool || "").trim();
+    if (state.simpleMode && toolId === "list") {
+      trackUiEvent("quick_start_opened", {
+        toolId,
+        action: "menu_card_quick_extract"
+      });
+      void onQuickExtract();
+      return;
+    }
     applyToolPreset(toolId, {
       navigate: true,
       forceWelcome: false,
@@ -4907,6 +5977,11 @@ elements.toolWelcomeStartBtn.addEventListener("click", () => {
     return;
   }
 
+  if (state.simpleMode && state.activeTool === "list") {
+    elements.quickExtractBtn.focus();
+    return;
+  }
+
   elements.startBtn.focus();
 });
 
@@ -4918,6 +5993,30 @@ elements.roadmapIntegrationsNotifyBtn.addEventListener("click", () => {
 });
 
 elements.runnerType.addEventListener("change", updateRunnerUi);
+elements.simpleModeToggle.addEventListener("change", () => {
+  onSimpleModeToggle();
+});
+elements.intentRunBtn.addEventListener("click", () => {
+  void onIntentCommandRun();
+});
+elements.intentCommandInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void onIntentCommandRun();
+  }
+});
+elements.setupAccessBtn.addEventListener("click", () => {
+  void onSetupAccess({
+    includeApi: false,
+    includeDownloads: false,
+    includeClipboard: false,
+    silent: false,
+    preferFullHostAccess: true
+  });
+});
+elements.pointFollowBtn.addEventListener("click", () => {
+  void onPointAndFollow();
+});
 elements.speedProfile.addEventListener("change", () => {
   applySpeedProfileDefaults(elements.speedProfile.value);
 });
@@ -4947,6 +6046,9 @@ elements.queueSessionReuseMode.addEventListener("change", () => {
 });
 elements.pageUrlSourceMode.addEventListener("change", updatePageSourceUi);
 elements.pageActionType.addEventListener("change", updatePageActionUi);
+elements.quickExtractBtn.addEventListener("click", () => {
+  void onQuickExtract();
+});
 elements.startBtn.addEventListener("click", () => {
   void onStart();
 });
@@ -5404,6 +6506,7 @@ state.welcomeVisits = loadWelcomeVisits();
 state.templates = loadTemplatesFromStorage();
 state.speedProfiles = loadSpeedProfilesFromStorage();
 state.reliabilitySettings = loadReliabilitySettingsFromStorage();
+state.simpleMode = true;
 renderTemplates();
 renderIntegrationSecrets();
 renderJobs([]);
@@ -5424,6 +6527,10 @@ setSpeedProfileStatus("Profile editor ready");
 setReliabilityProfileStatus("Reliability profiles ready");
 setUrlGeneratorStatus("URL generator ready");
 setPageRecoveryStatus("Recovery controls ready");
+setSetupAccessStatus("Access setup ready");
+if (elements.quickFlowStatusLine) {
+  elements.quickFlowStatusLine.textContent = "Quick flow ready";
+}
 updatePageRecoveryPreview();
 updateIntegrationTestUi();
 renderImagePreview();
@@ -5432,6 +6539,10 @@ applyReliabilitySettingsToControls(state.reliabilitySettings, {
   persist: false
 });
 setReliabilityProfileStatus(`Loaded profile "${state.reliabilitySettings?.profile || DEFAULT_RELIABILITY_PROFILE}"`);
+applySimpleModeUi();
+await maybeHydrateStartUrlFromActiveTab({
+  force: false
+});
 updatePageSourceUi();
 updatePageActionUi();
 await hydrateRunnerCatalog();

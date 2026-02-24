@@ -12,21 +12,53 @@ Run a repeatable local pass before every deploy:
 npm run test:local:hardening
 ```
 
+Include extension e2e (simple):
+
+```bash
+npm run test:local:hardening:e2e
+```
+
+Include extension e2e (simple + maps):
+
+```bash
+npm run test:local:hardening:e2e:maps
+```
+
 Railway auto-bootstrap + hardening:
 
 ```bash
 npm run hardening:railway
 ```
 
+Railway auto-bootstrap + e2e hardening:
+
+```bash
+npm run hardening:railway:e2e
+npm run hardening:railway:e2e:maps
+```
+
 ## What It Executes
 
 1) `npm run smoke:extension`
-- storage/runtime + epic5/6/7/8/9/10/11/12/13/14 checks
+- storage/runtime + epic5/6/7/8/9/10/11/12/13/14/15 checks
 
-2) local API boot + `npm run smoke:control-api`
+2) Optional extension e2e checks
+- direct commands:
+  - `npm run e2e:extension:simple`
+  - `npm run e2e:extension:maps`
+- hardening wrappers:
+  - `npm run test:local:hardening:e2e`
+  - `npm run test:local:hardening:e2e:maps`
+  - `npm run hardening:railway:e2e`
+  - `npm run hardening:railway:e2e:maps`
+- wrappers set:
+  - `RUN_EXTENSION_E2E=true`
+  - optional `RUN_EXTENSION_E2E_MAPS=true`
+
+3) local API boot + `npm run smoke:control-api`
 - verifies `/healthz` and `/readyz`
 
-3) If `DATABASE_URL` is set and `SKIP_CLOUD_HARDENING!=true`:
+4) If `DATABASE_URL` is set and `SKIP_CLOUD_HARDENING!=true`:
 - `npm run migrate:control-api`
 - boot API with `ENABLE_OPTIONAL_CLOUD_FEATURES=true`
 - `npm run phase5:smoke:control-api`
@@ -52,6 +84,18 @@ Optional:
 - `API_BASE_URL` (default `http://127.0.0.1:3000`)
 - `SKIP_CLOUD_HARDENING=true` (force-skip cloud pass even with DB)
 - `VAULT_MASTER_KEY` (recommended for realistic secret-vault behavior)
+- `RUN_EXTENSION_E2E=true` (manual env flag if not using wrapper commands)
+- `RUN_EXTENSION_E2E_MAPS=true` (manual env flag to add Google Maps quick-flow e2e)
+- `E2E_PATCH_PERMISSIONS=1` (optional permission API patch mode in maps e2e)
+
+## CI Workflow
+
+- Workflow file:
+  - `.github/workflows/extension-hardening.yml`
+- Pull request gate:
+  - runs `npm run test:local:hardening:e2e`
+- Manual dispatch option:
+  - set `run_maps=true` to also run `npm run test:local:hardening:e2e:maps`
 
 ## Railway CLI Quick Bootstrap (staging)
 

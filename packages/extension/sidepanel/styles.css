@@ -126,14 +126,42 @@ h3 {
 }
 
 .status-pill {
+  --progress-pct: 0%;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border: 1px solid rgba(113, 139, 216, 0.5);
   background: rgba(23, 39, 79, 0.82);
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 6px 10px 6px 30px;
   white-space: nowrap;
+  position: relative;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.status-pill::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: conic-gradient(var(--accent-2) var(--progress-pct), rgba(75, 102, 170, 0.34) 0);
+  border: 1px solid rgba(111, 140, 222, 0.42);
+}
+
+.status-pill::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: rgba(8, 18, 42, 0.95);
 }
 
 .app-view-panel[hidden] {
@@ -276,6 +304,26 @@ h3 {
 
 .welcome-extra.is-visible {
   display: block;
+}
+
+.quickstart-strip {
+  border: 1px dashed rgba(104, 165, 241, 0.58);
+  border-radius: 10px;
+  background: rgba(8, 18, 42, 0.72);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.intent-command-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.intent-command-row input {
+  min-width: 0;
 }
 
 .panel {
@@ -596,9 +644,17 @@ textarea {
   color: #9ff8de;
 }
 
+.status-running::before {
+  background: conic-gradient(var(--accent) var(--progress-pct), rgba(71, 138, 170, 0.28) 0);
+}
+
 .status-error {
   border-color: rgba(255, 122, 139, 0.82);
   color: #ffd2d8;
+}
+
+.status-error::before {
+  background: conic-gradient(var(--danger) var(--progress-pct), rgba(126, 78, 89, 0.3) 0);
 }
 
 @media (max-width: 640px) {
@@ -612,6 +668,10 @@ textarea {
 }
 
 @media (max-width: 520px) {
+  .intent-command-row {
+    grid-template-columns: 1fr;
+  }
+
   .inline-row,
   .grid-two,
   .queue-grid {

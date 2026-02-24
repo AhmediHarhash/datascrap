@@ -31,6 +31,18 @@ This runs:
 1. `npm run hardening:railway`
 2. `npm run release:extension`
 
+## Full Production Gate With Extension E2E
+Run one of:
+
+```bash
+npm run release:full:e2e
+npm run release:full:e2e:maps
+```
+
+This runs:
+1. `npm run hardening:railway:e2e` (or `:maps`)
+2. `npm run release:extension`
+
 ## Cloud/API Gate (required for subscription mode)
 Run:
 
@@ -48,23 +60,39 @@ Pass criteria:
 4. Schedule smoke passes for create/run/remove.
 5. Monitor behavior smoke passes for baseline/no-change/change/no-change.
 
+## CI Gate
+- Workflow:
+  - `.github/workflows/extension-hardening.yml`
+- PR gate runs:
+  - `npm run test:local:hardening:e2e`
+- Manual dispatch option:
+  - `run_maps=true` also runs `npm run test:local:hardening:e2e:maps`
+- Branch protection setup:
+  - `docs/branch-protection-playbook-2026-02-24.md`
+- Mainline policy workflow (defense-in-depth):
+  - `.github/workflows/main-push-policy.yml`
+
 ## Manual UI Sign-Off (10-15 min)
 Run these checks in loaded unpacked extension (`packages/extension`):
 1. Home hub nav: `MENU`, `HISTORY`, `DATA`, `Tools`, `latest`.
 2. Tool cards route correctly to each extractor mode.
 3. Welcome/quick-start appears for first visits and can be reopened.
-4. List extraction end-to-end run returns table rows.
-5. Data table cleanup toggles work and do not corrupt schema.
-6. Merge columns flow creates merged field and optional source removal works.
-7. Exports: CSV/XLSX/JSON download and row counts match table.
-8. Activation login/register/device list/remove/rename works.
-9. Cloud policy save/load works for authenticated account.
-10. Jobs enqueue/list/cancel works for webhook + extraction summary + monitor diff presets.
-11. Schedules create/run-now/remove works for webhook + extraction summary + monitor diff presets.
-12. Templates save/apply/run/delete and diagnostics report copy work.
-13. Page URL generator + recovery controls work (retry failed only, resume checkpoint, failure report CSV/JSON).
-14. Reliability profile controls apply and persist (profile/backoff/jitter/session reuse).
-15. Diagnostics report includes run artifacts + recent event summary + failure error packet.
+4. Simple mode quick flow:
+- `Enable All Access` works and status line updates.
+- `Quick Extract` starts list/maps flows without opening advanced config first.
+- `Point & Follow` opens guided picker flow when auto-detect is insufficient.
+5. List extraction end-to-end run returns table rows.
+6. Data table cleanup toggles work and do not corrupt schema.
+7. Merge columns flow creates merged field and optional source removal works.
+8. Exports: CSV/XLSX/JSON download and row counts match table.
+9. Activation login/register/device list/remove/rename works.
+10. Cloud policy save/load works for authenticated account.
+11. Jobs enqueue/list/cancel works for webhook + extraction summary + monitor diff presets.
+12. Schedules create/run-now/remove works for webhook + extraction summary + monitor diff presets.
+13. Templates save/apply/run/delete and diagnostics report copy work.
+14. Page URL generator + recovery controls work (retry failed only, resume checkpoint, failure report CSV/JSON).
+15. Reliability profile controls apply and persist (profile/backoff/jitter/session reuse).
+16. Diagnostics report includes run artifacts + recent event summary + failure error packet.
 
 ## Release Checklist
 1. `npm run release:extension` passed.
