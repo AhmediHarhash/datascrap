@@ -2,6 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
+import { waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
 
 const KEEP_PROFILE = String(process.env.E2E_KEEP_PROFILE || "").trim() === "1";
 
@@ -92,12 +93,7 @@ async function main() {
   });
 
   try {
-    let serviceWorker = context.serviceWorkers()[0];
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent("serviceworker", {
-        timeout: 20000
-      });
-    }
+    const serviceWorker = await waitForExtensionServiceWorker(context, 60000);
 
     const extensionId = parseExtensionId(serviceWorker?.url?.());
     assert(extensionId, "Could not resolve extension id from service worker URL");
