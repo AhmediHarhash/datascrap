@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { chromium } from "playwright";
 import {
   createRunProfileDir,
+  parseLastLogFieldNumber,
+  parseLastLogFieldString,
   patchPermissionApis,
   parseHistoryRowCount,
   parseIntegerEnv,
@@ -180,31 +182,6 @@ async function snapshotUi(page) {
   }, { eventTailLimit: EVENT_LOG_TAIL_MAX });
 }
 
-function parseLastTerminationReason(logText = "") {
-  const raw = String(logText || "");
-  const pattern = /"terminationReason"\s*:\s*"([^"]+)"/g;
-  let match = null;
-  let last = "";
-  while ((match = pattern.exec(raw)) !== null) {
-    last = String(match[1] || "").trim().toLowerCase();
-  }
-  return last;
-}
-
-function parseLastVisitedNavigationUrlCount(logText = "") {
-  const raw = String(logText || "");
-  const pattern = /"visitedNavigationUrlCount"\s*:\s*(\d+)/g;
-  let match = null;
-  let last = 0;
-  while ((match = pattern.exec(raw)) !== null) {
-    const parsed = Number(match[1]);
-    if (Number.isFinite(parsed)) {
-      last = parsed;
-    }
-  }
-  return last;
-}
-
 async function waitForAutoDetect(page, timeoutMs = 25000) {
   const deadline = Date.now() + timeoutMs;
   let lastStatus = "";
@@ -360,8 +337,8 @@ async function main() {
     await panelPage.waitForTimeout(1200);
     const afterRun = await snapshotUi(panelPage);
     const finalRowCount = parseHistoryRowCount(afterRun.selectedHistoryText, afterRun.tableRowCount);
-    const terminationReason = parseLastTerminationReason(afterRun.eventLogTail);
-    const visitedNavigationUrlCount = parseLastVisitedNavigationUrlCount(afterRun.eventLogTail);
+    const terminationReason = parseLastLogFieldString(afterRun.eventLogTail, "terminationReason");
+    const visitedNavigationUrlCount = parseLastLogFieldNumber(afterRun.eventLogTail, "visitedNavigationUrlCount", 0);
 
     await panelPage.screenshot({
       path: resolve(artifactsDir, "e2e-navigate-cycle-sidepanel.png"),

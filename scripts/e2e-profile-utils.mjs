@@ -75,6 +75,35 @@ export function parseIntegerEnv(rawValue, { name, min, max, fallback }) {
   return parsed;
 }
 
+export function parseLastLogFieldString(logText = "", fieldName = "") {
+  const field = String(fieldName || "").trim();
+  if (!field) return "";
+  const raw = String(logText || "");
+  const pattern = new RegExp(`"${field}"\\s*:\\s*"([^"]+)"`, "g");
+  let match = null;
+  let last = "";
+  while ((match = pattern.exec(raw)) !== null) {
+    last = String(match[1] || "").trim().toLowerCase();
+  }
+  return last;
+}
+
+export function parseLastLogFieldNumber(logText = "", fieldName = "", fallback = 0) {
+  const field = String(fieldName || "").trim();
+  if (!field) return fallback;
+  const raw = String(logText || "");
+  const pattern = new RegExp(`"${field}"\\s*:\\s*(\\d+)`, "g");
+  let match = null;
+  let last = fallback;
+  while ((match = pattern.exec(raw)) !== null) {
+    const parsed = Number(match[1]);
+    if (Number.isFinite(parsed)) {
+      last = parsed;
+    }
+  }
+  return last;
+}
+
 export async function removeDirWithRetries(dirPath, attempts = 6) {
   const totalAttempts = Number.isFinite(Number(attempts)) ? Math.max(1, Number(attempts)) : 6;
   for (let index = 0; index < totalAttempts; index += 1) {

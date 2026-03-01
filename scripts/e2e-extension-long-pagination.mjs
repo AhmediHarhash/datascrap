@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { chromium } from "playwright";
 import {
   createRunProfileDir,
+  parseLastLogFieldNumber,
+  parseLastLogFieldString,
   patchPermissionApis,
   parseHistoryRowCount,
   parseIntegerEnv,
@@ -218,31 +220,6 @@ async function snapshotUi(page) {
   }, { eventTailLimit: EVENT_LOG_TAIL_MAX });
 }
 
-function parseLastTerminationReason(logText = "") {
-  const raw = String(logText || "");
-  const pattern = /"terminationReason"\s*:\s*"([^"]+)"/g;
-  let match = null;
-  let last = "";
-  while ((match = pattern.exec(raw)) !== null) {
-    last = String(match[1] || "").trim().toLowerCase();
-  }
-  return last;
-}
-
-function parseLastAutoContinueSegmentsUsed(logText = "") {
-  const raw = String(logText || "");
-  const pattern = /"autoContinueSegmentsUsed"\s*:\s*(\d+)/g;
-  let match = null;
-  let last = 0;
-  while ((match = pattern.exec(raw)) !== null) {
-    const parsed = Number(match[1]);
-    if (Number.isFinite(parsed)) {
-      last = parsed;
-    }
-  }
-  return last;
-}
-
 async function waitForTerminalAndRows(page, timeoutMs = 360000) {
   const deadline = Date.now() + timeoutMs;
   let lastSnapshot = await snapshotUi(page);
@@ -374,8 +351,8 @@ async function main() {
     await panelPage.waitForTimeout(1500);
     const afterRun = await snapshotUi(panelPage);
     const finalRowCount = parseHistoryRowCount(afterRun.selectedHistoryText, afterRun.tableRowCount);
-    const terminationReason = parseLastTerminationReason(afterRun.eventLogTail);
-    const autoContinueSegmentsUsed = parseLastAutoContinueSegmentsUsed(afterRun.eventLogTail);
+    const terminationReason = parseLastLogFieldString(afterRun.eventLogTail, "terminationReason");
+    const autoContinueSegmentsUsed = parseLastLogFieldNumber(afterRun.eventLogTail, "autoContinueSegmentsUsed", 0);
     const hardCapConfigured = /"hardCapAutoContinue"\s*:\s*true/i.test(afterRun.eventLogTail);
 
     await panelPage.screenshot({
