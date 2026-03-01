@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { chromium } from "playwright";
 import {
   createRunProfileDir,
+  parseExtensionId,
   removeDirWithRetries,
   waitForExtensionServiceWorker
 } from "./e2e-profile-utils.mjs";
@@ -13,12 +14,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseExtensionId(serviceWorkerUrl) {
-  const raw = String(serviceWorkerUrl || "").trim();
-  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
-  return match ? match[1] : "";
 }
 
 async function readUiState(page) {

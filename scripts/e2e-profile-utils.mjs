@@ -12,6 +12,12 @@ export function createRunProfileDir(tag = "e2e") {
   return resolve(".tmp", `pw-extension-profile-${safeTag}-${runId}`);
 }
 
+export function parseExtensionId(serviceWorkerUrl) {
+  const raw = String(serviceWorkerUrl || "").trim();
+  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
+  return match ? match[1] : "";
+}
+
 export async function removeDirWithRetries(dirPath, attempts = 6) {
   const totalAttempts = Number.isFinite(Number(attempts)) ? Math.max(1, Number(attempts)) : 6;
   for (let index = 0; index < totalAttempts; index += 1) {

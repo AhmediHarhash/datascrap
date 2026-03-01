@@ -1,7 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
+import {
+  createRunProfileDir,
+  parseExtensionId,
+  removeDirWithRetries,
+  waitForExtensionServiceWorker
+} from "./e2e-profile-utils.mjs";
 
 const MAPS_URL =
   "https://www.google.com/maps/search/los+angeles+home+services/@34.1000793,-119.1930544,9z?entry=ttu&g_ep=EgoyMDI2MDIxOC4wIKXMDSoASAFQAw%3D%3D";
@@ -12,12 +17,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseExtensionId(serviceWorkerUrl) {
-  const raw = String(serviceWorkerUrl || "").trim();
-  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
-  return match ? match[1] : "";
 }
 
 async function snapshotUi(page) {

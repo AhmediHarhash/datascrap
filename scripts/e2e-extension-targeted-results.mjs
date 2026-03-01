@@ -2,7 +2,12 @@ import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
+import {
+  createRunProfileDir,
+  parseExtensionId,
+  removeDirWithRetries,
+  waitForExtensionServiceWorker
+} from "./e2e-profile-utils.mjs";
 
 const KEEP_PROFILE = String(process.env.E2E_KEEP_PROFILE || "").trim() === "1";
 const PATCH_PERMISSIONS = String(process.env.E2E_PATCH_PERMISSIONS || "1").trim() !== "0";
@@ -21,12 +26,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseExtensionId(serviceWorkerUrl) {
-  const raw = String(serviceWorkerUrl || "").trim();
-  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
-  return match ? match[1] : "";
 }
 
 function parseTargetResultsFromEnv(rawValue) {

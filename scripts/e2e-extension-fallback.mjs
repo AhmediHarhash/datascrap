@@ -1,7 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
+import {
+  createRunProfileDir,
+  parseExtensionId,
+  removeDirWithRetries,
+  waitForExtensionServiceWorker
+} from "./e2e-profile-utils.mjs";
 
 const TARGET_URL = "https://example.com";
 const FALLBACK_COMMAND = String(process.env.E2E_FALLBACK_COMMAND || "maps https://example.com").trim();
@@ -12,12 +17,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseExtensionId(serviceWorkerUrl) {
-  const raw = String(serviceWorkerUrl || "").trim();
-  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
-  return match ? match[1] : "";
 }
 
 async function patchPermissionApis(page) {
