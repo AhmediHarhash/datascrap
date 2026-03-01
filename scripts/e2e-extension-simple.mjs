@@ -1,6 +1,9 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
+
+const KEEP_PROFILE = String(process.env.E2E_KEEP_PROFILE || "").trim() === "1";
 
 function assert(condition, message) {
   if (!condition) {
@@ -12,6 +15,30 @@ function parseExtensionId(serviceWorkerUrl) {
   const raw = String(serviceWorkerUrl || "").trim();
   const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
   return match ? match[1] : "";
+}
+
+function createRunProfileDir() {
+  const runId = `${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  return resolve(".tmp", `pw-extension-profile-simple-${runId}`);
+}
+
+async function removeDirWithRetries(dirPath, attempts = 6) {
+  for (let index = 0; index < attempts; index += 1) {
+    try {
+      await rm(dirPath, {
+        recursive: true,
+        force: true
+      });
+      return;
+    } catch (error) {
+      const code = String(error?.code || "");
+      const canRetry = code === "EBUSY" || code === "EPERM" || code === "ENOTEMPTY";
+      if (!canRetry || index === attempts - 1) {
+        throw error;
+      }
+      await delay(120 * (index + 1));
+    }
+  }
 }
 
 async function readUiState(page) {
@@ -49,12 +76,11 @@ async function readUiState(page) {
 
 async function main() {
   const extensionPath = resolve("packages/extension");
-  const userDataDir = resolve(".tmp", "pw-extension-profile");
+  const userDataDir = createRunProfileDir();
   const artifactsDir = resolve("dist", "e2e");
-  await rm(userDataDir, {
-    recursive: true,
-    force: true
-  });
+  if (!KEEP_PROFILE) {
+    await removeDirWithRetries(userDataDir);
+  }
   await mkdir(artifactsDir, {
     recursive: true
   });
@@ -140,6 +166,13 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await context.close();
+    if (!KEEP_PROFILE) {
+      try {
+        await removeDirWithRetries(userDataDir);
+      } catch {
+        // Non-fatal cleanup errors should not fail the run after assertions completed.
+      }
+    }
   }
 }
 
