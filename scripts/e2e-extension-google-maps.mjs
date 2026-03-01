@@ -1,6 +1,7 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
+import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
 
 const MAPS_URL =
   "https://www.google.com/maps/search/los+angeles+home+services/@34.1000793,-119.1930544,9z?entry=ttu&g_ep=EgoyMDI2MDIxOC4wIKXMDSoASAFQAw%3D%3D";
@@ -117,13 +118,10 @@ async function patchPermissionApis(page) {
 
 async function main() {
   const extensionPath = resolve("packages/extension");
-  const userDataDir = resolve(".tmp", "pw-extension-profile-maps");
+  const userDataDir = createRunProfileDir("maps");
   const artifactsDir = resolve("dist", "e2e");
   if (!KEEP_PROFILE) {
-    await rm(userDataDir, {
-      recursive: true,
-      force: true
-    });
+    await removeDirWithRetries(userDataDir);
   }
   await mkdir(artifactsDir, {
     recursive: true
@@ -136,12 +134,7 @@ async function main() {
   });
 
   try {
-    let serviceWorker = context.serviceWorkers()[0];
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent("serviceworker", {
-        timeout: 20000
-      });
-    }
+    const serviceWorker = await waitForExtensionServiceWorker(context, 60000);
     const extensionId = parseExtensionId(serviceWorker?.url?.());
     assert(extensionId, "Could not resolve extension id");
 
@@ -233,6 +226,13 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await context.close();
+    if (!KEEP_PROFILE) {
+      try {
+        await removeDirWithRetries(userDataDir);
+      } catch {
+        // Non-fatal cleanup errors should not fail the run after assertions completed.
+      }
+    }
   }
 }
 

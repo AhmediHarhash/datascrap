@@ -1,6 +1,7 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
+import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
 
 const TARGET_URL = "https://example.com";
 const FALLBACK_COMMAND = String(process.env.E2E_FALLBACK_COMMAND || "maps https://example.com").trim();
@@ -103,14 +104,11 @@ async function waitForFallbackSignal(page, timeoutMs = 90000) {
 
 async function main() {
   const extensionPath = resolve("packages/extension");
-  const userDataDir = resolve(".tmp", "pw-extension-profile-fallback");
+  const userDataDir = createRunProfileDir("fallback");
   const artifactsDir = resolve("dist", "e2e");
 
   if (!KEEP_PROFILE) {
-    await rm(userDataDir, {
-      recursive: true,
-      force: true
-    });
+    await removeDirWithRetries(userDataDir);
   }
   await mkdir(artifactsDir, {
     recursive: true
@@ -123,12 +121,7 @@ async function main() {
   });
 
   try {
-    let serviceWorker = context.serviceWorkers()[0];
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent("serviceworker", {
-        timeout: 20000
-      });
-    }
+    const serviceWorker = await waitForExtensionServiceWorker(context, 60000);
     const extensionId = parseExtensionId(serviceWorker?.url?.());
     assert(extensionId, "Could not resolve extension id");
 
@@ -208,6 +201,13 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await context.close();
+    if (!KEEP_PROFILE) {
+      try {
+        await removeDirWithRetries(userDataDir);
+      } catch {
+        // Non-fatal cleanup errors should not fail the run after assertions completed.
+      }
+    }
   }
 }
 
