@@ -18,6 +18,41 @@ export function parseExtensionId(serviceWorkerUrl) {
   return match ? match[1] : "";
 }
 
+export async function patchPermissionApis(page, options = {}) {
+  const includeChangeFlags = Boolean(options?.includeChangeFlags);
+  return page.evaluate(({ includeChangeFlags: includeFlags }) => {
+    if (!globalThis.chrome?.permissions) {
+      return {
+        patched: false,
+        reason: "chrome.permissions unavailable"
+      };
+    }
+    try {
+      const originalContains = globalThis.chrome.permissions.contains;
+      const originalRequest = globalThis.chrome.permissions.request;
+      globalThis.chrome.permissions.contains = (_details, callback) => {
+        if (typeof callback === "function") callback(true);
+      };
+      globalThis.chrome.permissions.request = (_details, callback) => {
+        if (typeof callback === "function") callback(true);
+      };
+      const result = {
+        patched: true
+      };
+      if (includeFlags) {
+        result.containsChanged = originalContains !== globalThis.chrome.permissions.contains;
+        result.requestChanged = originalRequest !== globalThis.chrome.permissions.request;
+      }
+      return result;
+    } catch (error) {
+      return {
+        patched: false,
+        reason: String(error?.message || error)
+      };
+    }
+  }, { includeChangeFlags });
+}
+
 export async function removeDirWithRetries(dirPath, attempts = 6) {
   const totalAttempts = Number.isFinite(Number(attempts)) ? Math.max(1, Number(attempts)) : 6;
   for (let index = 0; index < totalAttempts; index += 1) {

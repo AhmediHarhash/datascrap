@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { chromium } from "playwright";
 import {
   createRunProfileDir,
+  patchPermissionApis,
   parseExtensionId,
   removeDirWithRetries,
   waitForExtensionServiceWorker
@@ -177,33 +178,6 @@ async function stopFixtureServer(server) {
   if (!server) return;
   await new Promise((resolve) => {
     server.close(() => resolve());
-  });
-}
-
-async function patchPermissionApis(page) {
-  return page.evaluate(() => {
-    if (!globalThis.chrome?.permissions) {
-      return {
-        patched: false,
-        reason: "chrome.permissions unavailable"
-      };
-    }
-    try {
-      globalThis.chrome.permissions.contains = (_details, callback) => {
-        if (typeof callback === "function") callback(true);
-      };
-      globalThis.chrome.permissions.request = (_details, callback) => {
-        if (typeof callback === "function") callback(true);
-      };
-      return {
-        patched: true
-      };
-    } catch (error) {
-      return {
-        patched: false,
-        reason: String(error?.message || error)
-      };
-    }
   });
 }
 

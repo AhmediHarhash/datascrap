@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { chromium } from "playwright";
 import {
   createRunProfileDir,
+  patchPermissionApis,
   parseExtensionId,
   removeDirWithRetries,
   waitForExtensionServiceWorker
@@ -80,41 +81,6 @@ async function waitForTerminalStatus(page, timeoutMs = 120000) {
   return "timeout";
 }
 
-async function patchPermissionApis(page) {
-  return page.evaluate(() => {
-    if (!globalThis.chrome?.permissions) {
-      return {
-        patched: false,
-        reason: "chrome.permissions unavailable"
-      };
-    }
-    try {
-      const originalContains = globalThis.chrome.permissions.contains;
-      const originalRequest = globalThis.chrome.permissions.request;
-      globalThis.chrome.permissions.contains = (details, callback) => {
-        if (typeof callback === "function") {
-          callback(true);
-        }
-      };
-      globalThis.chrome.permissions.request = (details, callback) => {
-        if (typeof callback === "function") {
-          callback(true);
-        }
-      };
-      return {
-        patched: true,
-        containsChanged: originalContains !== globalThis.chrome.permissions.contains,
-        requestChanged: originalRequest !== globalThis.chrome.permissions.request
-      };
-    } catch (error) {
-      return {
-        patched: false,
-        reason: String(error?.message || error)
-      };
-    }
-  });
-}
-
 async function main() {
   const extensionPath = resolve("packages/extension");
   const userDataDir = createRunProfileDir("maps");
@@ -162,7 +128,9 @@ async function main() {
 
     await panelPage.fill("#start-url", MAPS_URL);
     const patchResult = PATCH_PERMISSIONS
-      ? await patchPermissionApis(panelPage)
+      ? await patchPermissionApis(panelPage, {
+          includeChangeFlags: true
+        })
       : {
           patched: false,
           reason: "disabled"
