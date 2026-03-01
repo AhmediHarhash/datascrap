@@ -6,6 +6,7 @@ import {
   createRunProfileDir,
   patchPermissionApis,
   parseHistoryRowCount,
+  parseIntegerEnv,
   parseExtensionId,
   removeDirWithRetries,
   waitForExtensionServiceWorker
@@ -34,19 +35,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseIntegerEnv(rawValue, { name, min, max, fallback }) {
-  const raw = String(rawValue || "").trim();
-  if (!raw) return fallback;
-  if (!/^\d+$/.test(raw)) {
-    throw new Error(`${name} must be an integer in ${min}-${max}, received "${raw}"`);
-  }
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
-    throw new Error(`${name} must be in ${min}-${max}, received "${raw}"`);
-  }
-  return parsed;
 }
 
 function buildFixtureHtml({ page, pageCount, rowsPerPage }) {

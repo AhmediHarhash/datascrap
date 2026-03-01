@@ -62,6 +62,19 @@ export function parseHistoryRowCount(historyText, tableRowCount = 0) {
   return Math.max(0, Number(tableRowCount || 0));
 }
 
+export function parseIntegerEnv(rawValue, { name, min, max, fallback }) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return fallback;
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`${name} must be an integer in ${min}-${max}, received "${raw}"`);
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be in ${min}-${max}, received "${raw}"`);
+  }
+  return parsed;
+}
+
 export async function removeDirWithRetries(dirPath, attempts = 6) {
   const totalAttempts = Number.isFinite(Number(attempts)) ? Math.max(1, Number(attempts)) : 6;
   for (let index = 0; index < totalAttempts; index += 1) {
