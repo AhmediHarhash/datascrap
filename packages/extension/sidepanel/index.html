@@ -125,20 +125,57 @@
           <button id="open-welcome-btn" class="btn btn-ghost" type="button">Show tutorial</button>
         </div>
 
-        <label class="field">
+        <label id="runner-field" class="field">
           <span>Runner</span>
           <select id="runner-type"></select>
         </label>
 
-        <label class="field">
+        <label id="start-url-field" class="field">
           <span>Start URL</span>
           <input id="start-url" type="url" placeholder="https://example.com" />
         </label>
 
-        <label class="field">
+        <label id="selected-tool-field" class="field">
           <span>Selected Tool</span>
           <input id="selected-tool-name" type="text" readonly value="LIST EXTRACTOR" />
         </label>
+
+        <div class="quickstart-strip">
+          <label class="checkbox-row">
+            <input id="simple-mode-toggle" type="checkbox" checked />
+            <span>Simple mode (recommended)</span>
+          </label>
+          <p id="simple-mode-hint" class="field-meta">
+            Simple mode: type one command and run. If blocked, click Enable All Access once.
+          </p>
+          <div class="intent-command-row">
+            <input
+              id="intent-command-input"
+              type="text"
+              placeholder="Type command: find home service businesses in Miami"
+            />
+            <button id="intent-run-btn" class="btn btn-primary" type="button">Run Command</button>
+          </div>
+          <p id="intent-command-hint" class="field-meta">
+            One command controls extraction. Example: find home service businesses in Miami.
+          </p>
+          <div id="quick-flow-progress" class="quick-flow-progress">
+            <div id="quick-flow-progress-ring" class="quick-flow-progress-ring" role="img" aria-label="Automation progress">
+              <span id="quick-flow-progress-pct" class="quick-flow-progress-pct">0%</span>
+            </div>
+            <div class="quick-flow-progress-copy">
+              <span class="field-meta">Autonomous progress</span>
+              <strong id="quick-flow-progress-phase" class="quick-flow-progress-phase">Ready to run</strong>
+            </div>
+          </div>
+          <div class="actions actions-4">
+            <button id="setup-access-btn" class="btn btn-ghost" type="button">Enable All Access</button>
+            <button id="quick-extract-btn" class="btn btn-primary" type="button">Quick Extract</button>
+            <button id="point-follow-btn" class="btn btn-ghost" type="button">Point & Follow</button>
+          </div>
+          <span id="setup-access-status-line" class="table-status">Access setup ready</span>
+          <span id="quick-flow-status-line" class="table-status">Quick flow ready</span>
+        </div>
 
         <div id="list-config-panel" class="subpanel">
           <h2>List Extractor Config</h2>
@@ -168,83 +205,85 @@
             </div>
           </div>
 
-          <div class="grid-two">
-            <label class="field">
-              <span>Load More Method</span>
-              <select id="load-more-method">
-                <option value="none">none</option>
-                <option value="scroll">scroll</option>
-                <option value="click_button">click_button</option>
-                <option value="navigate">navigate</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Speed Profile</span>
-              <select id="speed-profile">
-                <option value="normal">normal</option>
-                <option value="fast">fast</option>
-                <option value="slow">slow</option>
-              </select>
-            </label>
-          </div>
-
-          <div id="speed-profile-editor" class="subpanel">
-            <h2>Speed Profile Editor</h2>
+          <div id="list-advanced-controls">
             <div class="grid-two">
               <label class="field">
-                <span>Profile Attempts</span>
-                <input id="speed-profile-edit-attempts" type="number" min="1" max="30" value="5" />
+                <span>Load More Method</span>
+                <select id="load-more-method">
+                  <option value="none">none</option>
+                  <option value="scroll">scroll</option>
+                  <option value="click_button">click_button</option>
+                  <option value="navigate">navigate</option>
+                </select>
               </label>
               <label class="field">
-                <span>Profile Delay (ms)</span>
-                <input id="speed-profile-edit-delay-ms" type="number" min="100" max="10000" value="900" />
+                <span>Speed Profile</span>
+                <select id="speed-profile">
+                  <option value="normal">normal</option>
+                  <option value="fast">fast</option>
+                  <option value="slow">slow</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="speed-profile-editor" class="subpanel">
+              <h2>Speed Profile Editor</h2>
+              <div class="grid-two">
+                <label class="field">
+                  <span>Profile Attempts</span>
+                  <input id="speed-profile-edit-attempts" type="number" min="1" max="30" value="5" />
+                </label>
+                <label class="field">
+                  <span>Profile Delay (ms)</span>
+                  <input id="speed-profile-edit-delay-ms" type="number" min="100" max="10000" value="900" />
+                </label>
+                <label class="field">
+                  <span>No-change Threshold</span>
+                  <input id="speed-profile-edit-no-change-threshold" type="number" min="1" max="10" value="2" />
+                </label>
+              </div>
+              <div class="actions">
+                <button id="speed-profile-save-btn" class="btn" type="button">Save Profile</button>
+                <button id="speed-profile-reset-btn" class="btn btn-ghost" type="button">Reset Defaults</button>
+              </div>
+              <span id="speed-profile-status-line" class="table-status">Profile editor ready</span>
+            </div>
+
+            <div class="grid-two">
+              <label class="field">
+                <span>Load Attempts</span>
+                <input id="load-more-attempts" type="number" min="0" max="30" value="5" />
+              </label>
+              <label class="field">
+                <span>Delay (ms)</span>
+                <input id="load-more-delay-ms" type="number" min="100" max="10000" value="900" />
+              </label>
+            </div>
+
+            <div class="grid-two">
+              <label class="field">
+                <span>Scroll Pixels</span>
+                <input id="load-more-scroll-px" type="number" min="200" max="10000" value="1800" />
               </label>
               <label class="field">
                 <span>No-change Threshold</span>
-                <input id="speed-profile-edit-no-change-threshold" type="number" min="1" max="10" value="2" />
+                <input id="load-more-no-change-threshold" type="number" min="1" max="10" value="2" />
               </label>
             </div>
-            <div class="actions">
-              <button id="speed-profile-save-btn" class="btn" type="button">Save Profile</button>
-              <button id="speed-profile-reset-btn" class="btn btn-ghost" type="button">Reset Defaults</button>
+
+            <div class="inline-row">
+              <label class="field">
+                <span>Load More Button Selector</span>
+                <input id="load-more-button-selector" type="text" placeholder=".load-more-button" />
+              </label>
+              <button id="pick-load-more-btn" class="btn">Pick Button</button>
             </div>
-            <span id="speed-profile-status-line" class="table-status">Profile editor ready</span>
-          </div>
 
-          <div class="grid-two">
             <label class="field">
-              <span>Load Attempts</span>
-              <input id="load-more-attempts" type="number" min="0" max="30" value="5" />
-            </label>
-            <label class="field">
-              <span>Delay (ms)</span>
-              <input id="load-more-delay-ms" type="number" min="100" max="10000" value="900" />
+              <span>Next Page Selector (navigate)</span>
+              <input id="load-more-next-selector" type="text" placeholder="a.next" />
             </label>
           </div>
-
-          <div class="grid-two">
-            <label class="field">
-              <span>Scroll Pixels</span>
-              <input id="load-more-scroll-px" type="number" min="200" max="10000" value="1800" />
-            </label>
-            <label class="field">
-              <span>No-change Threshold</span>
-              <input id="load-more-no-change-threshold" type="number" min="1" max="10" value="2" />
-            </label>
-          </div>
-
-          <div class="inline-row">
-            <label class="field">
-              <span>Load More Button Selector</span>
-              <input id="load-more-button-selector" type="text" placeholder=".load-more-button" />
-            </label>
-            <button id="pick-load-more-btn" class="btn">Pick Button</button>
-          </div>
-
-          <label class="field">
-            <span>Next Page Selector (navigate)</span>
-            <input id="load-more-next-selector" type="text" placeholder="a.next" />
-          </label>
         </div>
 
         <div id="page-config-panel" class="subpanel">
@@ -514,91 +553,93 @@
             </div>
           </div>
 
-          <div class="queue-grid">
-            <label class="field">
-              <span>Concurrency</span>
-              <input id="queue-concurrency" type="number" min="1" max="8" value="3" />
-            </label>
-            <label class="field">
-              <span>Delay Between Requests (ms)</span>
-              <input id="queue-delay-ms" type="number" min="0" max="30000" value="400" />
-            </label>
-            <label class="field">
-              <span>Page Timeout (ms)</span>
-              <input id="queue-page-timeout-ms" type="number" min="2000" max="120000" value="25000" />
-            </label>
-            <label class="field">
-              <span>Retries</span>
-              <input id="queue-retries" type="number" min="0" max="5" value="1" />
-            </label>
-            <label class="field">
-              <span>Retry Delay (ms)</span>
-              <input id="queue-retry-delay-ms" type="number" min="0" max="30000" value="1200" />
-            </label>
-            <label class="field">
-              <span>Jitter (ms)</span>
-              <input id="queue-jitter-ms" type="number" min="0" max="10000" value="220" />
-            </label>
-            <label class="field">
-              <span>Reliability Profile</span>
-              <select id="queue-reliability-profile">
-                <option value="balanced">balanced</option>
-                <option value="conservative">conservative</option>
-                <option value="aggressive">aggressive</option>
-                <option value="custom">custom</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Backoff Strategy</span>
-              <select id="queue-backoff-strategy">
-                <option value="exponential">exponential</option>
-                <option value="linear">linear</option>
-                <option value="fixed">fixed</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Jitter Mode</span>
-              <select id="queue-jitter-mode">
-                <option value="bounded">bounded</option>
-                <option value="full">full</option>
-                <option value="none">none</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Retry Delay Min (ms)</span>
-              <input id="queue-retry-min-delay-ms" type="number" min="0" max="120000" value="700" />
-            </label>
-            <label class="field">
-              <span>Retry Delay Max (ms)</span>
-              <input id="queue-retry-max-delay-ms" type="number" min="0" max="120000" value="12000" />
-            </label>
-            <label class="field">
-              <span>Session Reuse</span>
-              <select id="queue-session-reuse-mode">
-                <option value="off">off</option>
-                <option value="sticky">sticky</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Wait For Selector (optional)</span>
-              <input id="queue-wait-selector" type="text" placeholder=".product-card" />
-            </label>
-            <label class="field">
-              <span>Wait Selector Timeout (ms)</span>
-              <input id="queue-wait-selector-timeout-ms" type="number" min="200" max="60000" value="4000" />
+          <div id="queue-advanced-controls">
+            <div class="queue-grid">
+              <label class="field">
+                <span>Concurrency</span>
+                <input id="queue-concurrency" type="number" min="1" max="8" value="3" />
+              </label>
+              <label class="field">
+                <span>Delay Between Requests (ms)</span>
+                <input id="queue-delay-ms" type="number" min="0" max="30000" value="400" />
+              </label>
+              <label class="field">
+                <span>Page Timeout (ms)</span>
+                <input id="queue-page-timeout-ms" type="number" min="2000" max="120000" value="25000" />
+              </label>
+              <label class="field">
+                <span>Retries</span>
+                <input id="queue-retries" type="number" min="0" max="5" value="1" />
+              </label>
+              <label class="field">
+                <span>Retry Delay (ms)</span>
+                <input id="queue-retry-delay-ms" type="number" min="0" max="30000" value="1200" />
+              </label>
+              <label class="field">
+                <span>Jitter (ms)</span>
+                <input id="queue-jitter-ms" type="number" min="0" max="10000" value="220" />
+              </label>
+              <label class="field">
+                <span>Reliability Profile</span>
+                <select id="queue-reliability-profile">
+                  <option value="balanced">balanced</option>
+                  <option value="conservative">conservative</option>
+                  <option value="aggressive">aggressive</option>
+                  <option value="custom">custom</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Backoff Strategy</span>
+                <select id="queue-backoff-strategy">
+                  <option value="exponential">exponential</option>
+                  <option value="linear">linear</option>
+                  <option value="fixed">fixed</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Jitter Mode</span>
+                <select id="queue-jitter-mode">
+                  <option value="bounded">bounded</option>
+                  <option value="full">full</option>
+                  <option value="none">none</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Retry Delay Min (ms)</span>
+                <input id="queue-retry-min-delay-ms" type="number" min="0" max="120000" value="700" />
+              </label>
+              <label class="field">
+                <span>Retry Delay Max (ms)</span>
+                <input id="queue-retry-max-delay-ms" type="number" min="0" max="120000" value="12000" />
+              </label>
+              <label class="field">
+                <span>Session Reuse</span>
+                <select id="queue-session-reuse-mode">
+                  <option value="off">off</option>
+                  <option value="sticky">sticky</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Wait For Selector (optional)</span>
+                <input id="queue-wait-selector" type="text" placeholder=".product-card" />
+              </label>
+              <label class="field">
+                <span>Wait Selector Timeout (ms)</span>
+                <input id="queue-wait-selector-timeout-ms" type="number" min="200" max="60000" value="4000" />
+              </label>
+            </div>
+
+            <span id="reliability-profile-status-line" class="table-status">Reliability profiles ready</span>
+
+            <label class="checkbox-row">
+              <input id="queue-wait-page-load" type="checkbox" checked />
+              <span>Wait for page load complete</span>
             </label>
           </div>
-
-          <span id="reliability-profile-status-line" class="table-status">Reliability profiles ready</span>
-
-          <label class="checkbox-row">
-            <input id="queue-wait-page-load" type="checkbox" checked />
-            <span>Wait for page load complete</span>
-          </label>
         </div>
 
-        <div class="actions">
-          <button id="start-btn" class="btn btn-primary">Start</button>
+        <div id="automation-actions-row" class="actions">
+          <button id="start-btn" class="btn">Start</button>
           <button id="stop-btn" class="btn">Stop</button>
           <button id="rerun-btn" class="btn">Rerun</button>
         </div>
@@ -621,112 +662,115 @@
           </label>
         </div>
 
-        <div class="grid-two">
-          <label class="field">
-            <span>Search</span>
-            <input id="table-search" type="text" placeholder="Search across all columns" />
-          </label>
-          <div class="button-stack">
-            <button id="table-load-btn" class="btn">Load Rows</button>
-            <button id="table-clear-filter-btn" class="btn btn-ghost">Clear Filters</button>
-          </div>
-        </div>
-
-        <div class="grid-two">
-          <label class="field">
-            <span>Filter Column</span>
-            <select id="table-filter-column"></select>
-          </label>
-          <label class="field">
-            <span>Filter Value</span>
-            <input id="table-filter-value" type="text" placeholder="column contains..." />
-          </label>
-        </div>
-
-        <div class="grid-two">
-          <label class="field">
-            <span>Rename Column (from)</span>
-            <select id="table-rename-from"></select>
-          </label>
-          <label class="field">
-            <span>Rename Column (to)</span>
-            <input id="table-rename-to" type="text" placeholder="new_column_name" />
-          </label>
-        </div>
-
-        <div class="actions">
-          <button id="table-rename-btn" class="btn">Rename Column</button>
-          <button id="table-dedupe-btn" class="btn">Dedupe Rows</button>
-          <span id="table-status-line" class="table-status">No table loaded</span>
-        </div>
-
-        <div class="subpanel">
-          <h2>Cleanup & Density</h2>
-          <div class="queue-grid">
-            <label class="checkbox-row">
-              <input id="table-cleanup-remove-empty-rows" type="checkbox" />
-              <span>Remove empty rows</span>
-            </label>
-            <label class="checkbox-row">
-              <input id="table-cleanup-remove-empty-columns" type="checkbox" />
-              <span>Remove empty columns</span>
-            </label>
-            <label class="checkbox-row">
-              <input id="table-cleanup-remove-repeating-columns" type="checkbox" />
-              <span>Remove repeating columns</span>
-            </label>
-            <label class="checkbox-row">
-              <input id="table-cleanup-remove-duplicate-columns" type="checkbox" />
-              <span>Remove duplicate columns</span>
-            </label>
-            <label class="checkbox-row">
-              <input id="table-cleanup-prioritize-density" type="checkbox" />
-              <span>Prioritize data density</span>
-            </label>
-            <label class="checkbox-row">
-              <input id="table-cleanup-hide-mostly-empty-columns" type="checkbox" />
-              <span>Hide mostly empty columns</span>
-            </label>
-          </div>
+        <div id="table-advanced-controls">
           <div class="grid-two">
             <label class="field">
-              <span>Mostly-empty threshold (0.50-0.99)</span>
-              <input id="table-cleanup-mostly-empty-threshold" type="number" min="0.5" max="0.99" step="0.01" value="0.90" />
+              <span>Search</span>
+              <input id="table-search" type="text" placeholder="Search across all columns" />
             </label>
-            <label class="checkbox-row">
-              <input id="table-cleanup-include-images" type="checkbox" checked />
-              <span>Include image columns</span>
+            <div class="button-stack">
+              <button id="table-load-btn" class="btn">Load Rows</button>
+              <button id="table-clear-filter-btn" class="btn btn-ghost">Clear Filters</button>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Filter Column</span>
+              <select id="table-filter-column"></select>
+            </label>
+            <label class="field">
+              <span>Filter Value</span>
+              <input id="table-filter-value" type="text" placeholder="column contains..." />
             </label>
           </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Rename Column (from)</span>
+              <select id="table-rename-from"></select>
+            </label>
+            <label class="field">
+              <span>Rename Column (to)</span>
+              <input id="table-rename-to" type="text" placeholder="new_column_name" />
+            </label>
+          </div>
+
           <div class="actions">
-            <button id="table-cleanup-btn" class="btn" type="button">Apply Cleanup</button>
+            <button id="table-rename-btn" class="btn">Rename Column</button>
+            <button id="table-dedupe-btn" class="btn">Dedupe Rows</button>
+          </div>
+
+          <div class="subpanel">
+            <h2>Cleanup & Density</h2>
+            <div class="queue-grid">
+              <label class="checkbox-row">
+                <input id="table-cleanup-remove-empty-rows" type="checkbox" />
+                <span>Remove empty rows</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="table-cleanup-remove-empty-columns" type="checkbox" />
+                <span>Remove empty columns</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="table-cleanup-remove-repeating-columns" type="checkbox" />
+                <span>Remove repeating columns</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="table-cleanup-remove-duplicate-columns" type="checkbox" />
+                <span>Remove duplicate columns</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="table-cleanup-prioritize-density" type="checkbox" />
+                <span>Prioritize data density</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="table-cleanup-hide-mostly-empty-columns" type="checkbox" />
+                <span>Hide mostly empty columns</span>
+              </label>
+            </div>
+            <div class="grid-two">
+              <label class="field">
+                <span>Mostly-empty threshold (0.50-0.99)</span>
+                <input id="table-cleanup-mostly-empty-threshold" type="number" min="0.5" max="0.99" step="0.01" value="0.90" />
+              </label>
+              <label class="checkbox-row">
+                <input id="table-cleanup-include-images" type="checkbox" checked />
+                <span>Include image columns</span>
+              </label>
+            </div>
+            <div class="actions">
+              <button id="table-cleanup-btn" class="btn" type="button">Apply Cleanup</button>
+            </div>
+          </div>
+
+          <div class="subpanel">
+            <h2>Merge Columns</h2>
+            <label class="field">
+              <span>Source Columns (multi-select)</span>
+              <select id="table-merge-columns" multiple size="6"></select>
+            </label>
+            <div class="grid-two">
+              <label class="field">
+                <span>Merged Column Name</span>
+                <input id="table-merge-target" type="text" placeholder="merged_column" />
+              </label>
+              <label class="field">
+                <span>Separator</span>
+                <input id="table-merge-separator" type="text" value=" | " />
+              </label>
+            </div>
+            <label class="checkbox-row">
+              <input id="table-merge-remove-sources" type="checkbox" />
+              <span>Remove source columns after merge</span>
+            </label>
+            <div class="actions">
+              <button id="table-merge-btn" class="btn" type="button">Merge Selected Columns</button>
+            </div>
           </div>
         </div>
 
-        <div class="subpanel">
-          <h2>Merge Columns</h2>
-          <label class="field">
-            <span>Source Columns (multi-select)</span>
-            <select id="table-merge-columns" multiple size="6"></select>
-          </label>
-          <div class="grid-two">
-            <label class="field">
-              <span>Merged Column Name</span>
-              <input id="table-merge-target" type="text" placeholder="merged_column" />
-            </label>
-            <label class="field">
-              <span>Separator</span>
-              <input id="table-merge-separator" type="text" value=" | " />
-            </label>
-          </div>
-          <label class="checkbox-row">
-            <input id="table-merge-remove-sources" type="checkbox" />
-            <span>Remove source columns after merge</span>
-          </label>
-          <div class="actions">
-            <button id="table-merge-btn" class="btn" type="button">Merge Selected Columns</button>
-          </div>
-        </div>
+        <span id="table-status-line" class="table-status">No table loaded</span>
 
         <div id="table-grid-wrap" class="table-grid-wrap">
           <div id="table-grid" class="table-grid-empty">Load a table to view rows.</div>

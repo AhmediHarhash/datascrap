@@ -882,7 +882,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           mode: message?.payload?.mode,
           multiSelect: message?.payload?.multiSelect,
           anchorSelector: message?.payload?.anchorSelector,
-          prompt: message?.payload?.prompt
+          prompt: message?.payload?.prompt,
+          preferredUrl: message?.payload?.preferredUrl
         });
         sendResponse({
           type: MESSAGE_TYPES.PICKER_START_RESPONSE,

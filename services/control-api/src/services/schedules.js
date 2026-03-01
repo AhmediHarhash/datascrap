@@ -61,6 +61,46 @@ function normalizeTimezone(value) {
   return timezone || "UTC";
 }
 
+function toIsoString(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+function normalizeScheduleListCursor({ cursorCreatedAt, cursorId }) {
+  const hasCreatedAt = cursorCreatedAt !== null && cursorCreatedAt !== undefined && String(cursorCreatedAt).trim() !== "";
+  const hasId = cursorId !== null && cursorId !== undefined && String(cursorId).trim() !== "";
+  if (!hasCreatedAt && !hasId) return null;
+  if (!hasCreatedAt || !hasId) {
+    const error = new Error("cursorCreatedAt and cursorId must both be provided");
+    error.code = "INVALID_SCHEDULE_CURSOR";
+    throw error;
+  }
+
+  const normalizedCreatedAt = toIsoString(cursorCreatedAt);
+  if (!normalizedCreatedAt) {
+    const error = new Error("cursorCreatedAt must be a valid ISO timestamp");
+    error.code = "INVALID_SCHEDULE_CURSOR";
+    throw error;
+  }
+
+  const normalizedId = String(cursorId).trim().toLowerCase();
+  if (!isUuid(normalizedId)) {
+    const error = new Error("cursorId must be a valid UUID");
+    error.code = "INVALID_SCHEDULE_CURSOR";
+    throw error;
+  }
+
+  return {
+    createdAt: normalizedCreatedAt,
+    id: normalizedId
+  };
+}
+
 function nextRunForSchedule({
   scheduleKind,
   intervalMinutes,
@@ -257,8 +297,19 @@ async function createSchedule({
   return toSchedule(result.rows[0]);
 }
 
-async function listSchedules({ accountId, activeOnly = false, limit = 50 }) {
+async function listSchedules({ accountId, activeOnly = false, limit = 50, cursorCreatedAt = null, cursorId = null }) {
   const normalizedLimit = Math.max(1, Math.min(config.scheduleListMaxLimit, Number(limit || 50)));
+  const cursor = normalizeScheduleListCursor({ cursorCreatedAt, cursorId });
+  const fetchLimit = normalizedLimit + 1;
+  const params = [accountId, Boolean(activeOnly)];
+  let cursorClause = "";
+  let limitParamIndex = 3;
+  if (cursor) {
+    params.push(cursor.createdAt, cursor.id);
+    cursorClause = "AND (created_at, id) < ($3::timestamptz, $4::uuid)";
+    limitParamIndex = 5;
+  }
+  params.push(fetchLimit);
   const result = await query(
     `
       SELECT *
@@ -266,13 +317,33 @@ async function listSchedules({ accountId, activeOnly = false, limit = 50 }) {
       WHERE
         account_id = $1
         AND ($2::boolean = FALSE OR is_active = TRUE)
-      ORDER BY created_at DESC
-      LIMIT $3
+        ${cursorClause}
+      ORDER BY created_at DESC, id DESC
+      LIMIT $${limitParamIndex}
     `,
-    [accountId, Boolean(activeOnly), normalizedLimit]
+    params
   );
 
-  return result.rows.map((row) => toSchedule(row));
+  const hasMore = result.rows.length > normalizedLimit;
+  const pagedRows = hasMore ? result.rows.slice(0, normalizedLimit) : result.rows;
+  const nextSource = hasMore && pagedRows.length > 0 ? pagedRows[pagedRows.length - 1] : null;
+  const nextCursor =
+    nextSource && toIsoString(nextSource.created_at)
+      ? {
+          createdAt: toIsoString(nextSource.created_at),
+          id: String(nextSource.id || "").toLowerCase()
+        }
+      : null;
+
+  return {
+    items: pagedRows.map((row) => toSchedule(row)),
+    pageInfo: {
+      hasMore,
+      nextCursor,
+      limit: normalizedLimit,
+      cursor
+    }
+  };
 }
 
 async function getScheduleById({ accountId, scheduleId, forUpdate = false, client = null }) {

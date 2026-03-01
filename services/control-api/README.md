@@ -172,9 +172,253 @@ Environment variables:
 - `OBSERVABILITY_URL_STAGING` / `OBSERVABILITY_URL_PRODUCTION`
 - `OBSERVABILITY_KEY_STAGING` / `OBSERVABILITY_KEY_PRODUCTION`
 - `MAX_DUE_JOBS` (default `200`)
-- `MAX_DEAD_LETTER_JOBS` (default `0`)
+- `MAX_DEAD_LETTER_JOBS` (default `3`)
 - `MAX_DUE_SCHEDULES` (default `200`)
 - `ALERT_WEBHOOK_URL` / `ALERT_WEBHOOK_BEARER_TOKEN` (optional)
+
+## Schedule Hygiene Script (Queue Noise Control)
+
+```bash
+node services/control-api/scripts/schedule-hygiene.js --action=list --active-only=true --limit=100
+```
+
+Pause active schedules (dry-run by default):
+
+```bash
+node services/control-api/scripts/schedule-hygiene.js --action=pause --active-only=true --limit=100
+```
+
+Apply pause changes:
+
+```bash
+node services/control-api/scripts/schedule-hygiene.js --action=pause --active-only=true --limit=100 --apply
+```
+
+Monitor-only quick variants:
+- list only monitor schedules:
+  - `npm run queue:hygiene:list:monitor:control-api`
+- pause only monitor schedules (dry-run):
+  - `npm run queue:hygiene:pause:monitor:dry-run:control-api`
+- pause only monitor schedules (apply):
+  - `npm run queue:hygiene:pause:monitor:apply:control-api`
+
+Frequent-schedule quick variants (interval schedules `<= 60` min):
+- list frequent interval schedules:
+  - `npm run queue:hygiene:list:frequent:control-api`
+- pause frequent interval schedules (dry-run):
+  - `npm run queue:hygiene:pause:frequent:dry-run:control-api`
+- pause frequent interval schedules (apply):
+  - `npm run queue:hygiene:pause:frequent:apply:control-api`
+
+Duplicate-schedule quick variants (keep oldest schedule per duplicate signature):
+- list duplicate schedules:
+  - `npm run queue:hygiene:list:duplicates:control-api`
+- pause duplicate schedules (dry-run):
+  - `npm run queue:hygiene:pause:duplicates:dry-run:control-api`
+- pause duplicate schedules (apply):
+  - `npm run queue:hygiene:pause:duplicates:apply:control-api`
+
+Near-duplicate quick variants (target-focused signature):
+- list near-duplicate schedules:
+  - `npm run queue:hygiene:list:near-duplicates:control-api`
+- list near-duplicate schedules + write JSON report:
+  - `npm run queue:hygiene:list:near-duplicates:report:control-api`
+- list near-duplicate schedules + write dated JSON report:
+  - `npm run queue:hygiene:list:near-duplicates:report:dated:control-api`
+- list near-duplicate schedules + write dated redacted JSON report:
+  - `npm run queue:hygiene:list:near-duplicates:report:redacted:control-api`
+- list near-duplicate schedules older than 180 minutes:
+  - `npm run queue:hygiene:list:near-duplicates:stale:control-api`
+- list near-duplicate schedules older than 180 minutes across all pages:
+  - `npm run queue:hygiene:list:near-duplicates:stale:scan-all:control-api`
+- list near-duplicate schedules older than 180 minutes across all pages + write reusable checkpoint:
+  - `npm run queue:hygiene:list:near-duplicates:stale:scan-all:checkpoint:control-api`
+- list near-duplicate schedules older than 180 minutes + write lightweight checkpoint sidecar only:
+  - `npm run queue:hygiene:list:near-duplicates:stale:scan-all:checkpoint:sidecar:control-api`
+- list near-duplicate schedules older than 180 minutes with uncapped operator limit (runs until exhausted or hard safety cap):
+  - `npm run queue:hygiene:list:near-duplicates:stale:scan-all:uncapped:control-api`
+- list near-duplicate schedules older than 180 minutes with auto-continue segments:
+  - `npm run queue:hygiene:list:near-duplicates:stale:scan-all:autocontinue:control-api`
+- pause near-duplicate schedules (dry-run):
+  - `npm run queue:hygiene:pause:near-duplicates:dry-run:control-api`
+- pause near-duplicate schedules (apply):
+  - `npm run queue:hygiene:pause:near-duplicates:apply:control-api`
+
+Force-apply variants (override pause guardrail when intentional):
+- pause all matched schedules (apply + force):
+  - `npm run queue:hygiene:pause:apply:force:control-api`
+- pause duplicate schedules (apply + force):
+  - `npm run queue:hygiene:pause:duplicates:force:control-api`
+- pause near-duplicate schedules (apply + force):
+  - `npm run queue:hygiene:pause:near-duplicates:force:control-api`
+
+Batched force-apply variants (chunked execution):
+- pause all matched schedules (batched):
+  - `npm run queue:hygiene:pause:apply:batched:control-api`
+- pause duplicate schedules (batched):
+  - `npm run queue:hygiene:pause:duplicates:batched:control-api`
+- pause near-duplicate schedules (batched):
+  - `npm run queue:hygiene:pause:near-duplicates:batched:control-api`
+- pause near-duplicate schedules (batched + JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:batched:report:control-api`
+- pause near-duplicate schedules (batched + dated JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:batched:report:dated:control-api`
+- pause near-duplicate schedules (batched + dated redacted JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:batched:report:redacted:control-api`
+- pause near-duplicate schedules older than 180 minutes (dry-run):
+  - `npm run queue:hygiene:pause:near-duplicates:stale:dry-run:control-api`
+- pause near-duplicate schedules older than 180 minutes (batched + dated redacted JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:stale:batched:report:redacted:control-api`
+- pause near-duplicate schedules older than 180 minutes (resilient retries + dated redacted JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:report:redacted:control-api`
+- pause near-duplicate schedules older than 180 minutes across all pages (resilient retries + dated redacted JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:scan-all:report:redacted:control-api`
+- pause near-duplicate schedules older than 180 minutes with checkpoint auto-resume orchestration (resilient retries + dated redacted JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:scan-all:autorecover:report:redacted:control-api`
+- pause near-duplicate schedules older than 180 minutes with checkpoint auto-resume freshness guard:
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:scan-all:autorecover:fresh:report:redacted:control-api`
+- pause near-duplicate schedules from prior checkpoint (resilient retries + dated redacted JSON report):
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:scan-all:resume:report:redacted:control-api`
+- pause near-duplicate schedules from prior checkpoint and force restart when checkpoint is exhausted:
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:scan-all:resume:restart:report:redacted:control-api`
+- pause near-duplicate schedules from prior checkpoint with strict resume cursor requirement:
+  - `npm run queue:hygiene:pause:near-duplicates:stale:resilient:scan-all:resume:strict:report:redacted:control-api`
+
+Filter examples:
+- `--job-type=monitor.page.diff`
+- `--name-contains=daily`
+- `--interval-lte=60`
+- `--scan-all=true`
+- `--scan-max-pages=200`
+- `--scan-max-pages=0`
+- `--scan-hard-max-pages=5000`
+- `--scan-auto-continue=true`
+- `--scan-auto-continue-max-segments=20`
+- `--scan-start-cursor-created-at=2026-02-25T10:11:12.000Z`
+- `--scan-start-cursor-id=11111111-1111-1111-1111-111111111111`
+- `--scan-resume-file=dist/ops/queue-hygiene-near-duplicates-stale-scan.cursor.json`
+- `--scan-resume-from-checkpoint=true`
+- `--scan-resume-validate-api-base=true`
+- `--scan-resume-require-api-base=true`
+- `--scan-resume-api-base-missing-behavior=error`
+- `--scan-resume-api-base-mismatch-behavior=error`
+- `--scan-resume-validate-kind=true`
+- `--scan-resume-kind-mismatch-behavior=error`
+- `--scan-resume-validate-schema-version=true`
+- `--scan-resume-schema-version-mismatch-behavior=restart`
+- `--scan-resume-generated-at-source=payload-or-file-mtime`
+- `--scan-resume-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`
+- `--scan-resume-max-bytes=1048576`
+- `--scan-resume-size-behavior=restart`
+- `--scan-resume-hash-behavior=restart`
+- `--scan-resume-max-future-minutes=60`
+- `--scan-resume-future-behavior=restart`
+- `--scan-resume-validate-filters=true`
+- `--scan-resume-filter-mismatch-behavior=restart`
+- `--scan-resume-max-age-minutes=720`
+- `--scan-resume-stale-behavior=restart`
+- `--scan-resume-allow-exhausted=true`
+- `--scan-resume-exhausted-behavior=noop`
+- `--scan-checkpoint-file=dist/ops/queue-hygiene-near-duplicates-stale-scan.cursor.json`
+- `--scan-checkpoint-every-pages=1`
+- `--list-retry-count=3`
+- `--list-retry-delay-ms=500`
+- `--list-retry-backoff-factor=1.5`
+- `--list-retry-jitter-ms=100`
+- `--list-request-timeout-ms=15000`
+- `--duplicates-only=true`
+- `--dedupe-keep=newest`
+- `--signature-mode=target`
+- `--max-pause=50`
+- `--force-pause-over-limit=true`
+- `--pause-batch-size=20`
+- `--pause-batch-delay-ms=250`
+- `--continue-on-pause-error=false`
+- `--pause-retry-count=3`
+- `--pause-retry-delay-ms=500`
+- `--pause-retry-backoff-factor=1.5`
+- `--pause-retry-jitter-ms=100`
+- `--pause-request-timeout-ms=15000`
+- `--output-file=dist/ops/queue-hygiene.json`
+- `--output-compact=true`
+- `--output-timestamp=true`
+- `--output-overwrite=false`
+- `--redact-signatures=true`
+- output/checkpoint artifacts are written atomically (temp-file + rename) to reduce partial JSON files during interruptions
+- `--min-age-minutes=180`
+
+Auth/environment:
+- `CONTROL_API_BEARER_TOKEN` (or `--token=<jwt>`)
+- `API_BASE_URL` (default `http://127.0.0.1:3000`)
+- optional auto-login fallback when token is not provided:
+  - `CONTROL_API_EMAIL` (or `--email=<email>`)
+  - `CONTROL_API_PASSWORD` (or `--password=<password>`)
+  - optional `CONTROL_API_DEVICE_ID` / `CONTROL_API_DEVICE_NAME`
+  - optional `CONTROL_API_REGISTER_IF_MISSING=true` (or `--register-if-missing=true`)
+- optional duplicate-mode defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_DUPLICATES_ONLY=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_DEDUPE_KEEP=oldest|newest`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SIGNATURE_MODE=strict|target`
+- pause guardrail defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_MAX_PAUSE=25`
+  - `CONTROL_API_SCHEDULE_HYGIENE_FORCE_PAUSE_OVER_LIMIT=false`
+- pause batching defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_BATCH_SIZE=20`
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_BATCH_DELAY_MS=0`
+  - `CONTROL_API_SCHEDULE_HYGIENE_CONTINUE_ON_PAUSE_ERROR=true`
+- pause retry defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_RETRY_COUNT=1`
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_RETRY_DELAY_MS=250`
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_RETRY_BACKOFF_FACTOR=1.5`
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_RETRY_JITTER_MS=100`
+  - `CONTROL_API_SCHEDULE_HYGIENE_PAUSE_REQUEST_TIMEOUT_MS=15000`
+- scan-all defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_ALL=false`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_MAX_PAGES=100`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_HARD_MAX_PAGES=5000`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_AUTO_CONTINUE=false`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_AUTO_CONTINUE_MAX_SEGMENTS=20`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_START_CURSOR_CREATED_AT` (optional)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_START_CURSOR_ID` (optional)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_FILE` (optional)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_FROM_CHECKPOINT=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_VALIDATE_API_BASE=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_REQUIRE_API_BASE=false`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_API_BASE_MISSING_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_API_BASE_MISMATCH_BEHAVIOR=error` (`error|restart`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_VALIDATE_KIND=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_KIND_MISMATCH_BEHAVIOR=error` (`error|restart`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_VALIDATE_SCHEMA_VERSION=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_SCHEMA_VERSION_MISMATCH_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_GENERATED_AT_SOURCE=payload-or-file-mtime` (`payload|file-mtime|payload-or-file-mtime`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_SHA256` (optional expected checkpoint hash)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_MAX_BYTES=0` (disabled when `0`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_SIZE_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_HASH_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_MAX_FUTURE_MINUTES=0` (disabled when `0`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_FUTURE_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_VALIDATE_FILTERS=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_FILTER_MISMATCH_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_MAX_AGE_MINUTES=0` (disabled when `0`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_STALE_BEHAVIOR=restart` (`restart|error`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_ALLOW_EXHAUSTED=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_RESUME_EXHAUSTED_BEHAVIOR=noop` (`noop|restart`)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_CHECKPOINT_FILE` (optional)
+  - `CONTROL_API_SCHEDULE_HYGIENE_SCAN_CHECKPOINT_EVERY_PAGES=1`
+- list retry defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_LIST_RETRY_COUNT=1`
+  - `CONTROL_API_SCHEDULE_HYGIENE_LIST_RETRY_DELAY_MS=250`
+  - `CONTROL_API_SCHEDULE_HYGIENE_LIST_RETRY_BACKOFF_FACTOR=1.5`
+  - `CONTROL_API_SCHEDULE_HYGIENE_LIST_RETRY_JITTER_MS=100`
+  - `CONTROL_API_SCHEDULE_HYGIENE_LIST_REQUEST_TIMEOUT_MS=15000`
+- report output defaults:
+  - `CONTROL_API_SCHEDULE_HYGIENE_OUTPUT_FILE` (optional file path)
+  - `CONTROL_API_SCHEDULE_HYGIENE_OUTPUT_COMPACT=false`
+  - `CONTROL_API_SCHEDULE_HYGIENE_OUTPUT_TIMESTAMP=false`
+  - `CONTROL_API_SCHEDULE_HYGIENE_OUTPUT_OVERWRITE=true`
+  - `CONTROL_API_SCHEDULE_HYGIENE_REDACT_SIGNATURES=false`
+- age safety default:
+  - `CONTROL_API_SCHEDULE_HYGIENE_MIN_AGE_MINUTES=0`
 
 ## Notes
 

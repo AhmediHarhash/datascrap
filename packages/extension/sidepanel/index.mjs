@@ -9,6 +9,12 @@ import {
 } from "../vendor/shared/src/events.mjs";
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import {
+  ORCHESTRATION_STRATEGIES,
+  createAutonomousExecutionPlan,
+  parseAutonomousGoal,
+  summarizeAutonomousPlan
+} from "../vendor/core/src/autonomous-orchestrator.mjs";
+import {
   buildFailureReportCsv,
   buildFailureReportEntries,
   dedupeUrls,
@@ -45,19 +51,37 @@ const elements = {
   toolWelcomeSkipBtn: document.getElementById("tool-welcome-skip-btn"),
   latestChangesPanel: document.getElementById("latest-changes-panel"),
   openWelcomeBtn: document.getElementById("open-welcome-btn"),
+  runnerField: document.getElementById("runner-field"),
+  startUrlField: document.getElementById("start-url-field"),
+  selectedToolField: document.getElementById("selected-tool-field"),
   activeToolHeading: document.getElementById("active-tool-heading"),
   selectedToolName: document.getElementById("selected-tool-name"),
+  simpleModeToggle: document.getElementById("simple-mode-toggle"),
+  simpleModeHint: document.getElementById("simple-mode-hint"),
+  intentCommandInput: document.getElementById("intent-command-input"),
+  intentRunBtn: document.getElementById("intent-run-btn"),
+  intentCommandHint: document.getElementById("intent-command-hint"),
+  setupAccessBtn: document.getElementById("setup-access-btn"),
+  pointFollowBtn: document.getElementById("point-follow-btn"),
+  setupAccessStatusLine: document.getElementById("setup-access-status-line"),
+  quickFlowStatusLine: document.getElementById("quick-flow-status-line"),
+  quickFlowProgressRing: document.getElementById("quick-flow-progress-ring"),
+  quickFlowProgressPct: document.getElementById("quick-flow-progress-pct"),
+  quickFlowProgressPhase: document.getElementById("quick-flow-progress-phase"),
   runnerType: document.getElementById("runner-type"),
   startUrl: document.getElementById("start-url"),
+  quickExtractBtn: document.getElementById("quick-extract-btn"),
   startBtn: document.getElementById("start-btn"),
   stopBtn: document.getElementById("stop-btn"),
   rerunBtn: document.getElementById("rerun-btn"),
+  automationActionsRow: document.getElementById("automation-actions-row"),
   statusPill: document.getElementById("status-pill"),
   eventLog: document.getElementById("event-log"),
   clearLogBtn: document.getElementById("clear-log-btn"),
   pickerStatus: document.getElementById("picker-status"),
 
   listConfigPanel: document.getElementById("list-config-panel"),
+  listAdvancedControls: document.getElementById("list-advanced-controls"),
   containerSelector: document.getElementById("container-selector"),
   pickContainerBtn: document.getElementById("pick-container-btn"),
   listAutoDetectBtn: document.getElementById("list-autodetect-btn"),
@@ -100,6 +124,7 @@ const elements = {
   pageDatasourceColumn: document.getElementById("page-datasource-column"),
   pageDatasourceCount: document.getElementById("page-datasource-count"),
   pageResolvedUrlsPreview: document.getElementById("page-resolved-urls-preview"),
+  pageUrlGeneratorPanel: document.getElementById("page-url-generator-panel"),
   urlgenTemplate: document.getElementById("urlgen-template"),
   urlgenRangeStart: document.getElementById("urlgen-range-start"),
   urlgenRangeEnd: document.getElementById("urlgen-range-end"),
@@ -118,6 +143,7 @@ const elements = {
   pageFailureReportJsonBtn: document.getElementById("page-failure-report-json-btn"),
   pageRecoveryPreview: document.getElementById("page-recovery-preview"),
   pageRecoveryStatusLine: document.getElementById("page-recovery-status-line"),
+  pageRecoveryPanel: document.getElementById("page-recovery-panel"),
   pageFieldsPanel: document.getElementById("page-fields-panel"),
   pageFieldList: document.getElementById("page-field-list"),
   pickPageFieldsBtn: document.getElementById("pick-page-fields-btn"),
@@ -169,7 +195,10 @@ const elements = {
   queueWaitSelectorTimeoutMs: document.getElementById("queue-wait-selector-timeout-ms"),
   queueWaitPageLoad: document.getElementById("queue-wait-page-load"),
   reliabilityProfileStatusLine: document.getElementById("reliability-profile-status-line"),
+  queueAdvancedControls: document.getElementById("queue-advanced-controls"),
 
+  dataTablePanel: document.getElementById("data-table-panel"),
+  tableAdvancedControls: document.getElementById("table-advanced-controls"),
   tableRefreshBtn: document.getElementById("table-refresh-btn"),
   tableHistorySelect: document.getElementById("table-history-select"),
   tableLimit: document.getElementById("table-limit"),
@@ -199,6 +228,7 @@ const elements = {
   tableStatusLine: document.getElementById("table-status-line"),
   tableGrid: document.getElementById("table-grid"),
 
+  exportPanel: document.getElementById("export-panel"),
   exportTableSelect: document.getElementById("export-table-select"),
   exportFormat: document.getElementById("export-format"),
   exportUseCurrentFilters: document.getElementById("export-use-current-filters"),
@@ -207,6 +237,7 @@ const elements = {
   exportSheetsBtn: document.getElementById("export-sheets-btn"),
   exportStatusLine: document.getElementById("export-status-line"),
 
+  imagePanel: document.getElementById("image-panel"),
   imageScanBtn: document.getElementById("image-scan-btn"),
   imageSearch: document.getElementById("image-search"),
   imageMinWidth: document.getElementById("image-min-width"),
@@ -222,6 +253,7 @@ const elements = {
   imageStatusLine: document.getElementById("image-status-line"),
   imagePreview: document.getElementById("image-preview"),
 
+  activationPanel: document.getElementById("activation-panel"),
   activationApiBase: document.getElementById("activation-api-base"),
   activationDeviceName: document.getElementById("activation-device-name"),
   activationLicenseKey: document.getElementById("activation-license-key"),
@@ -242,6 +274,7 @@ const elements = {
   activationSessionSummary: document.getElementById("activation-session-summary"),
   activationDeviceList: document.getElementById("activation-device-list"),
 
+  cloudControlPanel: document.getElementById("cloud-control-panel"),
   cloudPolicyLoadBtn: document.getElementById("cloud-policy-load-btn"),
   cloudFeaturesOptIn: document.getElementById("cloud-features-opt-in"),
   cloudWebhookOptIn: document.getElementById("cloud-webhook-opt-in"),
@@ -327,7 +360,8 @@ const elements = {
   diagnosticsSnapshotBtn: document.getElementById("diagnostics-snapshot-btn"),
   diagnosticsReportBtn: document.getElementById("diagnostics-report-btn"),
   diagnosticsCopyBtn: document.getElementById("diagnostics-copy-btn"),
-  diagnosticsOutput: document.getElementById("diagnostics-output")
+  diagnosticsOutput: document.getElementById("diagnostics-output"),
+  templatesDiagnosticsPanel: document.getElementById("templates-diagnostics-panel")
 };
 
 const state = {
@@ -364,7 +398,23 @@ const state = {
   dismissedWelcomeTools: new Set(),
   welcomeVisits: {},
   speedProfiles: {},
-  reliabilitySettings: null
+  reliabilitySettings: null,
+  simpleMode: true,
+  pointFollowActive: false,
+  pointFollowStartOptions: null,
+  lastStartError: "",
+  statusProgressPct: 0,
+  statusPhase: "",
+  intentAutoExport: false,
+  intentAutoExportFormat: "csv",
+  intentLastCommand: "",
+  intentAutoMapsDetailEnrichPending: false,
+  intentAutoMapsDetailEnrichAutomationId: null,
+  intentAutoListUrlEnrichPending: false,
+  intentAutoListUrlEnrichAutomationId: null,
+  domainAutonomyHints: {},
+  lastOrchestrationPlan: null,
+  lastOrchestrationAt: ""
 };
 
 const SHELL_VIEWS = Object.freeze({
@@ -374,15 +424,23 @@ const SHELL_VIEWS = Object.freeze({
   TOOLS: "tools",
   LATEST: "latest"
 });
+const SIMPLE_MODE_ALLOWED_VIEWS = new Set([SHELL_VIEWS.MENU, SHELL_VIEWS.TOOLS, SHELL_VIEWS.DATA]);
 
 const WELCOME_VISIT_LIMIT = 3;
 const WELCOME_VISITS_STORAGE_KEY = "datascrap.sidepanel.welcome-visits.v1";
+const SIMPLE_MODE_STORAGE_KEY = "datascrap.sidepanel.simple-mode.v1";
 const TEMPLATES_STORAGE_KEY = "datascrap.sidepanel.templates.v1";
 const SPEED_PROFILES_STORAGE_KEY = "datascrap.sidepanel.speed-profiles.v1";
 const RELIABILITY_SETTINGS_STORAGE_KEY = "datascrap.sidepanel.reliability-settings.v1";
 const TEMPLATE_LIMIT = 200;
 const TEMPLATE_BUNDLE_TYPE = "datascrap.templates.bundle";
 const TEMPLATE_BUNDLE_VERSION = "2026-02-23";
+const DOMAIN_AUTONOMY_HINTS_STORAGE_KEY = "datascrap.sidepanel.domain-autonomy-hints.v1";
+const DOMAIN_AUTONOMY_HINT_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const DOMAIN_HINT_ALLOWED_STRATEGIES = new Set([
+  ORCHESTRATION_STRATEGIES.LIST_AUTODETECT_AUTOPILOT,
+  ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED
+]);
 const DEFAULT_SPEED_PROFILES = Object.freeze({
   slow: Object.freeze({
     attempts: 8,
@@ -432,6 +490,29 @@ const ROADMAP_NOTIFY_URLS = Object.freeze({
   scheduling: "https://datascrap.app/waitlist/scheduling",
   integrations: "https://datascrap.app/waitlist/integrations"
 });
+const SMART_PAGINATION_SELECTOR_CANDIDATES = Object.freeze([
+  "a#pnnext",
+  "a[aria-label='Next']",
+  "a[aria-label='Next page']",
+  "a[aria-label='next page']",
+  "a[aria-label='Next results page']",
+  "a[aria-label='next results page']",
+  "a.sb_pagN",
+  "a[title='Next page']",
+  "a[rel='next']",
+  "li.next a",
+  "a.next"
+]);
+const SMART_PAGINATION_NEXT_SELECTOR = SMART_PAGINATION_SELECTOR_CANDIDATES.join(", ");
+const AUTO_URL_ENRICHMENT_MAX_URLS = 500;
+const LIST_AUTOCONTINUE_SEGMENTS_DEFAULT = 24;
+const LIST_AUTOCONTINUE_SEGMENTS_EXHAUSTIVE = 40;
+const LIST_AUTOCONTINUE_HARD_ROUND_CAP_DEFAULT = 5000;
+const LIST_AUTOCONTINUE_HARD_ROUND_CAP_EXHAUSTIVE = 10000;
+const LIST_HARDCAP_AUTOCONTINUE_CHAINS_DEFAULT = 3;
+const LIST_HARDCAP_AUTOCONTINUE_CHAINS_EXHAUSTIVE = 5;
+const LIST_HARDCAP_ABSOLUTE_LIMIT_DEFAULT = 25000;
+const LIST_HARDCAP_ABSOLUTE_LIMIT_EXHAUSTIVE = 50000;
 
 const PAGE_ACTION_SCHEMA_COLUMNS = Object.freeze({
   [PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL]: Object.freeze(["emails", "emailCount", "emailDomains", "deepScannedPages"]),
@@ -624,6 +705,57 @@ function normalizeEnumValue(value, allowedValues, fallback) {
   return allowedValues.includes(normalized) ? normalized : fallback;
 }
 
+function friendlyErrorText(message, { cloud = false } = {}) {
+  const raw = String(message || "").trim();
+  if (!raw) return "Unknown error";
+
+  if (raw.includes("Host permission denied by user") || raw.includes("API host permission denied by user")) {
+    return cloud
+      ? "Access to this API host was denied. Allow browser access and retry."
+      : "Access to this site was denied. Allow browser access and retry.";
+  }
+  if (raw.includes("Permission API timeout")) {
+    return "Permission prompt timed out. Click Enable All Access again and approve the browser prompt.";
+  }
+  if (raw.includes("must be called during a user gesture")) {
+    return "Permission request must be triggered by a click. Click Enable All Access again.";
+  }
+  if (raw.includes("Extension manifest must request permission to access this host")) {
+    return "Access to this site is missing. Click Enable All Access, allow permission, then retry.";
+  }
+  if (raw.includes("Required permission was denied by the user")) {
+    return "Access to this site was denied. Use Enable All Access and allow permission, then retry.";
+  }
+  if (raw.includes("Missing bearer token") || raw.includes("Invalid or expired token")) {
+    return "Login required. Open Activation, sign in, then retry.";
+  }
+  if (raw.includes("Cloud features are not enabled for this account")) {
+    return "Enable Cloud features opt-in in Cloud Control, then retry.";
+  }
+  if (raw.includes("Webhook delivery is not enabled for this account")) {
+    return "Enable Webhook delivery opt-in in Cloud Control, then retry.";
+  }
+  if (raw.includes("Optional cloud features are disabled")) {
+    return "Cloud features are disabled on the server. Local extraction still works.";
+  }
+  return raw;
+}
+
+function formatStatusErrorText(text, { cloud = false, error = false } = {}) {
+  const raw = String(text || "");
+  if (!error) return raw;
+  const friendly = friendlyErrorText(raw, {
+    cloud
+  });
+  if (!friendly || friendly === raw) return raw;
+  const separatorIndex = raw.indexOf(":");
+  if (separatorIndex >= 0) {
+    const prefix = raw.slice(0, separatorIndex + 1).trim();
+    return `${prefix} ${friendly}`;
+  }
+  return friendly;
+}
+
 function toCellText(value) {
   return String(value === undefined || value === null ? "" : value);
 }
@@ -705,14 +837,93 @@ function createFieldFromAutoDetect(field, index) {
   };
 }
 
+function toProgressPercent(value, fallback = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return clamp(Number(fallback || 0), 0, 100);
+  return clamp(Math.round(parsed), 0, 100);
+}
+
+function renderQuickFlowProgress() {
+  if (!elements.quickFlowProgressRing) return;
+  const status = String(state.currentStatus || AUTOMATION_STATES.IDLE);
+  const isRunning = status === AUTOMATION_STATES.RUNNING || status === AUTOMATION_STATES.STOPPING;
+  const isError = status === AUTOMATION_STATES.ERROR;
+  const isCompleted = status === AUTOMATION_STATES.COMPLETED;
+  const visualPct = isCompleted ? 100 : toProgressPercent(state.statusProgressPct, 0);
+
+  elements.quickFlowProgressRing.style.setProperty("--progress-pct", `${visualPct}%`);
+  elements.quickFlowProgressRing.classList.toggle("is-running", isRunning);
+  elements.quickFlowProgressRing.classList.toggle("is-error", isError);
+  elements.quickFlowProgressRing.classList.toggle("is-complete", isCompleted);
+  if (elements.quickFlowProgressPct) {
+    elements.quickFlowProgressPct.textContent = `${visualPct}%`;
+  }
+
+  const phase = String(state.statusPhase || "").trim();
+  let phaseLabel = "Ready to run";
+  if (isRunning) {
+    phaseLabel = phase || "Autonomous extraction running";
+  } else if (isCompleted) {
+    phaseLabel = phase || "Extraction complete";
+  } else if (isError) {
+    phaseLabel = phase || "Needs attention";
+  } else if (status === AUTOMATION_STATES.STOPPED) {
+    phaseLabel = phase || "Stopped";
+  } else if (phase) {
+    phaseLabel = phase;
+  }
+  if (elements.quickFlowProgressPhase) {
+    elements.quickFlowProgressPhase.textContent = phaseLabel;
+  }
+}
+
+function renderStatusPill() {
+  const status = String(state.currentStatus || AUTOMATION_STATES.IDLE);
+  const isRunning = status === AUTOMATION_STATES.RUNNING || status === AUTOMATION_STATES.STOPPING;
+  const isError = status === AUTOMATION_STATES.ERROR;
+  const isCompleted = status === AUTOMATION_STATES.COMPLETED;
+  const pct = toProgressPercent(state.statusProgressPct, 0);
+  const visualPct = isCompleted ? 100 : isRunning ? pct : pct;
+  const label = isRunning ? `${status} ${visualPct}%` : isCompleted ? "completed 100%" : status;
+
+  elements.statusPill.textContent = label;
+  elements.statusPill.classList.toggle("status-running", isRunning);
+  elements.statusPill.classList.toggle("status-error", isError);
+  elements.statusPill.style.setProperty("--progress-pct", `${visualPct}%`);
+  const phase = String(state.statusPhase || "").trim();
+  if (phase) {
+    elements.statusPill.title = phase;
+  } else {
+    elements.statusPill.removeAttribute("title");
+  }
+  renderQuickFlowProgress();
+}
+
 function setStatus(status) {
-  state.currentStatus = String(status || AUTOMATION_STATES.IDLE);
-  elements.statusPill.textContent = state.currentStatus;
-  elements.statusPill.classList.toggle(
-    "status-running",
-    state.currentStatus === AUTOMATION_STATES.RUNNING || state.currentStatus === AUTOMATION_STATES.STOPPING
-  );
-  elements.statusPill.classList.toggle("status-error", state.currentStatus === AUTOMATION_STATES.ERROR);
+  const nextStatus = String(status || AUTOMATION_STATES.IDLE);
+  state.currentStatus = nextStatus;
+  if (nextStatus === AUTOMATION_STATES.IDLE) {
+    state.statusProgressPct = 0;
+    state.statusPhase = "";
+  } else if (nextStatus === AUTOMATION_STATES.RUNNING || nextStatus === AUTOMATION_STATES.STOPPING) {
+    if (state.statusProgressPct <= 0) {
+      state.statusProgressPct = 2;
+    }
+  } else if (nextStatus === AUTOMATION_STATES.COMPLETED) {
+    state.statusProgressPct = 100;
+    if (!state.statusPhase) {
+      state.statusPhase = "Extraction complete";
+    }
+  }
+  renderStatusPill();
+}
+
+function setStatusProgress(progressValue, { phase = "" } = {}) {
+  state.statusProgressPct = toProgressPercent(progressValue, state.statusProgressPct);
+  if (phase) {
+    state.statusPhase = String(phase || "").trim();
+  }
+  renderStatusPill();
 }
 
 function setPickerStatus(text) {
@@ -720,9 +931,17 @@ function setPickerStatus(text) {
 }
 
 function setListAutoDetectStatus(text, { error = false } = {}) {
-  if (!elements.listAutoDetectStatusLine) return;
-  elements.listAutoDetectStatusLine.textContent = String(text || "");
-  elements.listAutoDetectStatusLine.classList.toggle("status-error", Boolean(error));
+  const next = formatStatusErrorText(text, {
+    error
+  });
+  if (elements.listAutoDetectStatusLine) {
+    elements.listAutoDetectStatusLine.textContent = next;
+    elements.listAutoDetectStatusLine.classList.toggle("status-error", Boolean(error));
+  }
+  if (elements.quickFlowStatusLine) {
+    elements.quickFlowStatusLine.textContent = next;
+    elements.quickFlowStatusLine.classList.toggle("status-error", Boolean(error));
+  }
 }
 
 function renderListAutoDetectPreview(payload) {
@@ -1143,15 +1362,147 @@ function buildQueueReliabilityConfig() {
   };
 }
 
+function applySimpleModeUi() {
+  if (elements.simpleModeToggle) {
+    elements.simpleModeToggle.checked = true;
+    elements.simpleModeToggle.disabled = true;
+    const toggleRow = elements.simpleModeToggle.closest("label");
+    if (toggleRow) {
+      toggleRow.style.display = "none";
+    }
+  }
+
+  if (elements.simpleModeHint) {
+    elements.simpleModeHint.textContent =
+      "Simple mode active: type one command and run. Example: find home service businesses in Miami.";
+  }
+
+  const showAdvanced = !state.simpleMode;
+  if (elements.runnerField) {
+    elements.runnerField.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.selectedToolField) {
+    elements.selectedToolField.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.openWelcomeBtn) {
+    elements.openWelcomeBtn.style.display = showAdvanced ? "" : "none";
+  }
+  if (elements.automationActionsRow) {
+    elements.automationActionsRow.style.display = showAdvanced ? "grid" : "none";
+  }
+
+  const isListRunner = String(elements.runnerType.value || "") === RUNNER_TYPES.LIST_EXTRACTOR;
+  const showListAdvanced = isListRunner && showAdvanced;
+  if (elements.listAdvancedControls) {
+    elements.listAdvancedControls.style.display = showListAdvanced ? "grid" : "none";
+  }
+  if (elements.listConfigPanel) {
+    elements.listConfigPanel.style.display = state.simpleMode ? "none" : isListRunner ? "grid" : "none";
+  }
+  if (elements.pageConfigPanel) {
+    if (state.simpleMode) {
+      elements.pageConfigPanel.style.display = "none";
+    }
+  }
+  if (elements.queueAdvancedControls) {
+    elements.queueAdvancedControls.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.pageUrlGeneratorPanel) {
+    elements.pageUrlGeneratorPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.pageRecoveryPanel) {
+    elements.pageRecoveryPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.activationPanel) {
+    elements.activationPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.cloudControlPanel) {
+    elements.cloudControlPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.templatesDiagnosticsPanel) {
+    elements.templatesDiagnosticsPanel.style.display = showAdvanced ? "grid" : "none";
+  }
+  if (elements.tableAdvancedControls) {
+    elements.tableAdvancedControls.style.display = showAdvanced ? "" : "none";
+  }
+
+  const exportUseFiltersRow = elements.exportUseCurrentFilters?.closest("label");
+  if (exportUseFiltersRow) {
+    exportUseFiltersRow.style.display = showAdvanced ? "" : "none";
+  }
+  if (elements.exportClipboardBtn) {
+    elements.exportClipboardBtn.style.display = showAdvanced ? "" : "none";
+  }
+  if (elements.exportSheetsBtn) {
+    elements.exportSheetsBtn.style.display = showAdvanced ? "" : "none";
+  }
+
+  if (state.simpleMode) {
+    const imageOnlyTool = state.activeTool === "image";
+    if (elements.dataTablePanel) {
+      elements.dataTablePanel.style.display = imageOnlyTool ? "none" : "";
+    }
+    if (elements.exportPanel) {
+      elements.exportPanel.style.display = imageOnlyTool ? "none" : "";
+    }
+    if (elements.imagePanel) {
+      elements.imagePanel.style.display = imageOnlyTool ? "" : "none";
+    }
+  } else {
+    if (elements.dataTablePanel) {
+      elements.dataTablePanel.style.display = "";
+    }
+    if (elements.exportPanel) {
+      elements.exportPanel.style.display = "";
+    }
+    if (elements.imagePanel) {
+      elements.imagePanel.style.display = "";
+    }
+  }
+
+  if (elements.quickExtractBtn) {
+    elements.quickExtractBtn.classList.toggle("btn-primary", true);
+  }
+  if (elements.startBtn) {
+    elements.startBtn.classList.toggle("btn-primary", false);
+  }
+
+  for (const button of elements.shellNavButtons || []) {
+    const view = String(button.dataset.shellView || "").trim();
+    const show = !state.simpleMode || SIMPLE_MODE_ALLOWED_VIEWS.has(view);
+    button.style.display = show ? "" : "none";
+  }
+  if (state.simpleMode && !SIMPLE_MODE_ALLOWED_VIEWS.has(state.activeShellView)) {
+    setShellView(SHELL_VIEWS.MENU);
+  }
+}
+
+function onSimpleModeToggle() {
+  state.simpleMode = true;
+  if (elements.simpleModeToggle) {
+    elements.simpleModeToggle.checked = true;
+  }
+  saveSimpleModeToStorage();
+  applySimpleModeUi();
+  trackUiEvent("simple_mode_toggled", {
+    enabled: state.simpleMode
+  });
+}
+
 function updateRunnerUi() {
   const runnerType = elements.runnerType.value;
   const isListRunner = runnerType === RUNNER_TYPES.LIST_EXTRACTOR;
   const isPageRunner = runnerType === RUNNER_TYPES.PAGE_EXTRACTOR;
   const isMetadataRunner = runnerType === RUNNER_TYPES.METADATA_EXTRACTOR;
+  const showListAdvanced = isListRunner && !state.simpleMode;
   elements.listConfigPanel.style.display = isListRunner ? "grid" : "none";
-  elements.speedProfileEditor.style.display = isListRunner ? "grid" : "none";
+  elements.speedProfileEditor.style.display = showListAdvanced ? "grid" : "none";
+  if (elements.listAdvancedControls) {
+    elements.listAdvancedControls.style.display = showListAdvanced ? "grid" : "none";
+  }
   elements.pageConfigPanel.style.display = isPageRunner || isMetadataRunner ? "grid" : "none";
   elements.pageActionTypeField.style.display = isMetadataRunner ? "none" : "grid";
+  applySimpleModeUi();
   updatePageActionUi();
 }
 
@@ -1213,7 +1564,9 @@ function setImageStatus(text, { error = false } = {}) {
 }
 
 function setActivationStatus(text, { error = false } = {}) {
-  elements.activationStatusLine.textContent = String(text || "");
+  elements.activationStatusLine.textContent = formatStatusErrorText(text, {
+    error
+  });
   elements.activationStatusLine.classList.toggle("status-error", Boolean(error));
 }
 
@@ -1224,7 +1577,10 @@ function setRoadmapStatus(text, { error = false } = {}) {
 }
 
 function setCloudStatus(text, { error = false } = {}) {
-  elements.cloudStatusLine.textContent = String(text || "");
+  elements.cloudStatusLine.textContent = formatStatusErrorText(text, {
+    cloud: true,
+    error
+  });
   elements.cloudStatusLine.classList.toggle("status-error", Boolean(error));
 }
 
@@ -1395,6 +1751,262 @@ function saveWelcomeVisits() {
   }
 }
 
+function loadSimpleModeFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(SIMPLE_MODE_STORAGE_KEY);
+    if (raw === null || raw === undefined || raw === "") return true;
+    return raw !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function saveSimpleModeToStorage() {
+  try {
+    globalThis.localStorage?.setItem(SIMPLE_MODE_STORAGE_KEY, state.simpleMode ? "true" : "false");
+  } catch {
+    // no-op: localStorage may be unavailable in some contexts
+  }
+}
+
+function normalizeDomainHintHostKey(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  const normalized = raw.replace(/^www\./, "").replace(/\.+$/, "");
+  if (!/^[a-z0-9.-]+$/.test(normalized)) return "";
+  return normalized;
+}
+
+function normalizeDomainHintHostFromUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/i.test(parsed.protocol)) return "";
+    return normalizeDomainHintHostKey(parsed.hostname);
+  } catch {
+    return "";
+  }
+}
+
+function normalizeDomainHintRecord(input, { nowMs = Date.now() } = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const strategy = String(source.strategy || "").trim();
+  if (!DOMAIN_HINT_ALLOWED_STRATEGIES.has(strategy)) return null;
+  const updatedAtFromMs = Number(source.updatedAtMs);
+  const updatedAtFromIso = Date.parse(String(source.updatedAt || "").trim());
+  const updatedAtMs = Number.isFinite(updatedAtFromMs)
+    ? Math.floor(updatedAtFromMs)
+    : Number.isFinite(updatedAtFromIso)
+      ? Math.floor(updatedAtFromIso)
+      : nowMs;
+  const boundedUpdatedAtMs = clamp(updatedAtMs, 0, nowMs + DOMAIN_AUTONOMY_HINT_TTL_MS);
+  const ageMs = nowMs - boundedUpdatedAtMs;
+  if (ageMs > DOMAIN_AUTONOMY_HINT_TTL_MS) return null;
+  return {
+    strategy,
+    reason: String(source.reason || "").trim().slice(0, 180),
+    updatedAtMs: boundedUpdatedAtMs
+  };
+}
+
+function normalizeDomainAutonomyHintsMap(input, { nowMs = Date.now() } = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const output = {};
+  for (const [key, value] of Object.entries(source)) {
+    const host = normalizeDomainHintHostKey(key);
+    if (!host) continue;
+    const record = normalizeDomainHintRecord(value, {
+      nowMs
+    });
+    if (!record) continue;
+    output[host] = record;
+  }
+  return output;
+}
+
+function loadDomainAutonomyHintsFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(DOMAIN_AUTONOMY_HINTS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return normalizeDomainAutonomyHintsMap(parsed);
+  } catch {
+    return {};
+  }
+}
+
+function saveDomainAutonomyHintsToStorage() {
+  try {
+    const normalized = normalizeDomainAutonomyHintsMap(state.domainAutonomyHints || {});
+    state.domainAutonomyHints = normalized;
+    globalThis.localStorage?.setItem(DOMAIN_AUTONOMY_HINTS_STORAGE_KEY, JSON.stringify(normalized));
+  } catch {
+    // no-op: localStorage may be unavailable in some contexts
+  }
+}
+
+function resolveDomainAutonomyHintHost(...urlCandidates) {
+  for (const candidate of urlCandidates) {
+    const host = normalizeDomainHintHostFromUrl(candidate);
+    if (host) return host;
+  }
+  return "";
+}
+
+function getDomainAutonomyHintForHost(host, { persistCleanup = true } = {}) {
+  const normalizedHost = normalizeDomainHintHostKey(host);
+  if (!normalizedHost) return null;
+  const current = state.domainAutonomyHints?.[normalizedHost];
+  const normalizedRecord = normalizeDomainHintRecord(current);
+  if (!normalizedRecord) {
+    if (current) {
+      const next = {
+        ...(state.domainAutonomyHints || {})
+      };
+      delete next[normalizedHost];
+      state.domainAutonomyHints = next;
+      if (persistCleanup) {
+        saveDomainAutonomyHintsToStorage();
+      }
+    }
+    return null;
+  }
+
+  const changed =
+    !current ||
+    String(current.strategy || "").trim() !== normalizedRecord.strategy ||
+    String(current.reason || "").trim() !== normalizedRecord.reason ||
+    Number(current.updatedAtMs || 0) !== normalizedRecord.updatedAtMs;
+  if (changed) {
+    state.domainAutonomyHints = {
+      ...(state.domainAutonomyHints || {}),
+      [normalizedHost]: normalizedRecord
+    };
+    if (persistCleanup) {
+      saveDomainAutonomyHintsToStorage();
+    }
+  }
+  return {
+    host: normalizedHost,
+    ...normalizedRecord
+  };
+}
+
+function applyDomainAutonomyHintToPlan(plan, { startUrl = "", activeUrl = "" } = {}) {
+  const currentPlan = plan && typeof plan === "object" ? plan : null;
+  if (!currentPlan) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host: "",
+      hint: null
+    };
+  }
+  if (String(currentPlan.strategy || "").trim() !== ORCHESTRATION_STRATEGIES.LIST_AUTODETECT_AUTOPILOT) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host: "",
+      hint: null
+    };
+  }
+
+  const host = resolveDomainAutonomyHintHost(currentPlan.targetUrl, startUrl, activeUrl, currentPlan.discoveredUrl);
+  if (!host) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host: "",
+      hint: null
+    };
+  }
+
+  const hint = getDomainAutonomyHintForHost(host, {
+    persistCleanup: true
+  });
+  if (!hint || hint.strategy !== ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host,
+      hint
+    };
+  }
+
+  const targetUrl = String(currentPlan.targetUrl || "").trim();
+  const nextPlan = {
+    ...currentPlan,
+    strategy: ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+    shouldNavigateActiveTab: Boolean(targetUrl) && targetUrl !== String(activeUrl || "").trim(),
+    domainHintApplied: true,
+    domainHintHost: host,
+    domainHintReason: String(hint.reason || "").trim()
+  };
+  return {
+    plan: nextPlan,
+    applied: true,
+    host,
+    hint
+  };
+}
+
+function rememberDomainAutonomyHint(strategy, { reason = "", urlCandidates = [] } = {}) {
+  const strategyValue = String(strategy || "").trim();
+  if (!DOMAIN_HINT_ALLOWED_STRATEGIES.has(strategyValue)) {
+    return {
+      saved: false,
+      changed: false,
+      host: ""
+    };
+  }
+
+  const candidates = Array.isArray(urlCandidates) ? urlCandidates : [urlCandidates];
+  const host = resolveDomainAutonomyHintHost(...candidates);
+  if (!host) {
+    return {
+      saved: false,
+      changed: false,
+      host: ""
+    };
+  }
+
+  const previous = getDomainAutonomyHintForHost(host, {
+    persistCleanup: false
+  });
+  const nextRecord = {
+    strategy: strategyValue,
+    reason: String(reason || "").trim().slice(0, 180),
+    updatedAtMs: Date.now()
+  };
+  state.domainAutonomyHints = {
+    ...(state.domainAutonomyHints || {}),
+    [host]: nextRecord
+  };
+  saveDomainAutonomyHintsToStorage();
+
+  const changed =
+    !previous || previous.strategy !== nextRecord.strategy || String(previous.reason || "").trim() !== nextRecord.reason;
+  if (changed) {
+    appendLog("domain autonomy hint updated", {
+      host,
+      strategy: nextRecord.strategy,
+      reason: nextRecord.reason
+    });
+    trackUiEvent("domain_autonomy_hint_updated", {
+      host,
+      strategy: nextRecord.strategy,
+      reason: nextRecord.reason
+    });
+  }
+
+  return {
+    saved: true,
+    changed,
+    host
+  };
+}
+
 function normalizeShellView(value) {
   const next = String(value || "").trim();
   if (Object.values(SHELL_VIEWS).includes(next)) return next;
@@ -1402,7 +2014,8 @@ function normalizeShellView(value) {
 }
 
 function setShellView(view) {
-  const next = normalizeShellView(view);
+  const normalized = normalizeShellView(view);
+  const next = state.simpleMode && !SIMPLE_MODE_ALLOWED_VIEWS.has(normalized) ? SHELL_VIEWS.MENU : normalized;
   state.activeShellView = next;
 
   for (const button of elements.shellNavButtons) {
@@ -1508,6 +2121,13 @@ function updateWelcomeVisibility() {
   renderWelcomeCard(toolId);
   setToolHeadingText(getToolPreset(toolId).label);
   renderToolCardState();
+
+  if (state.simpleMode) {
+    if (elements.toolWelcomePanel) {
+      elements.toolWelcomePanel.hidden = true;
+    }
+    return;
+  }
 
   const welcomeViews = String(elements.toolWelcomePanel?.dataset.views || "")
     .trim()
@@ -1672,9 +2292,22 @@ function buildExportFilterPayload() {
   };
 }
 
-function callChromePermissions(method, details) {
+function callChromePermissions(method, details, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new Error("Permission API timeout"));
+        }, timeoutMs)
+      : null;
     chrome.permissions[method](details, (result) => {
+      if (settled) return;
+      settled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
       const lastError = chrome.runtime.lastError;
       if (lastError) {
         reject(new Error(lastError.message || "Permission API failed"));
@@ -1693,6 +2326,379 @@ async function ensureClipboardPermission() {
   const hasAccess = await callChromePermissions("contains", details).catch(() => false);
   if (hasAccess) return true;
   return callChromePermissions("request", details);
+}
+
+function normalizePermissionRequest({ origins = [], permissions = [] } = {}) {
+  const normalizedOrigins = Array.from(
+    new Set((Array.isArray(origins) ? origins : []).map((value) => String(value || "").trim()).filter(Boolean))
+  );
+  const normalizedPermissions = Array.from(
+    new Set((Array.isArray(permissions) ? permissions : []).map((value) => String(value || "").trim()).filter(Boolean))
+  );
+  const details = {};
+  if (normalizedOrigins.length > 0) {
+    details.origins = normalizedOrigins;
+  }
+  if (normalizedPermissions.length > 0) {
+    details.permissions = normalizedPermissions;
+  }
+  return {
+    origins: normalizedOrigins,
+    permissions: normalizedPermissions,
+    details,
+    hasRequest: normalizedOrigins.length > 0 || normalizedPermissions.length > 0
+  };
+}
+
+async function containsPermissionRequest(request) {
+  if (!request?.hasRequest || !chrome.permissions) {
+    return {
+      granted: !request?.hasRequest,
+      skipped: true,
+      error: ""
+    };
+  }
+  let errorText = "";
+  const granted = await callChromePermissions("contains", request.details).catch((error) => {
+    errorText = error?.message || "Permission check failed";
+    return false;
+  });
+  return {
+    granted: Boolean(granted),
+    skipped: false,
+    error: errorText
+  };
+}
+
+async function requestPermissionRequest(request) {
+  if (!request?.hasRequest || !chrome.permissions) {
+    return {
+      granted: !request?.hasRequest,
+      skipped: true,
+      error: ""
+    };
+  }
+  let errorText = "";
+  const granted = await callChromePermissions("request", request.details).catch((error) => {
+    errorText = error?.message || "Permission request failed";
+    return false;
+  });
+  return {
+    granted: Boolean(granted),
+    skipped: false,
+    error: errorText
+  };
+}
+
+function setSetupAccessStatus(text, { error = false } = {}) {
+  if (!elements.setupAccessStatusLine) return;
+  elements.setupAccessStatusLine.textContent = formatStatusErrorText(text, {
+    cloud: true,
+    error
+  });
+  elements.setupAccessStatusLine.classList.toggle("status-error", Boolean(error));
+}
+
+function toOriginPattern(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/i.test(parsed.protocol)) return "";
+    return `${parsed.protocol}//${parsed.host}/*`;
+  } catch {
+    return "";
+  }
+}
+
+function hasManifestAllHostAccess() {
+  try {
+    const manifest = chrome.runtime?.getManifest?.();
+    const hostPermissions = Array.isArray(manifest?.host_permissions) ? manifest.host_permissions : [];
+    return hostPermissions.some((pattern) => String(pattern || "").trim() === "<all_urls>");
+  } catch {
+    return false;
+  }
+}
+
+async function getActiveTabUrl() {
+  if (!chrome.tabs?.query) return "";
+  return new Promise((resolve) => {
+    chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true
+      },
+      (tabs) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          resolve("");
+          return;
+        }
+        const url = String(tabs?.[0]?.url || "").trim();
+        resolve(url);
+      }
+    );
+  });
+}
+
+async function maybeHydrateStartUrlFromActiveTab({ force = false } = {}) {
+  const current = String(elements.startUrl.value || "").trim();
+  if (!force && current) {
+    return current;
+  }
+  const activeUrl = await getActiveTabUrl();
+  const pattern = toOriginPattern(activeUrl);
+  if (!pattern) return current;
+  elements.startUrl.value = activeUrl;
+  return activeUrl;
+}
+
+function waitForUi(ms) {
+  const waitMs = Math.max(0, Math.floor(Number(ms) || 0));
+  if (waitMs <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, waitMs));
+}
+
+async function getActiveTabMeta() {
+  if (!chrome.tabs?.query) {
+    return {
+      id: null,
+      url: ""
+    };
+  }
+  return new Promise((resolve) => {
+    chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true
+      },
+      (tabs) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          resolve({
+            id: null,
+            url: ""
+          });
+          return;
+        }
+        resolve({
+          id: Number.isFinite(Number(tabs?.[0]?.id)) ? Number(tabs[0].id) : null,
+          url: String(tabs?.[0]?.url || "").trim()
+        });
+      }
+    );
+  });
+}
+
+async function navigateActiveTabToUrl(targetUrl) {
+  const nextUrl = String(targetUrl || "").trim();
+  if (!nextUrl) {
+    return {
+      ok: false,
+      reason: "Target URL is empty"
+    };
+  }
+  if (!/^https?:\/\//i.test(nextUrl)) {
+    return {
+      ok: false,
+      reason: "Target URL must be http/https"
+    };
+  }
+  if (!chrome.tabs?.update) {
+    return {
+      ok: false,
+      reason: "chrome.tabs.update unavailable"
+    };
+  }
+
+  const activeTab = await getActiveTabMeta();
+  if (!Number.isFinite(activeTab.id)) {
+    return {
+      ok: false,
+      reason: "No active tab found"
+    };
+  }
+
+  return new Promise((resolve) => {
+    chrome.tabs.update(
+      activeTab.id,
+      {
+        url: nextUrl,
+        active: true
+      },
+      (_tab) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          resolve({
+            ok: false,
+            reason: lastError.message || "Failed to navigate active tab"
+          });
+          return;
+        }
+        resolve({
+          ok: true
+        });
+      }
+    );
+  });
+}
+
+function setOrchestrationPhase(plan, phaseId, statusText) {
+  const phases = Array.isArray(plan?.phases) ? plan.phases : [];
+  const matched = phases.find((phase) => String(phase?.id || "").trim() === String(phaseId || "").trim());
+  const progress = Number.isFinite(Number(matched?.progress)) ? Number(matched.progress) : state.statusProgressPct;
+  const phaseLabel = String(matched?.label || statusText || "").trim();
+  if (phaseLabel) {
+    setStatusProgress(progress, {
+      phase: phaseLabel
+    });
+  }
+  if (statusText) {
+    setListAutoDetectStatus(statusText);
+  }
+}
+
+function cacheOrchestrationPlan(plan) {
+  state.lastOrchestrationPlan = plan || null;
+  state.lastOrchestrationAt = new Date().toISOString();
+  if (!plan) return;
+  appendLog("autonomous plan", {
+    strategy: plan.strategy,
+    targetUrl: plan.targetUrl,
+    discoveredUrl: plan.discoveredUrl,
+    shouldNavigateActiveTab: plan.shouldNavigateActiveTab,
+    summary: summarizeAutonomousPlan(plan)
+  });
+}
+
+async function onSetupAccess({
+  includeApi = false,
+  includeDownloads = false,
+  includeClipboard = false,
+  silent = false,
+  preferFullHostAccess = false
+} = {}) {
+  if (!silent) {
+    setSetupAccessStatus("Checking browser access...");
+  }
+  let startUrl = String(elements.startUrl.value || "").trim();
+  if (!startUrl && !preferFullHostAccess) {
+    startUrl = await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
+  }
+  const apiBaseUrl = String(elements.activationApiBase.value || "").trim();
+  const builtInAllHostAccess = hasManifestAllHostAccess();
+
+  const requestedOrigins = preferFullHostAccess
+    ? ["<all_urls>"]
+    : Array.from(new Set([toOriginPattern(startUrl), includeApi ? toOriginPattern(apiBaseUrl) : ""].filter(Boolean)));
+  const originPatterns = requestedOrigins.length > 0 ? requestedOrigins : builtInAllHostAccess ? ["<all_urls>"] : [];
+  const optionalPermissionList = Array.from(
+    new Set([includeDownloads ? "downloads" : "", includeClipboard ? "clipboardWrite" : ""].filter(Boolean))
+  );
+
+  if (originPatterns.length === 0) {
+    if (!silent) {
+      setSetupAccessStatus("Open a normal website tab first, then click Enable All Access.", {
+        error: true
+      });
+    }
+    return {
+      ok: false,
+      hostGranted: 0,
+      hostDenied: 1,
+      hostRequested: preferFullHostAccess ? 1 : 0,
+      optionalDenied: 0,
+      fullHostAccess: false
+    };
+  }
+
+  const hostRequest = normalizePermissionRequest({
+    origins: originPatterns
+  });
+  const optionalRequest = normalizePermissionRequest({
+    permissions: optionalPermissionList
+  });
+
+  let hostState = builtInAllHostAccess
+    ? {
+        granted: true,
+        skipped: true,
+        error: ""
+      }
+    : await containsPermissionRequest(hostRequest);
+  let optionalState =
+    optionalPermissionList.length > 0
+      ? await containsPermissionRequest(optionalRequest)
+      : {
+          granted: true,
+          skipped: true,
+          error: ""
+        };
+
+  const missingRequest = normalizePermissionRequest({
+    origins: builtInAllHostAccess || hostState.granted ? [] : originPatterns,
+    permissions: optionalState.granted ? [] : optionalPermissionList
+  });
+  let requestErrorText = "";
+
+  if (missingRequest.hasRequest) {
+    const requested = await requestPermissionRequest(missingRequest);
+    if (!requested.granted && requested.error) {
+        requestErrorText = requested.error;
+    }
+    hostState = builtInAllHostAccess
+      ? {
+          granted: true,
+          skipped: true,
+          error: ""
+        }
+      : await containsPermissionRequest(hostRequest);
+    optionalState =
+      optionalPermissionList.length > 0
+        ? await containsPermissionRequest(optionalRequest)
+        : {
+            granted: true,
+            skipped: true,
+            error: ""
+          };
+  }
+
+  const hostGranted = hostState.granted ? originPatterns.length : 0;
+  const hostDenied = originPatterns.length - hostGranted;
+  const optionalDenied = optionalPermissionList.length > 0 && !optionalState.granted ? optionalPermissionList.length : 0;
+  const ok = hostGranted > 0 && hostDenied === 0;
+
+  if (!silent) {
+    if (ok) {
+      if (optionalDenied > 0) {
+        setSetupAccessStatus("Site access ready. Optional export permissions were skipped.");
+      } else if (builtInAllHostAccess) {
+        setSetupAccessStatus("Access ready: all-site host access is already enabled.");
+      } else if (preferFullHostAccess) {
+        setSetupAccessStatus("Access ready: full-site permission granted.");
+      } else {
+        setSetupAccessStatus("Access ready for this site.");
+      }
+    } else {
+      const suffix = requestErrorText ? ` (${friendlyErrorText(requestErrorText)})` : "";
+      setSetupAccessStatus(`Access setup incomplete. Click Enable All Access and approve browser permission.${suffix}`, {
+        error: true
+      });
+    }
+  }
+
+  return {
+    ok,
+    hostGranted,
+    hostDenied,
+    hostRequested: originPatterns.length,
+    optionalDenied,
+    fullHostAccess: preferFullHostAccess && ok,
+    builtInHostAccess: builtInAllHostAccess
+  };
 }
 
 function getSelectedTableDataId() {
@@ -1734,8 +2740,38 @@ function renderTableHistoryOptions(items, preferredTableDataId = "") {
   const hasDesired = list.some((item) => String(item?.tableDataId || "").trim() === desired);
   if (hasDesired) {
     elements.tableHistorySelect.value = desired;
+  } else {
+    const fallbackTableDataId = String(list[0]?.tableDataId || "").trim();
+    if (fallbackTableDataId) {
+      elements.tableHistorySelect.value = fallbackTableDataId;
+    }
   }
   state.activeTableDataId = getSelectedTableDataId() || String(list[0]?.tableDataId || "").trim() || null;
+}
+
+function resolveCurrentTableDataId() {
+  const selected = getSelectedTableDataId();
+  if (selected) return selected;
+
+  const active = String(state.activeTableDataId || "").trim();
+  if (active) {
+    elements.tableHistorySelect.value = active;
+    return active;
+  }
+
+  const optionFallback = String(elements.tableHistorySelect?.options?.[0]?.value || "").trim();
+  if (optionFallback) {
+    elements.tableHistorySelect.value = optionFallback;
+    return optionFallback;
+  }
+
+  const historyFallback = String(state.tableHistory?.[0]?.tableDataId || "").trim();
+  if (historyFallback) {
+    elements.tableHistorySelect.value = historyFallback;
+    return historyFallback;
+  }
+
+  return "";
 }
 
 function renderTableColumnOptions(columns) {
@@ -1922,7 +2958,7 @@ async function hydrateTableHistory({ preserveSelection = true } = {}) {
 }
 
 async function loadSelectedTableRows({ silent = false } = {}) {
-  const tableDataId = getSelectedTableDataId();
+  const tableDataId = resolveCurrentTableDataId();
   if (!tableDataId) {
     state.activeTableDataId = null;
     state.tableRows = [];
@@ -2721,7 +3757,88 @@ function resolveStatusFromEvent(eventPayload) {
   return state.currentStatus;
 }
 
+function resolveSimpleModeTerminalStatusLine(eventPayload, nextStatus) {
+  if (nextStatus === AUTOMATION_STATES.STOPPED) {
+    return {
+      text: "Extraction stopped.",
+      error: true
+    };
+  }
+
+  if (nextStatus === AUTOMATION_STATES.ERROR) {
+    const failedMessage = friendlyErrorText(
+      eventPayload?.payload?.error?.message || eventPayload?.payload?.errorPacket?.message || "Extraction failed"
+    );
+    return {
+      text: `Extraction failed: ${failedMessage}`,
+      error: true
+    };
+  }
+
+  if (nextStatus !== AUTOMATION_STATES.COMPLETED) {
+    return null;
+  }
+
+  const result = eventPayload?.payload?.result || {};
+  const successCount = Number(result?.successCount || result?.rowCount || 0);
+  const rowCount = Number(result?.rowCount || 0);
+  const failureCount = Number(result?.failureCount || 0);
+  const urlCount = Number(result?.urlCount || successCount + failureCount || 0);
+  const duplicateSkipped = Number(result?.mapsDeduplication?.skippedKnownEntities || 0);
+  const firstFailure = String(result?.failures?.[0]?.error || "").trim();
+  const terminationReason = String(result?.terminationReason || "").trim().toLowerCase();
+
+  if (successCount <= 0 && failureCount > 0) {
+    const friendly = friendlyErrorText(firstFailure || "All URLs failed");
+    return {
+      text: `No rows extracted: ${friendly}`,
+      error: true
+    };
+  }
+
+  if (rowCount <= 0 && duplicateSkipped > 0 && failureCount <= 0) {
+    return {
+      text: `No new companies found. Skipped ${duplicateSkipped} duplicates.`,
+      error: false
+    };
+  }
+
+  if (terminationReason === "hard_round_cap") {
+    const hardCapChainsUsed = Number(result?.hardCapAutoContinueUsed || 0);
+    const hardCapChainsMax = Number(result?.hardCapAutoContinueMaxChains || 0);
+    const hardCapAutoResumeEnabled = Boolean(result?.hardCapAutoContinue);
+    const chainSuffix =
+      hardCapAutoResumeEnabled && hardCapChainsMax > 0
+        ? ` (auto-resume chains ${hardCapChainsUsed}/${hardCapChainsMax})`
+        : "";
+    return {
+      text: `Extraction paused at safety cap after ${rowCount} rows${chainSuffix}. Re-run to continue from current page.`,
+      error: false
+    };
+  }
+
+  if (terminationReason === "round_limit" && Boolean(result?.untilNoMore)) {
+    return {
+      text: `Extraction reached pagination safety window at ${rowCount} rows.`,
+      error: false
+    };
+  }
+
+  if (terminationReason === "next_link_cycle") {
+    return {
+      text: `Extraction stopped after detecting pagination loop at ${rowCount} rows.`,
+      error: false
+    };
+  }
+
+  return {
+    text: `Extraction completed: ${rowCount} rows from ${urlCount} URL${urlCount === 1 ? "" : "s"}.`,
+    error: false
+  };
+}
+
 function handleRuntimeEvent(eventPayload) {
+  const eventType = String(eventPayload?.eventType || "").trim();
   const automationId = eventPayload?.payload?.automationId || null;
   if (automationId) {
     state.currentAutomationId = automationId;
@@ -2729,27 +3846,89 @@ function handleRuntimeEvent(eventPayload) {
 
   const nextStatus = resolveStatusFromEvent(eventPayload);
   setStatus(nextStatus);
+  if (eventType === AUTOMATION_EVENT_TYPES.PROGRESS) {
+    const progressPct = toProgressPercent(eventPayload?.payload?.progress, state.statusProgressPct);
+    const phase = String(eventPayload?.payload?.phase || "").trim();
+    setStatusProgress(progressPct, {
+      phase
+    });
+  }
 
   if (
     nextStatus === AUTOMATION_STATES.COMPLETED ||
     nextStatus === AUTOMATION_STATES.STOPPED ||
     nextStatus === AUTOMATION_STATES.ERROR
   ) {
+    if (nextStatus === AUTOMATION_STATES.STOPPED || nextStatus === AUTOMATION_STATES.ERROR) {
+      state.intentAutoMapsDetailEnrichPending = false;
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      state.intentAutoListUrlEnrichPending = false;
+      state.intentAutoListUrlEnrichAutomationId = null;
+    }
     state.lastTerminalAutomationId = automationId || state.lastTerminalAutomationId;
-    void hydrateDataSources().catch(() => {
-      appendLog("datasource refresh failed after terminal event");
-    });
-    void hydrateTableHistory({
-      preserveSelection: true
-    }).catch(() => {
-      appendLog("table history refresh failed after terminal event");
-    });
+    void (async () => {
+      try {
+        await hydrateDataSources();
+      } catch {
+        appendLog("datasource refresh failed after terminal event");
+      }
+
+      try {
+        await hydrateTableHistory({
+          preserveSelection: true
+        });
+      } catch {
+        appendLog("table history refresh failed after terminal event");
+      }
+
+      if (state.simpleMode && nextStatus === AUTOMATION_STATES.COMPLETED) {
+        setShellView(SHELL_VIEWS.DATA);
+        try {
+          await loadSelectedTableRows({
+            silent: true
+          });
+        } catch {
+          appendLog("table load failed after completion");
+        }
+
+        const mapsEnrichmentTransition = await maybeHandleIntentMapsDetailEnrichment(eventPayload);
+        const urlEnrichmentTransition = mapsEnrichmentTransition.deferExport
+          ? {
+              started: false,
+              deferExport: false
+            }
+          : await maybeHandleIntentListUrlEnrichment(eventPayload);
+        if (state.intentAutoExport && !mapsEnrichmentTransition.deferExport && !urlEnrichmentTransition.deferExport) {
+          const exportFormat = String(state.intentAutoExportFormat || "csv").trim().toLowerCase();
+          state.intentAutoExport = false;
+          state.intentAutoExportFormat = "csv";
+          elements.exportFormat.value = exportFormat || "csv";
+          await onExportFile();
+        }
+      }
+    })();
+  }
+
+  if (state.simpleMode) {
+    if (eventType === AUTOMATION_EVENT_TYPES.PROGRESS && nextStatus === AUTOMATION_STATES.RUNNING) {
+      const progressPct = toProgressPercent(eventPayload?.payload?.progress, state.statusProgressPct);
+      const phase = String(eventPayload?.payload?.phase || "").trim();
+      setListAutoDetectStatus(
+        phase ? `Working ${progressPct}%: ${phase}` : `Working ${progressPct}%: extracting...`
+      );
+    }
+    const terminalLine = resolveSimpleModeTerminalStatusLine(eventPayload, nextStatus);
+    if (terminalLine?.text) {
+      setListAutoDetectStatus(terminalLine.text, {
+        error: Boolean(terminalLine.error)
+      });
+    }
   }
 
   appendLog(`event: ${eventPayload.eventType}`, eventPayload.payload || {});
 }
 
-function applyPickerSessionResult(session, purpose) {
+async function applyPickerSessionResult(session, purpose) {
   const selections = Array.isArray(session?.selections) ? session.selections : [];
   if (purpose === "list_container" && selections.length > 0) {
     const selected = selections[0];
@@ -2781,6 +3960,92 @@ function applyPickerSessionResult(session, purpose) {
     appendLog("page fields selected", {
       added: fields.length
     });
+    return;
+  }
+
+  if (purpose === "guided_container" && selections.length > 0) {
+    const selected = selections[0];
+    const normalizedSelector = normalizePickedContainerSelector(selected.selector || "");
+    elements.containerSelector.value = normalizedSelector || selected.selector || "";
+    setListAutoDetectStatus("Point & Follow: now click one field inside a row to follow.");
+    appendLog("guided container selected", {
+      original: selected.selector || "",
+      normalized: elements.containerSelector.value
+    });
+    const started = await startPicker({
+      mode: PICKER_MODES.FIELD,
+      multiSelect: false,
+      anchorSelector: String(elements.containerSelector.value || "").trim(),
+      prompt: "Click one value (name/title/price). Datascrap will follow this pattern across rows.",
+      purpose: "guided_field",
+      preferredUrl: String(elements.startUrl.value || "").trim()
+    });
+    if (!started?.ok) {
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      setListAutoDetectStatus(`Point & Follow failed: ${started?.error || "Unable to start picker."}`, {
+        error: true
+      });
+    }
+    return;
+  }
+
+  if (purpose === "guided_seed" && selections.length > 0) {
+    const selected = selections[0];
+    setListAutoDetectStatus("Point & Follow: learning from your click...");
+    appendLog("guided seed selected", {
+      selector: selected.selector || "",
+      relativeSelector: selected.relativeSelector || "",
+      textPreview: selected.textPreview || ""
+    });
+    const detected = await onListAutoDetect({
+      anchorSelector: String(selected.selector || "").trim(),
+      minItems: 2
+    });
+    if (detected) {
+      setListAutoDetectStatus("Point & Follow learned pattern. Starting extraction...");
+      const started = await onStart(state.pointFollowStartOptions || {});
+      if (started) {
+        setListAutoDetectStatus("Point & Follow running. Open DATA to see results.");
+      }
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      return;
+    }
+    setListAutoDetectStatus("Need one extra hint. Click one full row/item.");
+    const started = await startPicker({
+      mode: PICKER_MODES.CONTAINER,
+      multiSelect: false,
+      prompt: "Click one full row/item so Datascrap can map repeating records.",
+      purpose: "guided_container",
+      preferredUrl: String(elements.startUrl.value || "").trim()
+    });
+    if (!started?.ok) {
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      setListAutoDetectStatus(`Point & Follow failed: ${started?.error || "Unable to start picker."}`, {
+        error: true
+      });
+    }
+    return;
+  }
+
+  if (purpose === "guided_field" && selections.length > 0) {
+    const field = createFieldFromSelection(selections[0], 0, 0);
+    state.listFields = [field];
+    renderListFields();
+    setListAutoDetectStatus("Point & Follow captured your pattern. Starting extraction...");
+    appendLog("guided field selected", {
+      selector: field.selector,
+      relativeSelector: field.relativeSelector,
+      extractMode: field.extractMode
+    });
+    const started = await onStart(state.pointFollowStartOptions || {});
+    if (started) {
+      setListAutoDetectStatus("Point & Follow running. Open DATA to see results.");
+    }
+    state.pointFollowActive = false;
+    state.pointFollowStartOptions = null;
   }
 }
 
@@ -2811,7 +4076,7 @@ function handlePickerEvent(payload) {
       count: session.selections.length
     });
     if (purpose) {
-      applyPickerSessionResult(session, purpose);
+      void applyPickerSessionResult(session, purpose);
     }
     state.pickerSessionPurposeById.delete(session.sessionId);
     return;
@@ -2822,6 +4087,13 @@ function handlePickerEvent(payload) {
     appendLog("picker canceled", {
       sessionId: session.sessionId
     });
+    if (state.pointFollowActive && (purpose === "guided_seed" || purpose === "guided_container" || purpose === "guided_field")) {
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      setListAutoDetectStatus("Point & Follow canceled.", {
+        error: true
+      });
+    }
     state.pickerSessionPurposeById.delete(session.sessionId);
     return;
   }
@@ -2829,6 +4101,13 @@ function handlePickerEvent(payload) {
   if (eventType === "error") {
     setPickerStatus("error");
     appendLog("picker error", session);
+    if (state.pointFollowActive) {
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      setListAutoDetectStatus("Point & Follow failed due to picker error.", {
+        error: true
+      });
+    }
     state.pickerSessionPurposeById.delete(session.sessionId);
   }
 }
@@ -3330,14 +4609,23 @@ function buildTextOptions() {
   };
 }
 
-function buildMapsOptions() {
+function buildMapsOptions(options = {}) {
+  const source = options && typeof options === "object" ? options : {};
+  const maxResults = clamp(parseNumber(source.maxResults, 0), 0, 5000);
   return {
     includeBasicInfo: Boolean(elements.mapsIncludeBasicInfo.checked),
     includeContactDetails: Boolean(elements.mapsIncludeContactDetails.checked),
     includeReviews: Boolean(elements.mapsIncludeReviews.checked),
     includeHours: Boolean(elements.mapsIncludeHours.checked),
     includeLocation: Boolean(elements.mapsIncludeLocation.checked),
-    includeImages: Boolean(elements.mapsIncludeImages.checked)
+    includeImages: Boolean(elements.mapsIncludeImages.checked),
+    onlyNewResults: true,
+    autoScrollResults: true,
+    untilNoMore: true,
+    maxResults,
+    maxScrollSteps: 220,
+    stabilityPasses: 8,
+    scrollDelayMs: 650
   };
 }
 
@@ -4529,13 +5817,15 @@ async function hydrateSnapshot() {
   setStatus(AUTOMATION_STATES.IDLE);
 }
 
-async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = "", purpose }) {
+async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = "", purpose, preferredUrl = "" }) {
   try {
+    const preferred = String(preferredUrl || elements.startUrl.value || "").trim();
     const response = await sendMessage(MESSAGE_TYPES.PICKER_START_REQUEST, {
       mode,
       multiSelect,
       anchorSelector,
-      prompt
+      prompt,
+      preferredUrl: preferred
     });
     const session = response?.session || null;
     if (!session?.sessionId) {
@@ -4547,19 +5837,32 @@ async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = ""
       mode,
       sessionId: session.sessionId
     });
+    return {
+      ok: true,
+      session
+    };
   } catch (error) {
     setPickerStatus("error");
-    appendLog(`picker start failed: ${error.message}`);
+    const message = friendlyErrorText(error?.message || "Failed to start picker");
+    appendLog(`picker start failed: ${message}`);
+    return {
+      ok: false,
+      error: message
+    };
   }
 }
 
-async function onListAutoDetect() {
+async function onListAutoDetect(options = {}) {
   setListAutoDetectStatus("Auto-detecting list setup...");
   try {
-    const response = await sendMessage(MESSAGE_TYPES.LIST_AUTODETECT_REQUEST, {
+    const nextOptions = {
       maxFields: 8,
       maxPreviewRows: 5,
-      minItems: 3
+      minItems: 3,
+      ...(options && typeof options === "object" ? options : {})
+    };
+    const response = await sendMessage(MESSAGE_TYPES.LIST_AUTODETECT_REQUEST, {
+      ...nextOptions
     });
 
     const fields = Array.isArray(response.fields) ? response.fields : [];
@@ -4608,15 +5911,20 @@ async function onListAutoDetect() {
       loadMore: response.loadMore || null,
       detectionMs: Number(response.detectionMs || 0)
     });
+    return true;
   } catch (error) {
-    setListAutoDetectStatus(`Auto-detect failed: ${error.message}`, {
+    const message = friendlyErrorText(error?.message || "");
+    setListAutoDetectStatus(`Auto-detect failed: ${message}`, {
       error: true
     });
-    appendLog(`list auto-detect failed: ${error.message}`);
+    appendLog(`list auto-detect failed: ${message}`);
+    return false;
   }
 }
 
-function buildListAutomationConfig() {
+function buildListAutomationConfig(options = {}) {
+  const source = options && typeof options === "object" ? options : {};
+  const loadMoreOverrides = source.loadMore && typeof source.loadMore === "object" ? source.loadMore : {};
   const startUrl = String(elements.startUrl.value || "").trim();
   const containerSelector = String(elements.containerSelector.value || "").trim();
   if (!containerSelector) {
@@ -4651,12 +5959,29 @@ function buildListAutomationConfig() {
       {
         type: "LOAD_MORE",
         method: String(elements.loadMoreMethod.value || LOAD_MORE_METHODS.NONE).trim(),
-        attempts: parseNumber(elements.loadMoreAttempts.value, 5),
-        delayMs: parseNumber(elements.loadMoreDelayMs.value, 900),
-        scrollPx: parseNumber(elements.loadMoreScrollPx.value, 1800),
-        noChangeThreshold: parseNumber(elements.loadMoreNoChangeThreshold.value, 2),
+        attempts: clamp(parseNumber(loadMoreOverrides.attempts, parseNumber(elements.loadMoreAttempts.value, 5)), 1, 30),
+        delayMs: clamp(parseNumber(loadMoreOverrides.delayMs, parseNumber(elements.loadMoreDelayMs.value, 900)), 100, 10000),
+        scrollPx: clamp(
+          parseNumber(loadMoreOverrides.scrollPx, parseNumber(elements.loadMoreScrollPx.value, 1800)),
+          100,
+          20000
+        ),
+        noChangeThreshold: clamp(
+          parseNumber(loadMoreOverrides.noChangeThreshold, parseNumber(elements.loadMoreNoChangeThreshold.value, 2)),
+          1,
+          10
+        ),
         buttonSelector: String(elements.loadMoreButtonSelector.value || "").trim(),
-        nextLinkSelector: String(elements.loadMoreNextSelector.value || "").trim()
+        nextLinkSelector: String(elements.loadMoreNextSelector.value || "").trim(),
+        maxRows: clamp(parseNumber(loadMoreOverrides.maxRows, 0), 0, 50000),
+        untilNoMore: Boolean(loadMoreOverrides.untilNoMore),
+        maxRoundsSafety: clamp(parseNumber(loadMoreOverrides.maxRoundsSafety, 0), 0, 500),
+        autoContinueSegments: Boolean(loadMoreOverrides.autoContinueSegments),
+        autoContinueMaxSegments: clamp(parseNumber(loadMoreOverrides.autoContinueMaxSegments, 1), 1, 50),
+        hardRoundCap: clamp(parseNumber(loadMoreOverrides.hardRoundCap, 5000), 100, 10000),
+        hardCapAutoContinue: Boolean(loadMoreOverrides.hardCapAutoContinue),
+        hardCapAutoContinueMaxChains: clamp(parseNumber(loadMoreOverrides.hardCapAutoContinueMaxChains, 1), 1, 20),
+        hardRoundAbsoluteLimit: clamp(parseNumber(loadMoreOverrides.hardRoundAbsoluteLimit, 5000), 100, 50000)
       }
     ]
   };
@@ -4685,7 +6010,10 @@ async function resolvePageUrlsBySourceMode(mode) {
   return parseManualUrls(elements.pageManualUrls.value);
 }
 
-async function buildPageAutomationConfig() {
+async function buildPageAutomationConfig(options = {}) {
+  const source = options && typeof options === "object" ? options : {};
+  const mapsOptionsOverrides =
+    source.mapsOptions && typeof source.mapsOptions === "object" ? source.mapsOptions : {};
   const startUrl = String(elements.startUrl.value || "").trim();
   const urlSourceMode = String(elements.pageUrlSourceMode.value || URL_SOURCE_MODES.MANUAL).trim();
   const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
@@ -4726,7 +6054,7 @@ async function buildPageAutomationConfig() {
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) {
     actions[0].textOptions = buildTextOptions();
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
-    actions[0].mapsOptions = buildMapsOptions();
+    actions[0].mapsOptions = buildMapsOptions(mapsOptionsOverrides);
   }
 
   return {
@@ -4788,16 +6116,1148 @@ function resolveToolStartEventName(runnerType, actionType) {
   return "page_extraction_started";
 }
 
-async function onStart() {
+function parseIntentCommand(commandText) {
+  return parseAutonomousGoal(commandText);
+}
+
+function resolveIntentPageActionType(intent = {}) {
+  if (intent.wantsEmail) return PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL;
+  if (intent.wantsPhone) return PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE;
+  if (intent.wantsText) return PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT;
+  return PAGE_ACTION_TYPES.EXTRACT_PAGES;
+}
+
+function resolveIntentResultTarget(intent = {}) {
+  return clamp(parseNumber(intent?.resultTarget, 0), 0, 50000);
+}
+
+function isLikelySearchResultsUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
   try {
+    const parsed = new URL(raw);
+    const host = String(parsed.hostname || "").toLowerCase();
+    const path = String(parsed.pathname || "").toLowerCase();
+    const hasQueryHint = parsed.searchParams.has("q") || parsed.searchParams.has("query") || parsed.searchParams.has("keyword");
+    if (host.includes("google.") && path.startsWith("/search")) return true;
+    if (host.includes("bing.com") && path.includes("/search")) return true;
+    if (host.includes("duckduckgo.com")) return true;
+    if (host.includes("yahoo.") && path.includes("/search")) return true;
+    if (host.includes("yandex.")) return true;
+    if (hasQueryHint && (path.includes("/search") || path === "/" || path.startsWith("/results"))) return true;
+    return false;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function resolveSmartPaginationNextSelector(value = "") {
+  return isLikelySearchResultsUrl(value) ? SMART_PAGINATION_NEXT_SELECTOR : "";
+}
+
+function resolveSmartPaginationAutoContinue(listAutopilotOverrides = {}, plan = null) {
+  if (!Boolean(listAutopilotOverrides?.untilNoMore)) return null;
+
+  const currentMethod = String(elements.loadMoreMethod.value || LOAD_MORE_METHODS.NONE).trim() || LOAD_MORE_METHODS.NONE;
+  const currentSelector = String(elements.loadMoreNextSelector.value || "").trim();
+  const targetUrl = String(
+    elements.startUrl.value || plan?.targetUrl || plan?.discoveredUrl || ""
+  ).trim();
+
+  if (currentMethod === LOAD_MORE_METHODS.NAVIGATE && currentSelector) {
+    return {
+      enabled: true,
+      applied: false,
+      source: "existing_selector",
+      method: currentMethod,
+      nextLinkSelector: currentSelector,
+      targetUrl
+    };
+  }
+
+  if (currentMethod === LOAD_MORE_METHODS.SCROLL || currentMethod === LOAD_MORE_METHODS.CLICK_BUTTON) {
+    return null;
+  }
+
+  const candidateSelector = currentSelector || resolveSmartPaginationNextSelector(targetUrl);
+  if (!candidateSelector) {
+    return null;
+  }
+
+  const methodBefore = currentMethod;
+  elements.loadMoreMethod.value = LOAD_MORE_METHODS.NAVIGATE;
+  elements.loadMoreNextSelector.value = candidateSelector;
+
+  return {
+    enabled: true,
+    applied: true,
+    source: currentSelector ? "existing_selector" : "smart_selector_bundle",
+    methodBefore,
+    method: LOAD_MORE_METHODS.NAVIGATE,
+    nextLinkSelector: candidateSelector,
+    targetUrl
+  };
+}
+
+function buildListAutopilotOverridesFromIntent(intent = {}) {
+  const baseAttempts = clamp(parseNumber(elements.loadMoreAttempts.value, 5), 1, 30);
+  const baseNoChangeThreshold = clamp(parseNumber(elements.loadMoreNoChangeThreshold.value, 2), 1, 10);
+  const resultTarget = resolveIntentResultTarget(intent);
+  const smartExhaustiveDefault = Boolean(intent?.wantsExtract && resultTarget <= 0);
+  const untilNoMore = Boolean(intent?.wantsExhaustive || resultTarget > 0 || smartExhaustiveDefault);
+
+  let tunedAttempts = baseAttempts;
+  let tunedNoChangeThreshold = baseNoChangeThreshold;
+  let maxRoundsSafety = 0;
+  let autoContinueSegments = false;
+  let autoContinueMaxSegments = 1;
+  let hardRoundCap = 0;
+  let hardCapAutoContinue = false;
+  let hardCapAutoContinueMaxChains = 1;
+  let hardRoundAbsoluteLimit = 0;
+
+  if (resultTarget > 0) {
+    const expectedRowsPerRound = 8;
+    const expectedRounds = Math.max(1, Math.ceil(resultTarget / expectedRowsPerRound));
+    tunedAttempts = clamp(Math.max(tunedAttempts, expectedRounds + 1), 1, 30);
+    tunedNoChangeThreshold = clamp(Math.max(tunedNoChangeThreshold, 3), 1, 10);
+    maxRoundsSafety = clamp(Math.max(40, expectedRounds * 4), 1, 320);
+  }
+
+  if (intent?.wantsExhaustive) {
+    tunedAttempts = clamp(Math.max(tunedAttempts, 24), 1, 30);
+    tunedNoChangeThreshold = clamp(Math.max(tunedNoChangeThreshold, 4), 1, 10);
+    maxRoundsSafety = clamp(Math.max(maxRoundsSafety, 220), 1, 320);
+  } else if (smartExhaustiveDefault) {
+    tunedAttempts = clamp(Math.max(tunedAttempts, 18), 1, 30);
+    tunedNoChangeThreshold = clamp(Math.max(tunedNoChangeThreshold, 3), 1, 10);
+    maxRoundsSafety = clamp(Math.max(maxRoundsSafety, 240), 1, 320);
+  } else if (untilNoMore) {
+    maxRoundsSafety = clamp(Math.max(maxRoundsSafety, 80), 1, 320);
+  }
+
+  if (untilNoMore) {
+    const explicitExhaustive = Boolean(intent?.wantsExhaustive);
+    autoContinueSegments = true;
+    autoContinueMaxSegments = explicitExhaustive
+      ? LIST_AUTOCONTINUE_SEGMENTS_EXHAUSTIVE
+      : LIST_AUTOCONTINUE_SEGMENTS_DEFAULT;
+    hardRoundCap = explicitExhaustive
+      ? LIST_AUTOCONTINUE_HARD_ROUND_CAP_EXHAUSTIVE
+      : LIST_AUTOCONTINUE_HARD_ROUND_CAP_DEFAULT;
+    hardCapAutoContinue = true;
+    hardCapAutoContinueMaxChains = explicitExhaustive
+      ? LIST_HARDCAP_AUTOCONTINUE_CHAINS_EXHAUSTIVE
+      : LIST_HARDCAP_AUTOCONTINUE_CHAINS_DEFAULT;
+    hardRoundAbsoluteLimit = explicitExhaustive
+      ? LIST_HARDCAP_ABSOLUTE_LIMIT_EXHAUSTIVE
+      : LIST_HARDCAP_ABSOLUTE_LIMIT_DEFAULT;
+  }
+
+  return {
+    maxRows: resultTarget,
+    attempts: tunedAttempts,
+    noChangeThreshold: tunedNoChangeThreshold,
+    untilNoMore,
+    maxRoundsSafety,
+    autoContinueSegments,
+    autoContinueMaxSegments,
+    hardRoundCap,
+    hardCapAutoContinue,
+    hardCapAutoContinueMaxChains,
+    hardRoundAbsoluteLimit,
+    hasTarget: resultTarget > 0,
+    exhaustive: Boolean(intent?.wantsExhaustive),
+    smartExhaustiveDefault: smartExhaustiveDefault && !intent?.wantsExhaustive && resultTarget <= 0
+  };
+}
+
+function resolveMapsPlaceUrlsFromSummary(summary = {}) {
+  const preferred = Array.isArray(summary?.successfulUrls) ? summary.successfulUrls : [];
+  const fallback = Array.isArray(summary?.inputUrls) ? summary.inputUrls : [];
+  const source = preferred.length > 0 ? preferred : fallback;
+  const seen = new Set();
+  const urls = [];
+  for (const item of source) {
+    const next = String(item || "").trim();
+    if (!next) continue;
+    if (!/google\.[^/]+\/maps\/place\//i.test(next)) continue;
+    if (seen.has(next)) continue;
+    seen.add(next);
+    urls.push(next);
+    if (urls.length >= 2000) break;
+  }
+  return urls;
+}
+
+async function startIntentMapsDetailEnrichment(urls = [], sourceAutomationId = "") {
+  const mapUrls = Array.isArray(urls) ? urls : [];
+  if (mapUrls.length === 0) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    state.intentAutoMapsDetailEnrichAutomationId = null;
+    return false;
+  }
+
+  try {
+    applyToolPreset("page_details", {
+      navigate: false,
+      forceWelcome: false,
+      track: false
+    });
+    setRunnerTypeIfAvailable(RUNNER_TYPES.PAGE_EXTRACTOR);
+    elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+    elements.pageManualUrls.value = mapUrls.join("\n");
+    elements.pageActionType.value = PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS;
+    elements.queueConcurrency.value = "2";
+    elements.queueDelayMs.value = "900";
+    elements.queueRetries.value = "1";
+    elements.queueRetryDelayMs.value = "1200";
+    elements.queueJitterMs.value = "250";
+    elements.mapsIncludeBasicInfo.checked = true;
+    elements.mapsIncludeContactDetails.checked = true;
+    elements.mapsIncludeReviews.checked = true;
+    elements.mapsIncludeHours.checked = true;
+    elements.mapsIncludeLocation.checked = true;
+    elements.mapsIncludeImages.checked = true;
+    updatePageSourceUi();
+    updatePageActionUi();
+    updateRunnerUi();
+
+    setListAutoDetectStatus("Quick extract: enriching map details (phone, website, hours)...");
+    trackUiEvent("quick_extract_maps_enrichment_starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: mapUrls.length
+    });
+    appendLog("quick extract maps enrichment starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: mapUrls.length
+    });
+
+    const started = await onStart({
+      page: {
+        mapsOptions: {
+          autoScrollResults: false,
+          onlyNewResults: false,
+          untilNoMore: false,
+          maxResults: 0,
+          maxScrollSteps: 1
+        }
+      }
+    });
+
+    if (!started) {
+      state.intentAutoMapsDetailEnrichPending = false;
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      appendLog("quick extract maps enrichment start failed", {
+        reason: state.lastStartError || "unknown"
+      });
+      return false;
+    }
+
+    state.intentAutoMapsDetailEnrichPending = false;
+    state.intentAutoMapsDetailEnrichAutomationId = state.currentAutomationId || null;
+    trackUiEvent("quick_extract_maps_enrichment_started", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      enrichmentAutomationId: String(state.intentAutoMapsDetailEnrichAutomationId || ""),
+      urlCount: mapUrls.length
+    });
+    return true;
+  } catch (error) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    state.intentAutoMapsDetailEnrichAutomationId = null;
+    appendLog(`quick extract maps enrichment failed: ${friendlyErrorText(error?.message || "")}`);
+    return false;
+  }
+}
+
+async function maybeHandleIntentMapsDetailEnrichment(eventPayload = {}) {
+  const eventType = String(eventPayload?.eventType || "").trim();
+  if (eventType !== AUTOMATION_EVENT_TYPES.COMPLETED) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const automationId = String(eventPayload?.payload?.automationId || "").trim();
+  const summary = eventPayload?.payload?.result || {};
+  const actionType = String(summary?.actionType || "").trim().toUpperCase();
+
+  if (state.intentAutoMapsDetailEnrichAutomationId) {
+    if (automationId && automationId === String(state.intentAutoMapsDetailEnrichAutomationId)) {
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      state.intentAutoMapsDetailEnrichPending = false;
+      setListAutoDetectStatus("Quick extract completed: map details enriched and ready.");
+      trackUiEvent("quick_extract_maps_enrichment_completed", {
+        enrichmentAutomationId: automationId
+      });
+    }
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (!state.intentAutoMapsDetailEnrichPending) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (actionType !== PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const mapUrls = resolveMapsPlaceUrlsFromSummary(summary);
+  if (mapUrls.length === 0) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const started = await startIntentMapsDetailEnrichment(mapUrls, automationId);
+  return {
+    started,
+    deferExport: started
+  };
+}
+
+function isSearchEngineHost(value = "") {
+  const host = String(value || "").trim().toLowerCase();
+  if (!host) return false;
+  return (
+    host.includes("google.") ||
+    host.includes("bing.com") ||
+    host.includes("duckduckgo.com") ||
+    host.includes("yahoo.") ||
+    host.includes("yandex.")
+  );
+}
+
+function extractHttpUrlsFromText(value = "") {
+  const source = String(value || "");
+  if (!source) return [];
+  const matches = source.match(/https?:\/\/[^\s)"'<>]+/gi) || [];
+  return matches.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function normalizeHttpUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/i.test(parsed.protocol)) return "";
+    const hostname = String(parsed.hostname || "").toLowerCase();
+    if (!hostname || isSearchEngineHost(hostname)) return "";
+    return parsed.toString();
+  } catch (_error) {
+    return "";
+  }
+}
+
+function resolveUrlsFromTableRows(rows = [], maxUrls = AUTO_URL_ENRICHMENT_MAX_URLS) {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  const limit = clamp(Number(maxUrls || AUTO_URL_ENRICHMENT_MAX_URLS), 1, 5000);
+  const seen = new Set();
+  const urls = [];
+  for (const row of sourceRows) {
+    const candidates = [];
+    if (row?.sourceUrl) {
+      candidates.push(String(row.sourceUrl || ""));
+    }
+    const rowData = row?.rowData && typeof row.rowData === "object" ? row.rowData : {};
+    for (const value of Object.values(rowData)) {
+      candidates.push(String(value || ""));
+    }
+
+    for (const candidate of candidates) {
+      const extracted = extractHttpUrlsFromText(candidate);
+      if (extracted.length === 0) {
+        extracted.push(candidate);
+      }
+      for (const item of extracted) {
+        const normalized = normalizeHttpUrl(item);
+        if (!normalized || seen.has(normalized)) continue;
+        seen.add(normalized);
+        urls.push(normalized);
+        if (urls.length >= limit) {
+          return urls;
+        }
+      }
+    }
+  }
+  return urls;
+}
+
+async function startIntentListUrlEnrichment(urls = [], sourceAutomationId = "") {
+  const targets = Array.isArray(urls) ? urls : [];
+  if (targets.length === 0) {
+    state.intentAutoListUrlEnrichPending = false;
+    state.intentAutoListUrlEnrichAutomationId = null;
+    return false;
+  }
+
+  try {
+    setRunnerTypeIfAvailable(RUNNER_TYPES.METADATA_EXTRACTOR);
+    elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+    elements.pageManualUrls.value = targets.join("\n");
+    elements.metadataIncludeMetaTags.checked = true;
+    elements.metadataIncludeJsonLd.checked = true;
+    elements.metadataIncludeReviewSignals.checked = true;
+    elements.metadataIncludeContactSignals.checked = true;
+    elements.metadataIncludeRawJsonLd.checked = false;
+    elements.queueConcurrency.value = "3";
+    elements.queueDelayMs.value = "350";
+    elements.queueRetries.value = "1";
+    elements.queueRetryDelayMs.value = "1000";
+    elements.queueJitterMs.value = "220";
+    updatePageSourceUi();
+    updatePageActionUi();
+    updateRunnerUi();
+
+    setListAutoDetectStatus("Quick extract: enriching discovered URLs (metadata + contact signals)...");
+    trackUiEvent("quick_extract_url_enrichment_starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: targets.length
+    });
+    appendLog("quick extract url enrichment starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: targets.length
+    });
+
+    const started = await onStart();
+    if (!started) {
+      state.intentAutoListUrlEnrichPending = false;
+      state.intentAutoListUrlEnrichAutomationId = null;
+      appendLog("quick extract url enrichment start failed", {
+        reason: state.lastStartError || "unknown"
+      });
+      return false;
+    }
+
+    state.intentAutoListUrlEnrichPending = false;
+    state.intentAutoListUrlEnrichAutomationId = state.currentAutomationId || null;
+    trackUiEvent("quick_extract_url_enrichment_started", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      enrichmentAutomationId: String(state.intentAutoListUrlEnrichAutomationId || ""),
+      urlCount: targets.length
+    });
+    return true;
+  } catch (error) {
+    state.intentAutoListUrlEnrichPending = false;
+    state.intentAutoListUrlEnrichAutomationId = null;
+    appendLog(`quick extract url enrichment failed: ${friendlyErrorText(error?.message || "")}`);
+    return false;
+  }
+}
+
+async function maybeHandleIntentListUrlEnrichment(eventPayload = {}) {
+  const eventType = String(eventPayload?.eventType || "").trim();
+  if (eventType !== AUTOMATION_EVENT_TYPES.COMPLETED) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const automationId = String(eventPayload?.payload?.automationId || "").trim();
+  const summary = eventPayload?.payload?.result || {};
+  const actionType = String(summary?.actionType || "").trim().toUpperCase();
+  const rowCount = Number(summary?.rowCount || 0);
+
+  if (state.intentAutoListUrlEnrichAutomationId) {
+    if (automationId && automationId === String(state.intentAutoListUrlEnrichAutomationId)) {
+      state.intentAutoListUrlEnrichAutomationId = null;
+      state.intentAutoListUrlEnrichPending = false;
+      setListAutoDetectStatus("Quick extract completed: URL enrichment ready.");
+      trackUiEvent("quick_extract_url_enrichment_completed", {
+        enrichmentAutomationId: automationId
+      });
+    }
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (!state.intentAutoListUrlEnrichPending) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
+    state.intentAutoListUrlEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (rowCount <= 0) {
+    state.intentAutoListUrlEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const urls = resolveUrlsFromTableRows(state.tableRows, AUTO_URL_ENRICHMENT_MAX_URLS);
+  if (urls.length === 0) {
+    state.intentAutoListUrlEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const started = await startIntentListUrlEnrichment(urls, automationId);
+  return {
+    started,
+    deferExport: started
+  };
+}
+
+async function ensureOrchestrationTargetUrl(plan) {
+  const currentStartUrl = String(elements.startUrl.value || "").trim();
+  if (!currentStartUrl && plan?.targetUrl) {
+    elements.startUrl.value = String(plan.targetUrl || "").trim();
+  }
+
+  if (plan?.shouldNavigateActiveTab && plan?.targetUrl) {
+    setOrchestrationPhase(plan, "target_discovery", "Opening target page...");
+    const navigation = await navigateActiveTabToUrl(plan.targetUrl);
+    if (!navigation.ok) {
+      throw new Error(`Could not open target page: ${navigation.reason || "unknown error"}`);
+    }
+    await waitForUi(1400);
+    await maybeHydrateStartUrlFromActiveTab({
+      force: true
+    });
+  }
+
+  await maybeHydrateStartUrlFromActiveTab({
+    force: false
+  });
+}
+
+async function onIntentCommandRun() {
+  const commandText = String(elements.intentCommandInput?.value || "").trim();
+  const intent = parseIntentCommand(commandText);
+  if (!intent.hasText) {
+    setListAutoDetectStatus("Type a command first. Example: find home service businesses in Miami.", {
+      error: true
+    });
+    elements.intentCommandInput?.focus();
+    return;
+  }
+
+  state.intentLastCommand = commandText;
+  if (elements.intentCommandHint) {
+    const resultTarget = resolveIntentResultTarget(intent);
+    const targetSuffix = resultTarget > 0 ? ` | target ${resultTarget}` : "";
+    elements.intentCommandHint.textContent = `Command: ${commandText}${targetSuffix}`;
+  }
+  setStatus(AUTOMATION_STATES.RUNNING);
+
+  const activeUrl = await getActiveTabUrl();
+  let plan = createAutonomousExecutionPlan({
+    goal: intent,
+    startUrl: String(elements.startUrl.value || "").trim(),
+    activeUrl,
+    activeTool: state.activeTool,
+    simpleMode: state.simpleMode
+  });
+  const domainHintResult = applyDomainAutonomyHintToPlan(plan, {
+    startUrl: String(elements.startUrl.value || "").trim(),
+    activeUrl
+  });
+  if (domainHintResult.applied && domainHintResult.plan) {
+    plan = domainHintResult.plan;
+    setListAutoDetectStatus("Domain memory: this site runs better with Point & Follow, applying guided strategy.");
+  }
+  cacheOrchestrationPlan(plan);
+  setOrchestrationPhase(plan, "intent_parse", "Command understood. Building autonomous plan...");
+
+  if (plan.strategy === ORCHESTRATION_STRATEGIES.ACCESS_ONLY) {
+    setOrchestrationPhase(plan, "access_preflight", "Preparing browser access...");
+    await onSetupAccess({
+      includeApi: false,
+      includeDownloads: false,
+      includeClipboard: false,
+      silent: false,
+      preferFullHostAccess: true
+    });
+    setStatus(AUTOMATION_STATES.IDLE);
+    return;
+  }
+
+  if (plan.strategy === ORCHESTRATION_STRATEGIES.EXPORT_ONLY) {
+    setOrchestrationPhase(plan, "export_finalize", `Preparing ${intent.exportFormat.toUpperCase()} export...`);
+    elements.exportFormat.value = intent.exportFormat;
+    await onExportFile();
+    setStatus(AUTOMATION_STATES.IDLE);
+    return;
+  }
+
+  if (plan.strategy === ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED) {
+    await ensureOrchestrationTargetUrl(plan);
+    const strategyLine = plan.domainHintApplied
+      ? "Strategy selected: guided Point & Follow (domain memory)"
+      : "Strategy selected: guided Point & Follow";
+    setOrchestrationPhase(plan, "strategy_selection", strategyLine);
+    const guidedReady = await onPointAndFollow();
+    if (!guidedReady) {
+      setStatus(AUTOMATION_STATES.ERROR);
+      return;
+    }
+    setStatus(AUTOMATION_STATES.IDLE);
+    return;
+  }
+
+  if (intent.wantsExtract) {
+    if (intent.wantsExport) {
+      state.intentAutoExport = true;
+      state.intentAutoExportFormat = intent.exportFormat;
+    } else {
+      state.intentAutoExport = false;
+      state.intentAutoExportFormat = "csv";
+    }
+
+    await ensureOrchestrationTargetUrl(plan);
+    const strategyLabel =
+      plan.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT
+        ? "Google Maps autopilot"
+        : plan.strategy === ORCHESTRATION_STRATEGIES.PAGE_AUTOPILOT
+          ? "page details autopilot"
+          : "list autodetect autopilot";
+    setOrchestrationPhase(plan, "strategy_selection", `Strategy selected: ${strategyLabel}`);
+
+    await onQuickExtract({
+      forceMapsExhaustive: intent.wantsMaps || intent.wantsExhaustive,
+      autonomousPlan: plan,
+      intent
+    });
+    return;
+  }
+
+  setListAutoDetectStatus("Command not recognized. Try: find home service businesses in Miami.", {
+    error: true
+  });
+  setStatus(AUTOMATION_STATES.IDLE);
+}
+
+async function onQuickExtract(options = {}) {
+  const plan = options?.autonomousPlan || null;
+  const commandText = String(elements.intentCommandInput?.value || "").trim();
+  const intent = options?.intent || (commandText ? parseIntentCommand(commandText) : {});
+  state.intentAutoMapsDetailEnrichPending = false;
+  state.intentAutoMapsDetailEnrichAutomationId = null;
+  state.intentAutoListUrlEnrichPending = false;
+  state.intentAutoListUrlEnrichAutomationId = null;
+  const fallbackEventBase = {
+    runnerType: String(elements.runnerType.value || "").trim(),
+    toolId: state.activeTool
+  };
+  let domainHintCandidates = [
+    String(plan?.targetUrl || "").trim(),
+    String(plan?.discoveredUrl || "").trim(),
+    String(elements.startUrl.value || "").trim()
+  ];
+  const rememberDomainHint = (strategy, reasonText = "") =>
+    rememberDomainAutonomyHint(strategy, {
+      reason: reasonText,
+      urlCandidates: domainHintCandidates
+    });
+
+  const runPointFollowFallback = async ({ fromStrategy = "", reasonText = "", startOptions = null } = {}) => {
+    if (plan) {
+      setOrchestrationPhase(plan, "strategy_selection", "Fallback active: switching to Point & Follow guidance");
+      setOrchestrationPhase(plan, "automation_start", "Waiting for your click to guide extraction...");
+    }
+    rememberDomainHint(
+      ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+      reasonText ? `point_follow_required:${reasonText}` : "point_follow_required"
+    );
+    const prefix = reasonText ? `${reasonText}. ` : "";
+    setListAutoDetectStatus(`${prefix}Starting Point & Follow guidance...`);
+    const guidedReady = await onPointAndFollow({
+      startOptions
+    });
+    if (!guidedReady) {
+      return false;
+    }
+    rememberDomainHint(
+      ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+      reasonText ? `point_follow_ready:${reasonText}` : "point_follow_ready"
+    );
+    trackUiEvent("quick_extract_fallback", {
+      ...fallbackEventBase,
+      fromStrategy: fromStrategy || "unknown",
+      toStrategy: "point_follow",
+      reason: String(reasonText || "").trim()
+    });
+    return true;
+  };
+
+  const runListAutodetectAutopilot = async ({ asFallback = false, fromStrategy = "", reasonText = "" } = {}) => {
+    if (asFallback && plan) {
+      setOrchestrationPhase(plan, "strategy_selection", "Fallback active: trying list autodetect autopilot");
+    }
+    const listAutopilotOverrides = buildListAutopilotOverridesFromIntent(intent);
+
+    if (elements.runnerType.value !== RUNNER_TYPES.LIST_EXTRACTOR) {
+      applyToolPreset("list", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      updateRunnerUi();
+    }
+
+    const hasManualListSetup = Boolean(String(elements.containerSelector.value || "").trim()) && state.listFields.length > 0;
+    if (!hasManualListSetup) {
+      if (asFallback) {
+        const prefix = reasonText ? `Primary strategy failed (${reasonText}). ` : "";
+        setListAutoDetectStatus(`${prefix}Trying list autodetect fallback...`);
+      }
+      const detected = await onListAutoDetect();
+      if (!detected) {
+        rememberDomainHint(
+          ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+          "autodetect_failed_requires_guidance"
+        );
+        return runPointFollowFallback({
+          fromStrategy: asFallback ? "list_autodetect_fallback" : fromStrategy || "list_autodetect",
+          reasonText: "Auto-detect needs guidance",
+          startOptions: {
+            list: {
+              loadMore: {
+                attempts: listAutopilotOverrides.attempts,
+                noChangeThreshold: listAutopilotOverrides.noChangeThreshold,
+                maxRows: listAutopilotOverrides.maxRows,
+                untilNoMore: listAutopilotOverrides.untilNoMore,
+                maxRoundsSafety: listAutopilotOverrides.maxRoundsSafety,
+                autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+                autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+                hardRoundCap: listAutopilotOverrides.hardRoundCap,
+                hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+                hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+                hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit
+              }
+            }
+          }
+        });
+      }
+    }
+
+    if (plan) {
+      setOrchestrationPhase(
+        plan,
+        "automation_start",
+        asFallback ? "Fallback active: starting list autodetect autopilot..." : "Starting list autodetect autopilot..."
+      );
+    }
+    const paginationAutoContinue = resolveSmartPaginationAutoContinue(listAutopilotOverrides, plan);
+    if (paginationAutoContinue?.enabled) {
+      appendLog("quick extract pagination auto-continue", paginationAutoContinue);
+      trackUiEvent("quick_extract_pagination_autocontinue_enabled", {
+        strategy: asFallback ? "list_autodetect_fallback" : plan?.strategy || "list_autodetect",
+        source: paginationAutoContinue.source,
+        applied: Boolean(paginationAutoContinue.applied),
+        nextLinkSelector: paginationAutoContinue.nextLinkSelector
+      });
+    }
+    const targetStatusSuffix = listAutopilotOverrides.hasTarget
+      ? ` Targeting first ${listAutopilotOverrides.maxRows} results.`
+      : listAutopilotOverrides.exhaustive
+        ? " Exhaustive mode enabled: running until no more results."
+        : listAutopilotOverrides.smartExhaustiveDefault
+          ? " Smart mode default: running until no more results."
+        : "";
+    const paginationStatusSuffix = paginationAutoContinue?.enabled ? " Auto-pagination enabled." : "";
+    const segmentationStatusSuffix = listAutopilotOverrides.autoContinueSegments
+      ? ` Segmented auto-continue enabled (${listAutopilotOverrides.autoContinueMaxSegments} segments safety).`
+      : "";
+    const hardCapChainStatusSuffix = listAutopilotOverrides.hardCapAutoContinue
+      ? ` Hard-cap auto-resume enabled (${listAutopilotOverrides.hardCapAutoContinueMaxChains} chains).`
+      : "";
+    setListAutoDetectStatus(
+      `${asFallback ? "Fallback: starting list extraction..." : "Quick extract starting..."}${targetStatusSuffix}${paginationStatusSuffix}${segmentationStatusSuffix}${hardCapChainStatusSuffix}`
+    );
+    const started = await onStart({
+      list: {
+        loadMore: {
+          attempts: listAutopilotOverrides.attempts,
+          noChangeThreshold: listAutopilotOverrides.noChangeThreshold,
+          maxRows: listAutopilotOverrides.maxRows,
+          untilNoMore: listAutopilotOverrides.untilNoMore,
+          maxRoundsSafety: listAutopilotOverrides.maxRoundsSafety,
+          autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+          autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+          hardRoundCap: listAutopilotOverrides.hardRoundCap,
+          hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+          hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+          hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit
+        }
+      }
+    });
+    if (!started) {
+      const startError = state.lastStartError || "List extraction could not start.";
+      rememberDomainHint(
+        ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+        startError ? `list_start_failed:${startError}` : "list_start_failed"
+      );
+      return runPointFollowFallback({
+        fromStrategy: asFallback ? "list_autodetect_fallback" : fromStrategy || "list_autodetect",
+        reasonText: startError,
+        startOptions: {
+          list: {
+            loadMore: {
+              attempts: listAutopilotOverrides.attempts,
+              noChangeThreshold: listAutopilotOverrides.noChangeThreshold,
+              maxRows: listAutopilotOverrides.maxRows,
+              untilNoMore: listAutopilotOverrides.untilNoMore,
+              maxRoundsSafety: listAutopilotOverrides.maxRoundsSafety,
+              autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+              autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+              hardRoundCap: listAutopilotOverrides.hardRoundCap,
+              hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+              hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+              hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit
+            }
+          }
+        }
+      });
+    }
+    const listAutoEnrichEligible = !(intent?.wantsMaps || intent?.wantsLocalLeads || plan?.mapsMode);
+    state.intentAutoListUrlEnrichPending = listAutoEnrichEligible;
+    state.intentAutoListUrlEnrichAutomationId = null;
+    rememberDomainHint(
+      ORCHESTRATION_STRATEGIES.LIST_AUTODETECT_AUTOPILOT,
+      asFallback ? "list_autodetect_fallback_started" : "list_autodetect_started"
+    );
+
+    if (asFallback) {
+      trackUiEvent("quick_extract_fallback", {
+        ...fallbackEventBase,
+        fromStrategy: fromStrategy || "unknown",
+        toStrategy: "list_autodetect",
+        reason: String(reasonText || "").trim()
+      });
+    }
+    if (plan) {
+      setOrchestrationPhase(plan, "monitoring", "List autopilot running. Collecting fresh results...");
+    }
+    setListAutoDetectStatus("Quick extract running. Open DATA to view rows.");
+    trackUiEvent("quick_extract_started", {
+      strategy: asFallback ? "list_autodetect_fallback" : plan?.strategy || "list_autodetect",
+      runnerType: elements.runnerType.value,
+      toolId: state.activeTool,
+      resultTarget: listAutopilotOverrides.maxRows,
+      untilNoMore: listAutopilotOverrides.untilNoMore,
+      smartExhaustiveDefault: listAutopilotOverrides.smartExhaustiveDefault,
+      autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+      autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+      hardRoundCap: listAutopilotOverrides.hardRoundCap,
+      hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+      hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+      hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit,
+      paginationAutoContinueEnabled: Boolean(paginationAutoContinue?.enabled),
+      paginationAutoContinueApplied: Boolean(paginationAutoContinue?.applied),
+      paginationNextLinkSelector: String(paginationAutoContinue?.nextLinkSelector || ""),
+      autoUrlEnrichmentPlanned: state.intentAutoListUrlEnrichPending
+    });
+    return true;
+  };
+
+  try {
+    await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
+    let startUrl = String(elements.startUrl.value || "").trim();
+    const discoveredUrl = String(plan?.discoveredUrl || "").trim();
+    const isDiscoveredMapsUrl =
+      discoveredUrl.toLowerCase().includes("google.com/maps") || discoveredUrl.toLowerCase().includes("maps.google.");
+    if (
+      plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT &&
+      isDiscoveredMapsUrl &&
+      (!startUrl ||
+        (!startUrl.toLowerCase().includes("google.com/maps") && !startUrl.toLowerCase().includes("maps.google.")))
+    ) {
+      startUrl = discoveredUrl;
+      elements.startUrl.value = startUrl;
+    }
+    domainHintCandidates = [
+      startUrl,
+      String(plan?.targetUrl || "").trim(),
+      String(plan?.discoveredUrl || "").trim(),
+      String(elements.startUrl.value || "").trim()
+    ];
+
+    if (!startUrl) {
+      throw new Error("Start URL is required");
+    }
+
+    if (plan) {
+      setOrchestrationPhase(plan, "access_preflight", "Preparing browser access...");
+    }
+    const setup = await onSetupAccess({
+      includeApi: false,
+      includeDownloads: false,
+      includeClipboard: false,
+      silent: true,
+      preferFullHostAccess: false
+    });
+    if (!setup.ok) {
+      throw new Error("Access was denied for this site");
+    }
+
+    if (plan?.strategy === ORCHESTRATION_STRATEGIES.PAGE_AUTOPILOT) {
+      applyToolPreset("page_details", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+      elements.pageManualUrls.value = startUrl;
+
+      if (intent.wantsMetadata) {
+        setRunnerTypeIfAvailable(RUNNER_TYPES.METADATA_EXTRACTOR);
+      } else {
+        setRunnerTypeIfAvailable(RUNNER_TYPES.PAGE_EXTRACTOR);
+        elements.pageActionType.value = resolveIntentPageActionType(intent);
+      }
+
+      updatePageSourceUi();
+      updatePageActionUi();
+      updateRunnerUi();
+
+      if (plan) {
+        setOrchestrationPhase(plan, "automation_start", "Starting page autopilot...");
+      }
+      setListAutoDetectStatus("Quick extract: page autopilot starting...");
+      const started = await onStart();
+      if (!started) {
+        const fallbackStarted = await runListAutodetectAutopilot({
+          asFallback: true,
+          fromStrategy: "page_autopilot",
+          reasonText: state.lastStartError || "Page extraction could not start"
+        });
+        if (fallbackStarted) {
+          return;
+        }
+        throw new Error(state.lastStartError || "Page extraction could not start.");
+      }
+      if (plan) {
+        setOrchestrationPhase(plan, "monitoring", "Page autopilot running. Collecting fresh results...");
+      }
+      setListAutoDetectStatus("Page autopilot running. Open DATA to view rows.");
+      trackUiEvent("quick_extract_started", {
+        strategy: "page_autopilot",
+        runnerType: elements.runnerType.value,
+        toolId: state.activeTool
+      });
+      return;
+    }
+
+    const lowerUrl = startUrl.toLowerCase();
+    const isGoogleMaps = lowerUrl.includes("google.com/maps") || lowerUrl.includes("maps.google.");
+    if (plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT && !isGoogleMaps) {
+      const fallbackStarted = await runListAutodetectAutopilot({
+        asFallback: true,
+        fromStrategy: "maps_autopilot",
+        reasonText: "Google Maps URL not available"
+      });
+      if (fallbackStarted) {
+        return;
+      }
+      throw new Error("Maps autopilot needs a Google Maps target URL. Add a location query in your command.");
+    }
+    if (isGoogleMaps) {
+      applyToolPreset("page_details", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      setRunnerTypeIfAvailable(RUNNER_TYPES.PAGE_EXTRACTOR);
+      elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+      elements.pageManualUrls.value = startUrl;
+      elements.pageActionType.value = PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS;
+      elements.queueConcurrency.value = "1";
+      elements.queueDelayMs.value = "900";
+      elements.queueRetries.value = "1";
+      elements.queueRetryDelayMs.value = "1200";
+      elements.queueJitterMs.value = "250";
+      if (options?.forceMapsExhaustive) {
+        elements.mapsIncludeBasicInfo.checked = true;
+        elements.mapsIncludeContactDetails.checked = true;
+        elements.mapsIncludeReviews.checked = true;
+        elements.mapsIncludeHours.checked = true;
+        elements.mapsIncludeLocation.checked = true;
+        elements.mapsIncludeImages.checked = true;
+      }
+      updatePageSourceUi();
+      updatePageActionUi();
+      updateRunnerUi();
+
+      if (plan) {
+        setOrchestrationPhase(plan, "automation_start", "Starting Google Maps autopilot...");
+      }
+      const mapsTarget = resolveIntentResultTarget(intent);
+      const mapsSmartExhaustiveDefault = mapsTarget <= 0;
+      const mapsMaxScrollSteps = mapsSmartExhaustiveDefault ? 500 : 220;
+      const mapsTargetSuffix = mapsTarget > 0 ? ` Targeting first ${mapsTarget} map results.` : " Smart mode default: running until no more map results.";
+      setListAutoDetectStatus(`Quick extract: Google Maps detected. Starting maps extraction...${mapsTargetSuffix}`);
+      state.intentAutoMapsDetailEnrichPending = true;
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      const started = await onStart({
+        page: {
+          mapsOptions: {
+            maxResults: mapsTarget,
+            untilNoMore: true,
+            maxScrollSteps: mapsMaxScrollSteps
+          }
+        }
+      });
+      if (!started) {
+        state.intentAutoMapsDetailEnrichPending = false;
+        state.intentAutoMapsDetailEnrichAutomationId = null;
+        const fallbackStarted = await runListAutodetectAutopilot({
+          asFallback: true,
+          fromStrategy: plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT ? "maps_autopilot" : "google_maps",
+          reasonText: state.lastStartError || "Google Maps extraction could not start"
+        });
+        if (fallbackStarted) {
+          return;
+        }
+        throw new Error(state.lastStartError || "Google Maps extraction could not start.");
+      }
+      if (plan) {
+        setOrchestrationPhase(plan, "monitoring", "Google Maps autopilot running. Collecting fresh results...");
+      }
+      setListAutoDetectStatus("Google Maps extraction running. DATA will open when complete.");
+      trackUiEvent("quick_extract_started", {
+        strategy: plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT ? "maps_autopilot" : "google_maps",
+        runnerType: elements.runnerType.value,
+        toolId: state.activeTool,
+        resultTarget: mapsTarget,
+        untilNoMore: true,
+        maxScrollSteps: mapsMaxScrollSteps,
+        smartExhaustiveDefault: mapsSmartExhaustiveDefault,
+        autoMapDetailsEnrichPlanned: state.intentAutoMapsDetailEnrichPending
+      });
+      return;
+    }
+
+    const listStarted = await runListAutodetectAutopilot({
+      asFallback: false,
+      fromStrategy: plan?.strategy || "list_autodetect"
+    });
+    if (!listStarted) {
+      throw new Error(state.lastStartError || "Extraction could not start. Check access permissions and retry.");
+    }
+  } catch (error) {
+    const message = friendlyErrorText(error?.message || "");
+    setListAutoDetectStatus(`Quick extract failed: ${message}`, {
+      error: true
+    });
+    appendLog(`quick extract failed: ${message}`);
+    setStatus(AUTOMATION_STATES.ERROR);
+  }
+}
+
+function normalizePickedContainerSelector(selector) {
+  const raw = String(selector || "").trim();
+  if (!raw) return "";
+  return raw.replace(/:nth-of-type\(\d+\)/g, "").replace(/\s{2,}/g, " ").trim();
+}
+
+async function onPointAndFollow(options = {}) {
+  try {
+    await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
+    const startUrl = String(elements.startUrl.value || "").trim();
+    if (!startUrl) {
+      throw new Error("Start URL is required");
+    }
+
+    const setup = await onSetupAccess({
+      includeApi: false,
+      includeDownloads: false,
+      includeClipboard: false,
+      silent: true,
+      preferFullHostAccess: false
+    });
+    if (!setup.ok) {
+      throw new Error("Access was denied for this site");
+    }
+
+    state.pointFollowActive = true;
+    const source = options && typeof options === "object" ? options : {};
+    const startOptions = source.startOptions && typeof source.startOptions === "object" ? source.startOptions : null;
+    state.pointFollowStartOptions = startOptions;
+    applyToolPreset("list", {
+      navigate: false,
+      forceWelcome: false,
+      track: false
+    });
+    setListAutoDetectStatus("Point & Follow: click one data item on the page...");
+    const started = await startPicker({
+      mode: PICKER_MODES.CONTAINER,
+      multiSelect: false,
+      prompt: "Click one value you want to extract. Datascrap will infer the repeating pattern.",
+      purpose: "guided_seed",
+      preferredUrl: startUrl
+    });
+    if (!started?.ok) {
+      throw new Error(started?.error || "Unable to start picker");
+    }
+    rememberDomainAutonomyHint(ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED, {
+      reason: "point_follow_ready",
+      urlCandidates: [startUrl, String(elements.startUrl.value || "").trim()]
+    });
+    setStatus(AUTOMATION_STATES.IDLE);
+    return true;
+  } catch (error) {
+    state.pointFollowActive = false;
+    state.pointFollowStartOptions = null;
+    const message = friendlyErrorText(error?.message || "");
+    setListAutoDetectStatus(`Point & Follow failed: ${message}`, {
+      error: true
+    });
+    appendLog(`point and follow failed: ${message}`);
+    setStatus(AUTOMATION_STATES.ERROR);
+    return false;
+  }
+}
+
+async function onStart(options = {}) {
+  try {
+    state.lastStartError = "";
+    await maybeHydrateStartUrlFromActiveTab({
+      force: false
+    });
     const runnerType = elements.runnerType.value;
     const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
+    const source = options && typeof options === "object" ? options : {};
+    const listOptions = source.list && typeof source.list === "object" ? source.list : {};
+    const pageOptions = source.page && typeof source.page === "object" ? source.page : {};
     const config =
       runnerType === RUNNER_TYPES.LIST_EXTRACTOR
-        ? buildListAutomationConfig()
+        ? buildListAutomationConfig(listOptions)
         : runnerType === RUNNER_TYPES.METADATA_EXTRACTOR
           ? await buildMetadataAutomationConfig()
-          : await buildPageAutomationConfig();
+          : await buildPageAutomationConfig(pageOptions);
 
     const payload = await sendMessage(MESSAGE_TYPES.START_REQUEST, {
       runnerType,
@@ -4815,9 +7275,22 @@ async function onStart() {
       actionType
     });
     appendLog("start accepted", payload);
+    setStatus(AUTOMATION_STATES.RUNNING);
+    setStatusProgress(5, {
+      phase: "Start accepted"
+    });
+    return true;
   } catch (error) {
-    appendLog(`start failed: ${error.message}`);
+    const message = friendlyErrorText(error?.message || "");
+    state.lastStartError = message;
+    appendLog(`start failed: ${message}`);
+    if (state.simpleMode || String(elements.runnerType.value || "") === RUNNER_TYPES.LIST_EXTRACTOR) {
+      setListAutoDetectStatus(`Start failed: ${message}`, {
+        error: true
+      });
+    }
     setStatus(AUTOMATION_STATES.ERROR);
+    return false;
   }
 }
 
@@ -4874,6 +7347,14 @@ for (const button of elements.shellNavButtons) {
 for (const card of elements.toolCards) {
   card.addEventListener("click", () => {
     const toolId = String(card.dataset.tool || "").trim();
+    if (state.simpleMode && toolId === "list") {
+      trackUiEvent("quick_start_opened", {
+        toolId,
+        action: "menu_card_quick_extract"
+      });
+      void onQuickExtract();
+      return;
+    }
     applyToolPreset(toolId, {
       navigate: true,
       forceWelcome: false,
@@ -4907,6 +7388,11 @@ elements.toolWelcomeStartBtn.addEventListener("click", () => {
     return;
   }
 
+  if (state.simpleMode && state.activeTool === "list") {
+    elements.quickExtractBtn.focus();
+    return;
+  }
+
   elements.startBtn.focus();
 });
 
@@ -4918,6 +7404,30 @@ elements.roadmapIntegrationsNotifyBtn.addEventListener("click", () => {
 });
 
 elements.runnerType.addEventListener("change", updateRunnerUi);
+elements.simpleModeToggle.addEventListener("change", () => {
+  onSimpleModeToggle();
+});
+elements.intentRunBtn.addEventListener("click", () => {
+  void onIntentCommandRun();
+});
+elements.intentCommandInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void onIntentCommandRun();
+  }
+});
+elements.setupAccessBtn.addEventListener("click", () => {
+  void onSetupAccess({
+    includeApi: false,
+    includeDownloads: false,
+    includeClipboard: false,
+    silent: false,
+    preferFullHostAccess: true
+  });
+});
+elements.pointFollowBtn.addEventListener("click", () => {
+  void onPointAndFollow();
+});
 elements.speedProfile.addEventListener("change", () => {
   applySpeedProfileDefaults(elements.speedProfile.value);
 });
@@ -4947,6 +7457,9 @@ elements.queueSessionReuseMode.addEventListener("change", () => {
 });
 elements.pageUrlSourceMode.addEventListener("change", updatePageSourceUi);
 elements.pageActionType.addEventListener("change", updatePageActionUi);
+elements.quickExtractBtn.addEventListener("click", () => {
+  void onQuickExtract();
+});
 elements.startBtn.addEventListener("click", () => {
   void onStart();
 });
@@ -5401,9 +7914,11 @@ chrome.runtime.onMessage.addListener((message) => {
 renderListFields();
 renderPageFields();
 state.welcomeVisits = loadWelcomeVisits();
+state.domainAutonomyHints = loadDomainAutonomyHintsFromStorage();
 state.templates = loadTemplatesFromStorage();
 state.speedProfiles = loadSpeedProfilesFromStorage();
 state.reliabilitySettings = loadReliabilitySettingsFromStorage();
+state.simpleMode = true;
 renderTemplates();
 renderIntegrationSecrets();
 renderJobs([]);
@@ -5424,6 +7939,11 @@ setSpeedProfileStatus("Profile editor ready");
 setReliabilityProfileStatus("Reliability profiles ready");
 setUrlGeneratorStatus("URL generator ready");
 setPageRecoveryStatus("Recovery controls ready");
+setSetupAccessStatus("Access setup ready");
+if (elements.quickFlowStatusLine) {
+  elements.quickFlowStatusLine.textContent = "Quick flow ready";
+}
+renderStatusPill();
 updatePageRecoveryPreview();
 updateIntegrationTestUi();
 renderImagePreview();
@@ -5432,6 +7952,10 @@ applyReliabilitySettingsToControls(state.reliabilitySettings, {
   persist: false
 });
 setReliabilityProfileStatus(`Loaded profile "${state.reliabilitySettings?.profile || DEFAULT_RELIABILITY_PROFILE}"`);
+applySimpleModeUi();
+await maybeHydrateStartUrlFromActiveTab({
+  force: false
+});
 updatePageSourceUi();
 updatePageActionUi();
 await hydrateRunnerCatalog();

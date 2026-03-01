@@ -29,6 +29,90 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function queryTabs(queryInfo, chromeApi = chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.tabs.query(queryInfo, (tabs) => {
+      const lastError = chromeApi.runtime?.lastError;
+      if (lastError) {
+        reject(new Error(lastError.message || "Failed to query tabs"));
+        return;
+      }
+      resolve(Array.isArray(tabs) ? tabs : []);
+    });
+  });
+}
+
+function isInjectablePickerTabUrl(url) {
+  return /^https?:\/\//i.test(String(url || "").trim());
+}
+
+function normalizePickerUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return raw;
+  }
+}
+
+function extractUrlHost(url) {
+  try {
+    return new URL(String(url || "").trim()).host || "";
+  } catch {
+    return "";
+  }
+}
+
+function urlsShareOrigin(a, b) {
+  try {
+    const left = new URL(String(a || "").trim());
+    const right = new URL(String(b || "").trim());
+    return left.origin === right.origin;
+  } catch {
+    return false;
+  }
+}
+
+function isEligibleTab(tab) {
+  return Number.isFinite(Number(tab?.id)) && isInjectablePickerTabUrl(tab?.url);
+}
+
+function pickSessionTab({ activeTab, tabs, preferredUrl }) {
+  const preferred = normalizePickerUrl(preferredUrl);
+  const candidates = Array.isArray(tabs) ? tabs.filter(isEligibleTab) : [];
+
+  if (preferred && candidates.length > 0) {
+    const exactMatch = candidates.find((tab) => normalizePickerUrl(tab.url) === preferred);
+    if (exactMatch) {
+      return exactMatch;
+    }
+    const originMatch = candidates.find((tab) => urlsShareOrigin(tab.url, preferred));
+    if (originMatch) {
+      return originMatch;
+    }
+  }
+
+  if (preferred) {
+    if (isEligibleTab(activeTab) && urlsShareOrigin(activeTab.url, preferred)) {
+      return activeTab;
+    }
+    return null;
+  }
+
+  if (isEligibleTab(activeTab)) {
+    return activeTab;
+  }
+
+  if (candidates.length > 0) {
+    return candidates[0];
+  }
+
+  return activeTab || null;
+}
+
 export function createPickerSessionManager({
   chromeApi = chrome,
   onSessionEvent = () => {}
@@ -52,17 +136,33 @@ export function createPickerSessionManager({
       mode,
       multiSelect = false,
       anchorSelector = "",
-      prompt = ""
+      prompt = "",
+      preferredUrl = ""
     }) {
       const tab = await getActiveTab(chromeApi);
-      if (!tab?.id) {
+      const tabs = await queryTabs({ currentWindow: true }, chromeApi).catch(() => []);
+      const selectedTab = pickSessionTab({
+        activeTab: tab,
+        tabs,
+        preferredUrl
+      });
+      const preferredHost = extractUrlHost(preferredUrl);
+      const preferredHostHint = preferredHost ? ` (${preferredHost})` : "";
+
+      if (!selectedTab?.id) {
+        if (String(preferredUrl || "").trim()) {
+          throw new Error(`Open the target website tab${preferredHostHint} and retry Point & Follow.`);
+        }
         throw new Error("No active tab found for picker session");
+      }
+      if (!isInjectablePickerTabUrl(selectedTab.url)) {
+        throw new Error(`Open the target website tab${preferredHostHint} and retry Point & Follow.`);
       }
 
       const sessionId = createId("picker");
       const session = {
         sessionId,
-        tabId: tab.id,
+        tabId: selectedTab.id,
         mode: String(mode || "").trim(),
         status: "starting",
         multiSelect: Boolean(multiSelect),
@@ -76,9 +176,9 @@ export function createPickerSessionManager({
       sessions.set(sessionId, session);
 
       try {
-        await ensurePickerInjected(tab.id);
+        await ensurePickerInjected(selectedTab.id);
         await sendTabMessage({
-          tabId: tab.id,
+          tabId: selectedTab.id,
           message: {
             type: PICKER_MESSAGE_TYPES.START,
             payload: {

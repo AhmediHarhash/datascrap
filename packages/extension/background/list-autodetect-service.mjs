@@ -9,7 +9,8 @@ function normalizeOptions(input = {}) {
     maxFields: clamp(input.maxFields || 6, 1, 12),
     maxPreviewRows: clamp(input.maxPreviewRows || 5, 1, 10),
     minItems: clamp(input.minItems || 3, 2, 20),
-    sampleItems: clamp(input.sampleItems || 8, 2, 20)
+    sampleItems: clamp(input.sampleItems || 8, 2, 20),
+    anchorSelector: toText(input.anchorSelector).trim()
   };
 }
 
@@ -253,6 +254,49 @@ export async function autodetectListConfig({
         return groups.slice(0, 20);
       }
 
+      function resolveBestGroup(groups, anchorSelector) {
+        if (!Array.isArray(groups) || groups.length === 0) {
+          return null;
+        }
+        const selector = String(anchorSelector || "").trim();
+        if (!selector) {
+          return groups[0];
+        }
+
+        let anchorNode = null;
+        try {
+          anchorNode = document.querySelector(selector);
+        } catch (_error) {
+          anchorNode = null;
+        }
+        if (!anchorNode) {
+          return groups[0];
+        }
+
+        const matches = [];
+        for (const group of groups) {
+          const hasMatch = Array.isArray(group.items)
+            ? group.items.some((item) => item === anchorNode || item.contains(anchorNode) || anchorNode.contains(item))
+            : false;
+          if (!hasMatch) continue;
+
+          const directContain = Array.isArray(group.items)
+            ? group.items.some((item) => item === anchorNode || item.contains(anchorNode))
+            : false;
+          const scoreBoost = directContain ? 40 : 15;
+          matches.push({
+            group,
+            weightedScore: Number(group.score || 0) + scoreBoost
+          });
+        }
+
+        if (matches.length === 0) {
+          return groups[0];
+        }
+        matches.sort((a, b) => b.weightedScore - a.weightedScore);
+        return matches[0].group;
+      }
+
       function detectFields(items, maxFields, sampleItems) {
         const sampledItems = items.slice(0, sampleItems);
         const anchor = sampledItems[0];
@@ -421,7 +465,7 @@ export async function autodetectListConfig({
         };
       }
 
-      const best = groups[0];
+      const best = resolveBestGroup(groups, runtimeOptions.anchorSelector);
       const containerSelector = buildContainerSelector(best.parent, best.items);
       const fields = detectFields(
         best.items,

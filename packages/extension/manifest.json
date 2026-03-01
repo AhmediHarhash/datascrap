@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "description": "Local-first web extraction runtime with sidepanel automation controls.",
   "permissions": ["activeTab", "scripting", "storage", "sidePanel", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "optional_permissions": ["downloads", "clipboardWrite"],
-  "optional_host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "Datascrap"
   },

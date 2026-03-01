@@ -211,6 +211,7 @@
   - backup verification vars (`MIN_BACKUP_BYTES`, `MIN_BACKUP_ENTRIES`)
   - queue monitor thresholds (`MAX_DUE_JOBS`, `MAX_DEAD_LETTER_JOBS`)
   - queue monitor schedule threshold (`MAX_DUE_SCHEDULES`)
+  - recommended dead-letter threshold baseline: `MAX_DEAD_LETTER_JOBS=3`
 - Failure fallback enabled:
   - workflow auto-creates/updates issue `Uptime Monitor Incident`
   - workflow auto-creates/updates issue `SLO Monitor Incident`
