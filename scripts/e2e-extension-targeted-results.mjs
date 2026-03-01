@@ -5,6 +5,7 @@ import { chromium } from "playwright";
 import {
   createRunProfileDir,
   patchPermissionApis,
+  parseHistoryRowCount,
   parseExtensionId,
   removeDirWithRetries,
   waitForExtensionServiceWorker
@@ -226,15 +227,6 @@ async function waitForEventLogSignal(page, signal, timeoutMs = EVENT_LOG_SIGNAL_
     await page.waitForTimeout(EVENT_LOG_POLL_INTERVAL_MS);
   }
   return false;
-}
-
-function parseHistoryRowCount(historyText, tableRowCount = 0) {
-  const raw = String(historyText || "");
-  const byPipe = raw.match(/\brows\s+(\d+)\b/i);
-  if (byPipe?.[1]) return Number(byPipe[1]);
-  const byParen = raw.match(/\((\d+)\s+rows\)/i);
-  if (byParen?.[1]) return Number(byParen[1]);
-  return Math.max(0, Number(tableRowCount || 0));
 }
 
 async function waitForTerminalAndRows(page, timeoutMs = 120000) {

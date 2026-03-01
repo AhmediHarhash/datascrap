@@ -5,6 +5,7 @@ import { chromium } from "playwright";
 import {
   createRunProfileDir,
   patchPermissionApis,
+  parseHistoryRowCount,
   parseExtensionId,
   removeDirWithRetries,
   waitForExtensionServiceWorker
@@ -46,15 +47,6 @@ function parseIntegerEnv(rawValue, { name, min, max, fallback }) {
     throw new Error(`${name} must be in ${min}-${max}, received "${raw}"`);
   }
   return parsed;
-}
-
-function parseHistoryRowCount(historyText, tableRowCount = 0) {
-  const raw = String(historyText || "");
-  const byPipe = raw.match(/\brows\s+(\d+)\b/i);
-  if (byPipe?.[1]) return Number(byPipe[1]);
-  const byParen = raw.match(/\((\d+)\s+rows\)/i);
-  if (byParen?.[1]) return Number(byParen[1]);
-  return Math.max(0, Number(tableRowCount || 0));
 }
 
 function buildFixtureHtml({ page, pageCount, rowsPerPage }) {

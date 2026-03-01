@@ -53,6 +53,15 @@ export async function patchPermissionApis(page, options = {}) {
   }, { includeChangeFlags });
 }
 
+export function parseHistoryRowCount(historyText, tableRowCount = 0) {
+  const raw = String(historyText || "");
+  const byPipe = raw.match(/\brows\s+(\d+)\b/i);
+  if (byPipe?.[1]) return Number(byPipe[1]);
+  const byParen = raw.match(/\((\d+)\s+rows\)/i);
+  if (byParen?.[1]) return Number(byParen[1]);
+  return Math.max(0, Number(tableRowCount || 0));
+}
+
 export async function removeDirWithRetries(dirPath, attempts = 6) {
   const totalAttempts = Number.isFinite(Number(attempts)) ? Math.max(1, Number(attempts)) : 6;
   for (let index = 0; index < totalAttempts; index += 1) {
