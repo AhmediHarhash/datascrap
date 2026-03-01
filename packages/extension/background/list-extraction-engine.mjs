@@ -49,6 +49,58 @@ function normalizeLoadMoreMethod(value) {
   return LOAD_MORE_METHODS.NONE;
 }
 
+function normalizeMaxRows(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(50_000, Math.floor(parsed)));
+}
+
+function normalizeBoolean(value, fallback = false) {
+  if (typeof value === "boolean") return value;
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return Boolean(fallback);
+  if (["1", "true", "yes", "on"].includes(raw)) return true;
+  if (["0", "false", "no", "off"].includes(raw)) return false;
+  return Boolean(fallback);
+}
+
+function normalizeRoundSafetyCap(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(500, Math.floor(parsed)));
+}
+
+function normalizeAutoContinueMaxSegments(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.min(50, Math.floor(parsed)));
+}
+
+function normalizeHardRoundCap(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 5000;
+  return Math.max(100, Math.min(10000, Math.floor(parsed)));
+}
+
+function normalizeHardRoundAbsoluteLimit(value, fallback = 5000) {
+  const base = normalizeHardRoundCap(fallback);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return base;
+  return Math.max(base, Math.min(50000, Math.floor(parsed)));
+}
+
+function normalizeUrlSignature(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch (_error) {
+    return raw.replace(/\/+$/, "");
+  }
+}
+
 function normalizeListConfig(config = {}) {
   const actions = Array.isArray(config.actions) ? config.actions : [];
   const extractAction = actions.find((item) => String(item?.type || "").toUpperCase() === "EXTRACT_LIST");
@@ -61,6 +113,7 @@ function normalizeListConfig(config = {}) {
   const extractConfig = extractAction || config.extractList || {};
   const fields = Array.isArray(extractConfig.fields) ? extractConfig.fields : [];
   const loadMoreConfig = loadMoreAction || config.loadMore || {};
+  const hardRoundCap = normalizeHardRoundCap(loadMoreConfig.hardRoundCap);
 
   return {
     startUrl: String(config.startUrl || "").trim(),
@@ -73,7 +126,16 @@ function normalizeListConfig(config = {}) {
       scrollPx: Number(loadMoreConfig.scrollPx || 1800),
       buttonSelector: String(loadMoreConfig.buttonSelector || "").trim(),
       nextLinkSelector: String(loadMoreConfig.nextLinkSelector || "").trim(),
-      noChangeThreshold: Number(loadMoreConfig.noChangeThreshold || profile.noChangeThreshold)
+      noChangeThreshold: Number(loadMoreConfig.noChangeThreshold || profile.noChangeThreshold),
+      maxRows: normalizeMaxRows(loadMoreConfig.maxRows),
+      untilNoMore: normalizeBoolean(loadMoreConfig.untilNoMore, false),
+      maxRoundsSafety: normalizeRoundSafetyCap(loadMoreConfig.maxRoundsSafety),
+      autoContinueSegments: normalizeBoolean(loadMoreConfig.autoContinueSegments, false),
+      autoContinueMaxSegments: normalizeAutoContinueMaxSegments(loadMoreConfig.autoContinueMaxSegments),
+      hardRoundCap,
+      hardCapAutoContinue: normalizeBoolean(loadMoreConfig.hardCapAutoContinue, false),
+      hardCapAutoContinueMaxChains: normalizeAutoContinueMaxSegments(loadMoreConfig.hardCapAutoContinueMaxChains),
+      hardRoundAbsoluteLimit: normalizeHardRoundAbsoluteLimit(loadMoreConfig.hardRoundAbsoluteLimit, hardRoundCap)
     }
   };
 }
@@ -230,19 +292,55 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
       const rowsByKey = new Map();
       let noChangeStreak = 0;
       let rounds = 0;
+      const hasRowCap = Number(listConfig.loadMore.maxRows || 0) > 0;
+      const maxRows = hasRowCap ? normalizeMaxRows(listConfig.loadMore.maxRows) : 0;
+      let rowCapHit = false;
 
       const maxLoadAttempts = Math.max(0, Math.floor(Number(listConfig.loadMore.attempts || 0)));
-      const maxRounds = Math.max(1, maxLoadAttempts + 1);
+      const defaultRounds = Math.max(1, maxLoadAttempts + 1);
+      const untilNoMore =
+        Boolean(listConfig.loadMore.untilNoMore) && listConfig.loadMore.method !== LOAD_MORE_METHODS.NONE;
+      const maxRoundsSafety = normalizeRoundSafetyCap(listConfig.loadMore.maxRoundsSafety);
+      const segmentRoundBudget =
+        untilNoMore ? (maxRoundsSafety > 0 ? Math.max(defaultRounds, maxRoundsSafety) : 160) : defaultRounds;
+      let maxRounds = segmentRoundBudget;
+      const autoContinueSegments =
+        untilNoMore && normalizeBoolean(listConfig.loadMore.autoContinueSegments, false);
+      const autoContinueMaxSegments = autoContinueSegments
+        ? Math.max(1, normalizeAutoContinueMaxSegments(listConfig.loadMore.autoContinueMaxSegments))
+        : 1;
+      const hardRoundCap = normalizeHardRoundCap(listConfig.loadMore.hardRoundCap);
+      const hardCapAutoContinue =
+        untilNoMore && normalizeBoolean(listConfig.loadMore.hardCapAutoContinue, false);
+      const hardCapAutoContinueMaxChains = hardCapAutoContinue
+        ? Math.max(1, normalizeAutoContinueMaxSegments(listConfig.loadMore.hardCapAutoContinueMaxChains))
+        : 1;
+      const hardRoundAbsoluteLimit = normalizeHardRoundAbsoluteLimit(
+        listConfig.loadMore.hardRoundAbsoluteLimit,
+        hardRoundCap
+      );
+      let effectiveHardRoundCap = hardRoundCap;
+      let hardCapAutoContinueUsed = 0;
+      let autoContinueSegmentsUsed = 0;
+      let rowsAddedInSegment = 0;
+      let terminationReason = "unknown";
+      const visitedNavigationUrls = new Set();
+      const initialTabUrlSignature = normalizeUrlSignature(tab.url || listConfig.startUrl || "");
+      if (initialTabUrlSignature) {
+        visitedNavigationUrls.add(initialTabUrlSignature);
+      }
 
-      for (let roundIndex = 0; roundIndex < maxRounds; roundIndex += 1) {
+      for (let roundIndex = 0; roundIndex < maxRounds && roundIndex < effectiveHardRoundCap; roundIndex += 1) {
         throwIfAborted(signal);
         rounds += 1;
+        const progress = untilNoMore ? Math.min(95, Math.floor(8 + roundIndex * 3)) : Math.min(95, Math.floor((roundIndex / maxRounds) * 100));
 
         emitProgress?.({
-          progress: Math.min(95, Math.floor((roundIndex / maxRounds) * 100)),
+          progress,
           phase: `Extracting rows (round ${roundIndex + 1}/${maxRounds})`,
           context: {
-            loadMoreMethod: listConfig.loadMore.method
+            loadMoreMethod: listConfig.loadMore.method,
+            untilNoMore
           }
         });
 
@@ -272,6 +370,10 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
           if (!rowsByKey.has(key)) {
             rowsByKey.set(key, row);
             newRows += 1;
+            if (hasRowCap && rowsByKey.size >= maxRows) {
+              rowCapHit = true;
+              break;
+            }
           }
         }
 
@@ -280,14 +382,63 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
         } else {
           noChangeStreak = 0;
         }
+        rowsAddedInSegment += newRows;
 
         const isLastRound = roundIndex >= maxRounds - 1;
-        if (isLastRound || listConfig.loadMore.method === LOAD_MORE_METHODS.NONE) {
+        if (rowCapHit) {
+          terminationReason = "row_cap";
+          break;
+        }
+
+        if (listConfig.loadMore.method === LOAD_MORE_METHODS.NONE) {
+          terminationReason = "load_more_disabled";
           break;
         }
 
         if (noChangeStreak >= Math.max(1, Math.floor(Number(listConfig.loadMore.noChangeThreshold || 1)))) {
+          terminationReason = "no_change";
           break;
+        }
+
+        if (!untilNoMore && isLastRound) {
+          terminationReason = "attempt_limit";
+          break;
+        }
+
+        if (untilNoMore && isLastRound) {
+          const reachedHardCapWindow = maxRounds >= effectiveHardRoundCap;
+          const canAutoContinue =
+            autoContinueSegments &&
+            autoContinueSegmentsUsed < autoContinueMaxSegments - 1 &&
+            rowsAddedInSegment > 0 &&
+            maxRounds < effectiveHardRoundCap;
+          if (canAutoContinue) {
+            const nextMaxRounds = Math.min(effectiveHardRoundCap, maxRounds + segmentRoundBudget);
+            if (nextMaxRounds > maxRounds) {
+              autoContinueSegmentsUsed += 1;
+              maxRounds = nextMaxRounds;
+              rowsAddedInSegment = 0;
+              emitProgress?.({
+                progress: Math.min(95, Math.floor(10 + autoContinueSegmentsUsed * 2)),
+                phase: `Auto-continuing pagination segment ${autoContinueSegmentsUsed + 1}/${autoContinueMaxSegments}`,
+                context: {
+                  autoContinueSegments,
+                  autoContinueSegmentsUsed,
+                  autoContinueMaxSegments,
+                  hardRoundCap: effectiveHardRoundCap,
+                  maxRounds
+                }
+              });
+            } else {
+              terminationReason = "hard_round_cap";
+              break;
+            }
+          } else {
+            if (!(reachedHardCapWindow && hardCapAutoContinue)) {
+              terminationReason = reachedHardCapWindow ? "hard_round_cap" : "round_limit";
+              break;
+            }
+          }
         }
 
         throwIfAborted(signal);
@@ -300,10 +451,7 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
             chromeApi
           });
           await delay(Math.max(150, listConfig.loadMore.delayMs));
-          continue;
-        }
-
-        if (method === LOAD_MORE_METHODS.CLICK_BUTTON) {
+        } else if (method === LOAD_MORE_METHODS.CLICK_BUTTON) {
           const clickResponse = await executeInTab({
             tabId: tab.id,
             func: clickSelectorInDom,
@@ -316,13 +464,11 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
           });
           const clickResult = clickResponse?.[0]?.result || {};
           if (!clickResult.clicked) {
+            terminationReason = `load_more_click_${String(clickResult.reason || "not_found").trim() || "not_found"}`;
             break;
           }
           await delay(Math.max(150, listConfig.loadMore.delayMs));
-          continue;
-        }
-
-        if (method === LOAD_MORE_METHODS.NAVIGATE) {
+        } else if (method === LOAD_MORE_METHODS.NAVIGATE) {
           const nextResponse = await executeInTab({
             tabId: tab.id,
             func: resolveNextUrlInDom,
@@ -335,7 +481,16 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
           });
           const nextResult = nextResponse?.[0]?.result || {};
           if (!nextResult.ok || !nextResult.nextUrl) {
+            terminationReason = `next_link_${String(nextResult.reason || "not_found").trim() || "not_found"}`;
             break;
+          }
+          const nextUrlSignature = normalizeUrlSignature(nextResult.nextUrl);
+          if (nextUrlSignature && visitedNavigationUrls.has(nextUrlSignature)) {
+            terminationReason = "next_link_cycle";
+            break;
+          }
+          if (nextUrlSignature) {
+            visitedNavigationUrls.add(nextUrlSignature);
           }
           await updateTab({
             tabId: tab.id,
@@ -351,14 +506,67 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
           });
           await delay(Math.max(120, listConfig.loadMore.delayMs));
         }
+
+        const reachedHardCapBoundary = roundIndex >= effectiveHardRoundCap - 1;
+        if (!reachedHardCapBoundary) {
+          continue;
+        }
+
+        const canHardCapAutoContinue =
+          hardCapAutoContinue &&
+          hardCapAutoContinueUsed < hardCapAutoContinueMaxChains &&
+          rowsAddedInSegment > 0 &&
+          noChangeStreak === 0 &&
+          effectiveHardRoundCap < hardRoundAbsoluteLimit;
+        if (canHardCapAutoContinue) {
+          const nextHardRoundCap = Math.min(hardRoundAbsoluteLimit, effectiveHardRoundCap + hardRoundCap);
+          if (nextHardRoundCap > effectiveHardRoundCap) {
+            hardCapAutoContinueUsed += 1;
+            effectiveHardRoundCap = nextHardRoundCap;
+            maxRounds = Math.max(maxRounds, effectiveHardRoundCap);
+            rowsAddedInSegment = 0;
+            emitProgress?.({
+              progress: Math.min(95, Math.floor(12 + hardCapAutoContinueUsed * 2)),
+              phase: `Auto-continuing safety chain ${hardCapAutoContinueUsed}/${hardCapAutoContinueMaxChains}`,
+              context: {
+                hardCapAutoContinue,
+                hardCapAutoContinueUsed,
+                hardCapAutoContinueMaxChains,
+                hardRoundCap,
+                hardRoundAbsoluteLimit,
+                effectiveHardRoundCap
+              }
+            });
+            continue;
+          }
+        }
+        terminationReason = "hard_round_cap";
+        break;
       }
 
-      const rows = Array.from(rowsByKey.values());
+      if (terminationReason === "unknown" && rounds >= effectiveHardRoundCap) {
+        terminationReason = "hard_round_cap";
+      }
+
+      const rows = hasRowCap ? Array.from(rowsByKey.values()).slice(0, maxRows) : Array.from(rowsByKey.values());
       emitProgress?.({
         progress: 100,
         phase: "List extraction completed",
         context: {
-          rowCount: rows.length
+          rowCount: rows.length,
+          rowCapHit,
+          untilNoMore,
+          terminationReason,
+          autoContinueSegments,
+          autoContinueSegmentsUsed,
+          autoContinueMaxSegments,
+          hardRoundCap,
+          hardCapAutoContinue,
+          hardCapAutoContinueUsed,
+          hardCapAutoContinueMaxChains,
+          hardRoundAbsoluteLimit,
+          effectiveHardRoundCap,
+          visitedNavigationUrlCount: visitedNavigationUrls.size
         }
       });
 
@@ -368,7 +576,23 @@ export function createListExtractionEngine({ chromeApi = chrome } = {}) {
           rowCount: rows.length,
           rounds,
           loadMoreMethod: listConfig.loadMore.method,
-          noChangeStreak
+          noChangeStreak,
+          maxRows,
+          rowCapHit,
+          untilNoMore,
+          maxRounds,
+          segmentRoundBudget,
+          autoContinueSegments,
+          autoContinueSegmentsUsed,
+          autoContinueMaxSegments,
+          hardRoundCap,
+          hardCapAutoContinue,
+          hardCapAutoContinueUsed,
+          hardCapAutoContinueMaxChains,
+          hardRoundAbsoluteLimit,
+          effectiveHardRoundCap,
+          visitedNavigationUrlCount: visitedNavigationUrls.size,
+          terminationReason
         }
       };
     }

@@ -78,17 +78,28 @@ router.get("/api/schedules", requireOptionalCloudFeatures, requireAuth, schedule
 
     const activeOnly = parseBoolean(req.query.activeOnly, false);
     const limit = Number(req.query.limit || 50);
-    const items = await listSchedules({
+    const cursorCreatedAt = req.query.cursorCreatedAt;
+    const cursorId = req.query.cursorId;
+    const listed = await listSchedules({
       accountId: req.auth.accountId,
       activeOnly: Boolean(activeOnly),
-      limit
+      limit,
+      cursorCreatedAt,
+      cursorId
     });
 
     return res.status(200).json({
       success: true,
-      items
+      items: listed.items,
+      pageInfo: listed.pageInfo
     });
-  } catch (_error) {
+  } catch (error) {
+    if (error.code === "INVALID_SCHEDULE_CURSOR") {
+      return res.status(400).json({
+        errorType: error.code,
+        message: error.message
+      });
+    }
     return res.status(500).json({ error: "Failed to list schedules" });
   }
 });

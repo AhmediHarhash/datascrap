@@ -8,6 +8,41 @@ on:
         required: false
         default: false
         type: boolean
+      run_fallback:
+        description: "Run fallback-transition e2e hardening variant"
+        required: false
+        default: false
+        type: boolean
+      run_targeted:
+        description: "Run targeted-result cap e2e hardening variant"
+        required: false
+        default: false
+        type: boolean
+      run_long_pagination:
+        description: "Run long-pagination e2e hardening variant"
+        required: false
+        default: false
+        type: boolean
+      targeted_results:
+        description: "Targeted e2e result cap (1-500)"
+        required: false
+        default: "12"
+        type: string
+      long_total_rows:
+        description: "Long-pagination fixture total rows (300-5000)"
+        required: false
+        default: "1500"
+        type: string
+      long_batch_size:
+        description: "Long-pagination fixture batch size (1-24)"
+        required: false
+        default: "6"
+        type: string
+      fallback_command:
+        description: "Fallback e2e command text"
+        required: false
+        default: "maps https://example.com"
+        type: string
   push:
     branches:
       - main
@@ -57,10 +92,79 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_maps == true }}
         run: npm run test:local:hardening:e2e:maps
 
-      - name: Upload E2E Artifacts
+      - name: Run Local Hardening (E2E fallback)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_fallback == true }}
+        env:
+          E2E_FALLBACK_COMMAND: ${{ inputs.fallback_command }}
+        run: npm run test:local:hardening:e2e:fallback
+
+      - name: Validate Targeted Results Input
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_targeted == true }}
+        env:
+          TARGETED_RESULTS_INPUT: ${{ inputs.targeted_results }}
+        run: node scripts/validate-targeted-results-input.mjs
+
+      - name: Run Local Hardening (E2E targeted)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_targeted == true }}
+        env:
+          E2E_TARGET_RESULTS: ${{ inputs.targeted_results }}
+        run: npm run test:local:hardening:e2e:targeted
+
+      - name: Validate Long Pagination Inputs
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_long_pagination == true }}
+        env:
+          LONG_TOTAL_ROWS_INPUT: ${{ inputs.long_total_rows }}
+          LONG_BATCH_SIZE_INPUT: ${{ inputs.long_batch_size }}
+        run: node scripts/validate-long-pagination-input.mjs
+
+      - name: Run Local Hardening (E2E long pagination)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_long_pagination == true }}
+        env:
+          E2E_LONG_TOTAL_ROWS: ${{ inputs.long_total_rows }}
+          E2E_LONG_BATCH_SIZE: ${{ inputs.long_batch_size }}
+        run: npm run test:local:hardening:e2e:long-pagination
+
+      - name: Upload E2E Artifacts (simple)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: extension-e2e-artifacts
-          path: dist/e2e
+          name: extension-e2e-artifacts-simple
+          path: |
+            dist/e2e/e2e-simple-*
+          if-no-files-found: ignore
+
+      - name: Upload E2E Artifacts (maps)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_maps == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-e2e-artifacts-maps
+          path: |
+            dist/e2e/e2e-maps-*
+          if-no-files-found: ignore
+
+      - name: Upload E2E Artifacts (fallback)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_fallback == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-e2e-artifacts-fallback
+          path: |
+            dist/e2e/e2e-fallback-*
+          if-no-files-found: ignore
+
+      - name: Upload E2E Artifacts (targeted)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_targeted == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-e2e-artifacts-targeted-${{ inputs.targeted_results }}
+          path: |
+            dist/e2e/e2e-targeted-*
+          if-no-files-found: ignore
+
+      - name: Upload E2E Artifacts (long pagination)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_long_pagination == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-e2e-artifacts-long-pagination-${{ inputs.long_total_rows }}r-${{ inputs.long_batch_size }}b
+          path: |
+            dist/e2e/e2e-long-pagination-*
           if-no-files-found: ignore

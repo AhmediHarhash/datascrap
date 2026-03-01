@@ -97,7 +97,7 @@ function normalizeTextOptions(input = {}) {
 function normalizeMapsOptions(input = {}) {
   const source = input && typeof input === "object" ? input : {};
   const requestedMaxResults = Number(source.maxResults);
-  const maxResults = Number.isFinite(requestedMaxResults) ? clamp(requestedMaxResults, 0, 5000, 2000) : 2000;
+  const maxResults = Number.isFinite(requestedMaxResults) ? clamp(requestedMaxResults, 0, 50000, 2000) : 2000;
   return {
     includeBasicInfo: Boolean(source.includeBasicInfo !== false),
     includeContactDetails: Boolean(source.includeContactDetails !== false),

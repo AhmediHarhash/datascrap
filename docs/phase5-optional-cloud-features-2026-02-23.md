@@ -97,6 +97,9 @@ Enable optional scheduling/integration infrastructure without impacting core aut
 - Monitor script/workflow:
   - `services/control-api/scripts/job-queue-monitor.js`
   - `.github/workflows/job-queue-monitor.yml`
+- Monitor defaults and cadence hardening:
+  - workflow cadence: hourly (`0 * * * *`)
+  - `MAX_DEAD_LETTER_JOBS` default tolerance: `3`
 
 ## Rollout Notes
 1. Apply migrations `0004` and `0005` before enabling feature flag.

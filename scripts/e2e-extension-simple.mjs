@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
 
@@ -50,9 +50,13 @@ async function readUiState(page) {
 async function main() {
   const extensionPath = resolve("packages/extension");
   const userDataDir = resolve(".tmp", "pw-extension-profile");
+  const artifactsDir = resolve("dist", "e2e");
   await rm(userDataDir, {
     recursive: true,
     force: true
+  });
+  await mkdir(artifactsDir, {
+    recursive: true
   });
 
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -109,32 +113,42 @@ async function main() {
     assert(afterImageCard.dataTablePanel.display === "none", "Data table panel should be hidden for image tool");
     assert(afterImageCard.exportPanel.display === "none", "Export panel should be hidden for image tool");
 
-    console.log(
-      JSON.stringify(
-        {
-          ok: true,
-          extensionId,
-          checks: {
-            initialSimpleModeHidden: true,
-            listCardNoToolsRedirect: true,
-            imageToolDataViewSwitch: true
-          },
-          snapshot: {
-            initial,
-            afterListCard,
-            afterImageCard
-          }
-        },
-        null,
-        2
-      )
-    );
+    await page.screenshot({
+      path: resolve(artifactsDir, "e2e-simple-sidepanel.png"),
+      fullPage: true
+    });
+
+    const result = {
+      ok: true,
+      extensionId,
+      checks: {
+        initialSimpleModeHidden: true,
+        listCardNoToolsRedirect: true,
+        imageToolDataViewSwitch: true
+      },
+      snapshot: {
+        initial,
+        afterListCard,
+        afterImageCard
+      },
+      artifacts: {
+        sidepanelScreenshot: resolve("dist", "e2e", "e2e-simple-sidepanel.png")
+      }
+    };
+
+    await writeFile(resolve(artifactsDir, "e2e-simple-result.json"), JSON.stringify(result, null, 2), "utf8");
+    console.log(JSON.stringify(result, null, 2));
   } finally {
     await context.close();
   }
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
+  const artifactsDir = resolve("dist", "e2e");
+  await mkdir(artifactsDir, {
+    recursive: true
+  });
+  await writeFile(resolve(artifactsDir, "e2e-simple-error.txt"), `[e2e-extension-simple] failed: ${error.message}\n`, "utf8");
   console.error(`[e2e-extension-simple] failed: ${error.message}`);
   process.exit(1);
 });

@@ -19,8 +19,12 @@
 - `npm run smoke:extension` -> pass
 - `npm run e2e:extension:simple` -> pass
 - `npm run e2e:extension:maps` -> pass
+- `npm run e2e:extension:fallback` -> pass
+- `npm run e2e:extension:targeted` -> pass
 - `npm run test:local:hardening:e2e` -> pass
 - `npm run test:local:hardening:e2e:maps` -> pass
+- `npm run test:local:hardening:e2e:fallback` -> pass
+- `npm run test:local:hardening:e2e:targeted` -> pass
 - `npm run github:branch-protection:plan` -> pass
 - `npm run github:branch-protection:apply` -> pass
 - `npm run test:local:hardening` -> pass (`hasDatabase=false`, cloud smoke intentionally skipped)
@@ -39,8 +43,14 @@
 - e2e-enabled variants:
   - `npm run test:local:hardening:e2e`
   - `npm run test:local:hardening:e2e:maps`
+  - `npm run test:local:hardening:e2e:fallback`
+  - `npm run test:local:hardening:e2e:targeted`
+  - `npm run test:local:hardening:e2e:long-pagination`
   - `npm run hardening:railway:e2e`
   - `npm run hardening:railway:e2e:maps`
+  - `npm run hardening:railway:e2e:fallback`
+  - `npm run hardening:railway:e2e:targeted`
+  - `npm run hardening:railway:e2e:long-pagination`
 
 1) Extension smoke chain
 - `npm run smoke:extension`
@@ -52,9 +62,15 @@
 2) Optional extension e2e checks
 - `npm run e2e:extension:simple`
 - `npm run e2e:extension:maps`
+- `npm run e2e:extension:fallback`
+- `npm run e2e:extension:targeted`
+- `npm run e2e:extension:long-pagination`
 - For one-command hardening:
   - `npm run test:local:hardening:e2e`
   - `npm run test:local:hardening:e2e:maps`
+  - `npm run test:local:hardening:e2e:fallback`
+  - `npm run test:local:hardening:e2e:targeted`
+  - `npm run test:local:hardening:e2e:long-pagination`
 
 3) Control API health/readiness smoke
 - `npm run smoke:control-api` (with API running)
@@ -91,6 +107,9 @@
 - e2e-enabled variants:
   - `npm run release:full:e2e`
   - `npm run release:full:e2e:maps`
+  - `npm run release:full:e2e:fallback`
+  - `npm run release:full:e2e:targeted`
+  - `npm run release:full:e2e:long-pagination`
 - Verified cloud smoke also covers integration secret connection test endpoint:
   - `POST /api/integrations/secrets/test`
 
@@ -100,9 +119,35 @@
 - Trigger:
   - pull requests touching extension/core/scripts/docs/package files
   - manual dispatch (`run_maps=true` optionally enables maps e2e)
+- manual dispatch (`run_fallback=true` optionally enables fallback e2e)
+- manual dispatch (`run_targeted=true` optionally enables targeted-result cap e2e)
+- manual dispatch (`run_long_pagination=true` optionally enables long-pagination e2e)
+- manual dispatch (`targeted_results=<n>` optionally customizes targeted cap, default `12`)
+- manual dispatch (`long_total_rows=<n>` optionally customizes long-pagination fixture rows, default `1500`)
+- manual dispatch (`long_batch_size=<n>` optionally customizes long-pagination fixture batch size, default `6`)
+ - manual dispatch targeted cap is validated (`1..500`) before targeted e2e execution
+- manual dispatch long-pagination knobs are validated (`long_total_rows: 300..5000`, `long_batch_size: 1..24`) before long e2e execution
+- manual dispatch (`fallback_command=<text>` optionally customizes fallback e2e intent text)
 - Runs:
   - `npm run test:local:hardening:e2e`
   - optional `npm run test:local:hardening:e2e:maps`
+  - optional `npm run test:local:hardening:e2e:fallback`
+  - optional `npm run test:local:hardening:e2e:targeted`
+  - optional `npm run test:local:hardening:e2e:long-pagination`
+ - targeted CI artifact naming:
+   - `extension-e2e-artifacts-targeted-<targeted_results>`
+- long-pagination CI artifact naming:
+  - `extension-e2e-artifacts-long-pagination-<long_total_rows>r-<long_batch_size>b`
+ - targeted artifacts include:
+   - `dist/e2e/e2e-targeted-result.json`
+   - `dist/e2e/e2e-targeted-meta.json`
+   - `dist/e2e/e2e-targeted-sidepanel.png`
+   - `dist/e2e/e2e-targeted-target-page.png`
+- long-pagination artifacts include:
+  - `dist/e2e/e2e-long-pagination-result.json`
+  - `dist/e2e/e2e-long-pagination-meta.json`
+  - `dist/e2e/e2e-long-pagination-sidepanel.png`
+  - `dist/e2e/e2e-long-pagination-target-page.png`
 
 9) Branch protection gate
 - Playbook:

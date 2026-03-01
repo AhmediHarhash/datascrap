@@ -9,6 +9,12 @@ import {
 } from "../vendor/shared/src/events.mjs";
 import { MESSAGE_TYPES } from "../vendor/shared/src/messages.mjs";
 import {
+  ORCHESTRATION_STRATEGIES,
+  createAutonomousExecutionPlan,
+  parseAutonomousGoal,
+  summarizeAutonomousPlan
+} from "../vendor/core/src/autonomous-orchestrator.mjs";
+import {
   buildFailureReportCsv,
   buildFailureReportEntries,
   dedupeUrls,
@@ -59,6 +65,9 @@ const elements = {
   pointFollowBtn: document.getElementById("point-follow-btn"),
   setupAccessStatusLine: document.getElementById("setup-access-status-line"),
   quickFlowStatusLine: document.getElementById("quick-flow-status-line"),
+  quickFlowProgressRing: document.getElementById("quick-flow-progress-ring"),
+  quickFlowProgressPct: document.getElementById("quick-flow-progress-pct"),
+  quickFlowProgressPhase: document.getElementById("quick-flow-progress-phase"),
   runnerType: document.getElementById("runner-type"),
   startUrl: document.getElementById("start-url"),
   quickExtractBtn: document.getElementById("quick-extract-btn"),
@@ -392,12 +401,20 @@ const state = {
   reliabilitySettings: null,
   simpleMode: true,
   pointFollowActive: false,
+  pointFollowStartOptions: null,
   lastStartError: "",
   statusProgressPct: 0,
   statusPhase: "",
   intentAutoExport: false,
   intentAutoExportFormat: "csv",
-  intentLastCommand: ""
+  intentLastCommand: "",
+  intentAutoMapsDetailEnrichPending: false,
+  intentAutoMapsDetailEnrichAutomationId: null,
+  intentAutoListUrlEnrichPending: false,
+  intentAutoListUrlEnrichAutomationId: null,
+  domainAutonomyHints: {},
+  lastOrchestrationPlan: null,
+  lastOrchestrationAt: ""
 };
 
 const SHELL_VIEWS = Object.freeze({
@@ -418,6 +435,12 @@ const RELIABILITY_SETTINGS_STORAGE_KEY = "datascrap.sidepanel.reliability-settin
 const TEMPLATE_LIMIT = 200;
 const TEMPLATE_BUNDLE_TYPE = "datascrap.templates.bundle";
 const TEMPLATE_BUNDLE_VERSION = "2026-02-23";
+const DOMAIN_AUTONOMY_HINTS_STORAGE_KEY = "datascrap.sidepanel.domain-autonomy-hints.v1";
+const DOMAIN_AUTONOMY_HINT_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const DOMAIN_HINT_ALLOWED_STRATEGIES = new Set([
+  ORCHESTRATION_STRATEGIES.LIST_AUTODETECT_AUTOPILOT,
+  ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED
+]);
 const DEFAULT_SPEED_PROFILES = Object.freeze({
   slow: Object.freeze({
     attempts: 8,
@@ -467,6 +490,29 @@ const ROADMAP_NOTIFY_URLS = Object.freeze({
   scheduling: "https://datascrap.app/waitlist/scheduling",
   integrations: "https://datascrap.app/waitlist/integrations"
 });
+const SMART_PAGINATION_SELECTOR_CANDIDATES = Object.freeze([
+  "a#pnnext",
+  "a[aria-label='Next']",
+  "a[aria-label='Next page']",
+  "a[aria-label='next page']",
+  "a[aria-label='Next results page']",
+  "a[aria-label='next results page']",
+  "a.sb_pagN",
+  "a[title='Next page']",
+  "a[rel='next']",
+  "li.next a",
+  "a.next"
+]);
+const SMART_PAGINATION_NEXT_SELECTOR = SMART_PAGINATION_SELECTOR_CANDIDATES.join(", ");
+const AUTO_URL_ENRICHMENT_MAX_URLS = 500;
+const LIST_AUTOCONTINUE_SEGMENTS_DEFAULT = 24;
+const LIST_AUTOCONTINUE_SEGMENTS_EXHAUSTIVE = 40;
+const LIST_AUTOCONTINUE_HARD_ROUND_CAP_DEFAULT = 5000;
+const LIST_AUTOCONTINUE_HARD_ROUND_CAP_EXHAUSTIVE = 10000;
+const LIST_HARDCAP_AUTOCONTINUE_CHAINS_DEFAULT = 3;
+const LIST_HARDCAP_AUTOCONTINUE_CHAINS_EXHAUSTIVE = 5;
+const LIST_HARDCAP_ABSOLUTE_LIMIT_DEFAULT = 25000;
+const LIST_HARDCAP_ABSOLUTE_LIMIT_EXHAUSTIVE = 50000;
 
 const PAGE_ACTION_SCHEMA_COLUMNS = Object.freeze({
   [PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL]: Object.freeze(["emails", "emailCount", "emailDomains", "deepScannedPages"]),
@@ -797,6 +843,40 @@ function toProgressPercent(value, fallback = 0) {
   return clamp(Math.round(parsed), 0, 100);
 }
 
+function renderQuickFlowProgress() {
+  if (!elements.quickFlowProgressRing) return;
+  const status = String(state.currentStatus || AUTOMATION_STATES.IDLE);
+  const isRunning = status === AUTOMATION_STATES.RUNNING || status === AUTOMATION_STATES.STOPPING;
+  const isError = status === AUTOMATION_STATES.ERROR;
+  const isCompleted = status === AUTOMATION_STATES.COMPLETED;
+  const visualPct = isCompleted ? 100 : toProgressPercent(state.statusProgressPct, 0);
+
+  elements.quickFlowProgressRing.style.setProperty("--progress-pct", `${visualPct}%`);
+  elements.quickFlowProgressRing.classList.toggle("is-running", isRunning);
+  elements.quickFlowProgressRing.classList.toggle("is-error", isError);
+  elements.quickFlowProgressRing.classList.toggle("is-complete", isCompleted);
+  if (elements.quickFlowProgressPct) {
+    elements.quickFlowProgressPct.textContent = `${visualPct}%`;
+  }
+
+  const phase = String(state.statusPhase || "").trim();
+  let phaseLabel = "Ready to run";
+  if (isRunning) {
+    phaseLabel = phase || "Autonomous extraction running";
+  } else if (isCompleted) {
+    phaseLabel = phase || "Extraction complete";
+  } else if (isError) {
+    phaseLabel = phase || "Needs attention";
+  } else if (status === AUTOMATION_STATES.STOPPED) {
+    phaseLabel = phase || "Stopped";
+  } else if (phase) {
+    phaseLabel = phase;
+  }
+  if (elements.quickFlowProgressPhase) {
+    elements.quickFlowProgressPhase.textContent = phaseLabel;
+  }
+}
+
 function renderStatusPill() {
   const status = String(state.currentStatus || AUTOMATION_STATES.IDLE);
   const isRunning = status === AUTOMATION_STATES.RUNNING || status === AUTOMATION_STATES.STOPPING;
@@ -816,6 +896,7 @@ function renderStatusPill() {
   } else {
     elements.statusPill.removeAttribute("title");
   }
+  renderQuickFlowProgress();
 }
 
 function setStatus(status) {
@@ -1293,7 +1374,7 @@ function applySimpleModeUi() {
 
   if (elements.simpleModeHint) {
     elements.simpleModeHint.textContent =
-      "Simple mode active: type one command and run. Example: extract all in this search until no more.";
+      "Simple mode active: type one command and run. Example: find home service businesses in Miami.";
   }
 
   const showAdvanced = !state.simpleMode;
@@ -1686,6 +1767,244 @@ function saveSimpleModeToStorage() {
   } catch {
     // no-op: localStorage may be unavailable in some contexts
   }
+}
+
+function normalizeDomainHintHostKey(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  const normalized = raw.replace(/^www\./, "").replace(/\.+$/, "");
+  if (!/^[a-z0-9.-]+$/.test(normalized)) return "";
+  return normalized;
+}
+
+function normalizeDomainHintHostFromUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/i.test(parsed.protocol)) return "";
+    return normalizeDomainHintHostKey(parsed.hostname);
+  } catch {
+    return "";
+  }
+}
+
+function normalizeDomainHintRecord(input, { nowMs = Date.now() } = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const strategy = String(source.strategy || "").trim();
+  if (!DOMAIN_HINT_ALLOWED_STRATEGIES.has(strategy)) return null;
+  const updatedAtFromMs = Number(source.updatedAtMs);
+  const updatedAtFromIso = Date.parse(String(source.updatedAt || "").trim());
+  const updatedAtMs = Number.isFinite(updatedAtFromMs)
+    ? Math.floor(updatedAtFromMs)
+    : Number.isFinite(updatedAtFromIso)
+      ? Math.floor(updatedAtFromIso)
+      : nowMs;
+  const boundedUpdatedAtMs = clamp(updatedAtMs, 0, nowMs + DOMAIN_AUTONOMY_HINT_TTL_MS);
+  const ageMs = nowMs - boundedUpdatedAtMs;
+  if (ageMs > DOMAIN_AUTONOMY_HINT_TTL_MS) return null;
+  return {
+    strategy,
+    reason: String(source.reason || "").trim().slice(0, 180),
+    updatedAtMs: boundedUpdatedAtMs
+  };
+}
+
+function normalizeDomainAutonomyHintsMap(input, { nowMs = Date.now() } = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const output = {};
+  for (const [key, value] of Object.entries(source)) {
+    const host = normalizeDomainHintHostKey(key);
+    if (!host) continue;
+    const record = normalizeDomainHintRecord(value, {
+      nowMs
+    });
+    if (!record) continue;
+    output[host] = record;
+  }
+  return output;
+}
+
+function loadDomainAutonomyHintsFromStorage() {
+  try {
+    const raw = globalThis.localStorage?.getItem(DOMAIN_AUTONOMY_HINTS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return normalizeDomainAutonomyHintsMap(parsed);
+  } catch {
+    return {};
+  }
+}
+
+function saveDomainAutonomyHintsToStorage() {
+  try {
+    const normalized = normalizeDomainAutonomyHintsMap(state.domainAutonomyHints || {});
+    state.domainAutonomyHints = normalized;
+    globalThis.localStorage?.setItem(DOMAIN_AUTONOMY_HINTS_STORAGE_KEY, JSON.stringify(normalized));
+  } catch {
+    // no-op: localStorage may be unavailable in some contexts
+  }
+}
+
+function resolveDomainAutonomyHintHost(...urlCandidates) {
+  for (const candidate of urlCandidates) {
+    const host = normalizeDomainHintHostFromUrl(candidate);
+    if (host) return host;
+  }
+  return "";
+}
+
+function getDomainAutonomyHintForHost(host, { persistCleanup = true } = {}) {
+  const normalizedHost = normalizeDomainHintHostKey(host);
+  if (!normalizedHost) return null;
+  const current = state.domainAutonomyHints?.[normalizedHost];
+  const normalizedRecord = normalizeDomainHintRecord(current);
+  if (!normalizedRecord) {
+    if (current) {
+      const next = {
+        ...(state.domainAutonomyHints || {})
+      };
+      delete next[normalizedHost];
+      state.domainAutonomyHints = next;
+      if (persistCleanup) {
+        saveDomainAutonomyHintsToStorage();
+      }
+    }
+    return null;
+  }
+
+  const changed =
+    !current ||
+    String(current.strategy || "").trim() !== normalizedRecord.strategy ||
+    String(current.reason || "").trim() !== normalizedRecord.reason ||
+    Number(current.updatedAtMs || 0) !== normalizedRecord.updatedAtMs;
+  if (changed) {
+    state.domainAutonomyHints = {
+      ...(state.domainAutonomyHints || {}),
+      [normalizedHost]: normalizedRecord
+    };
+    if (persistCleanup) {
+      saveDomainAutonomyHintsToStorage();
+    }
+  }
+  return {
+    host: normalizedHost,
+    ...normalizedRecord
+  };
+}
+
+function applyDomainAutonomyHintToPlan(plan, { startUrl = "", activeUrl = "" } = {}) {
+  const currentPlan = plan && typeof plan === "object" ? plan : null;
+  if (!currentPlan) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host: "",
+      hint: null
+    };
+  }
+  if (String(currentPlan.strategy || "").trim() !== ORCHESTRATION_STRATEGIES.LIST_AUTODETECT_AUTOPILOT) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host: "",
+      hint: null
+    };
+  }
+
+  const host = resolveDomainAutonomyHintHost(currentPlan.targetUrl, startUrl, activeUrl, currentPlan.discoveredUrl);
+  if (!host) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host: "",
+      hint: null
+    };
+  }
+
+  const hint = getDomainAutonomyHintForHost(host, {
+    persistCleanup: true
+  });
+  if (!hint || hint.strategy !== ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED) {
+    return {
+      plan: currentPlan,
+      applied: false,
+      host,
+      hint
+    };
+  }
+
+  const targetUrl = String(currentPlan.targetUrl || "").trim();
+  const nextPlan = {
+    ...currentPlan,
+    strategy: ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+    shouldNavigateActiveTab: Boolean(targetUrl) && targetUrl !== String(activeUrl || "").trim(),
+    domainHintApplied: true,
+    domainHintHost: host,
+    domainHintReason: String(hint.reason || "").trim()
+  };
+  return {
+    plan: nextPlan,
+    applied: true,
+    host,
+    hint
+  };
+}
+
+function rememberDomainAutonomyHint(strategy, { reason = "", urlCandidates = [] } = {}) {
+  const strategyValue = String(strategy || "").trim();
+  if (!DOMAIN_HINT_ALLOWED_STRATEGIES.has(strategyValue)) {
+    return {
+      saved: false,
+      changed: false,
+      host: ""
+    };
+  }
+
+  const candidates = Array.isArray(urlCandidates) ? urlCandidates : [urlCandidates];
+  const host = resolveDomainAutonomyHintHost(...candidates);
+  if (!host) {
+    return {
+      saved: false,
+      changed: false,
+      host: ""
+    };
+  }
+
+  const previous = getDomainAutonomyHintForHost(host, {
+    persistCleanup: false
+  });
+  const nextRecord = {
+    strategy: strategyValue,
+    reason: String(reason || "").trim().slice(0, 180),
+    updatedAtMs: Date.now()
+  };
+  state.domainAutonomyHints = {
+    ...(state.domainAutonomyHints || {}),
+    [host]: nextRecord
+  };
+  saveDomainAutonomyHintsToStorage();
+
+  const changed =
+    !previous || previous.strategy !== nextRecord.strategy || String(previous.reason || "").trim() !== nextRecord.reason;
+  if (changed) {
+    appendLog("domain autonomy hint updated", {
+      host,
+      strategy: nextRecord.strategy,
+      reason: nextRecord.reason
+    });
+    trackUiEvent("domain_autonomy_hint_updated", {
+      host,
+      strategy: nextRecord.strategy,
+      reason: nextRecord.reason
+    });
+  }
+
+  return {
+    saved: true,
+    changed,
+    host
+  };
 }
 
 function normalizeShellView(value) {
@@ -2133,6 +2452,124 @@ async function maybeHydrateStartUrlFromActiveTab({ force = false } = {}) {
   if (!pattern) return current;
   elements.startUrl.value = activeUrl;
   return activeUrl;
+}
+
+function waitForUi(ms) {
+  const waitMs = Math.max(0, Math.floor(Number(ms) || 0));
+  if (waitMs <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, waitMs));
+}
+
+async function getActiveTabMeta() {
+  if (!chrome.tabs?.query) {
+    return {
+      id: null,
+      url: ""
+    };
+  }
+  return new Promise((resolve) => {
+    chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true
+      },
+      (tabs) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          resolve({
+            id: null,
+            url: ""
+          });
+          return;
+        }
+        resolve({
+          id: Number.isFinite(Number(tabs?.[0]?.id)) ? Number(tabs[0].id) : null,
+          url: String(tabs?.[0]?.url || "").trim()
+        });
+      }
+    );
+  });
+}
+
+async function navigateActiveTabToUrl(targetUrl) {
+  const nextUrl = String(targetUrl || "").trim();
+  if (!nextUrl) {
+    return {
+      ok: false,
+      reason: "Target URL is empty"
+    };
+  }
+  if (!/^https?:\/\//i.test(nextUrl)) {
+    return {
+      ok: false,
+      reason: "Target URL must be http/https"
+    };
+  }
+  if (!chrome.tabs?.update) {
+    return {
+      ok: false,
+      reason: "chrome.tabs.update unavailable"
+    };
+  }
+
+  const activeTab = await getActiveTabMeta();
+  if (!Number.isFinite(activeTab.id)) {
+    return {
+      ok: false,
+      reason: "No active tab found"
+    };
+  }
+
+  return new Promise((resolve) => {
+    chrome.tabs.update(
+      activeTab.id,
+      {
+        url: nextUrl,
+        active: true
+      },
+      (_tab) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          resolve({
+            ok: false,
+            reason: lastError.message || "Failed to navigate active tab"
+          });
+          return;
+        }
+        resolve({
+          ok: true
+        });
+      }
+    );
+  });
+}
+
+function setOrchestrationPhase(plan, phaseId, statusText) {
+  const phases = Array.isArray(plan?.phases) ? plan.phases : [];
+  const matched = phases.find((phase) => String(phase?.id || "").trim() === String(phaseId || "").trim());
+  const progress = Number.isFinite(Number(matched?.progress)) ? Number(matched.progress) : state.statusProgressPct;
+  const phaseLabel = String(matched?.label || statusText || "").trim();
+  if (phaseLabel) {
+    setStatusProgress(progress, {
+      phase: phaseLabel
+    });
+  }
+  if (statusText) {
+    setListAutoDetectStatus(statusText);
+  }
+}
+
+function cacheOrchestrationPlan(plan) {
+  state.lastOrchestrationPlan = plan || null;
+  state.lastOrchestrationAt = new Date().toISOString();
+  if (!plan) return;
+  appendLog("autonomous plan", {
+    strategy: plan.strategy,
+    targetUrl: plan.targetUrl,
+    discoveredUrl: plan.discoveredUrl,
+    shouldNavigateActiveTab: plan.shouldNavigateActiveTab,
+    summary: summarizeAutonomousPlan(plan)
+  });
 }
 
 async function onSetupAccess({
@@ -3349,6 +3786,7 @@ function resolveSimpleModeTerminalStatusLine(eventPayload, nextStatus) {
   const urlCount = Number(result?.urlCount || successCount + failureCount || 0);
   const duplicateSkipped = Number(result?.mapsDeduplication?.skippedKnownEntities || 0);
   const firstFailure = String(result?.failures?.[0]?.error || "").trim();
+  const terminationReason = String(result?.terminationReason || "").trim().toLowerCase();
 
   if (successCount <= 0 && failureCount > 0) {
     const friendly = friendlyErrorText(firstFailure || "All URLs failed");
@@ -3361,6 +3799,34 @@ function resolveSimpleModeTerminalStatusLine(eventPayload, nextStatus) {
   if (rowCount <= 0 && duplicateSkipped > 0 && failureCount <= 0) {
     return {
       text: `No new companies found. Skipped ${duplicateSkipped} duplicates.`,
+      error: false
+    };
+  }
+
+  if (terminationReason === "hard_round_cap") {
+    const hardCapChainsUsed = Number(result?.hardCapAutoContinueUsed || 0);
+    const hardCapChainsMax = Number(result?.hardCapAutoContinueMaxChains || 0);
+    const hardCapAutoResumeEnabled = Boolean(result?.hardCapAutoContinue);
+    const chainSuffix =
+      hardCapAutoResumeEnabled && hardCapChainsMax > 0
+        ? ` (auto-resume chains ${hardCapChainsUsed}/${hardCapChainsMax})`
+        : "";
+    return {
+      text: `Extraction paused at safety cap after ${rowCount} rows${chainSuffix}. Re-run to continue from current page.`,
+      error: false
+    };
+  }
+
+  if (terminationReason === "round_limit" && Boolean(result?.untilNoMore)) {
+    return {
+      text: `Extraction reached pagination safety window at ${rowCount} rows.`,
+      error: false
+    };
+  }
+
+  if (terminationReason === "next_link_cycle") {
+    return {
+      text: `Extraction stopped after detecting pagination loop at ${rowCount} rows.`,
       error: false
     };
   }
@@ -3393,6 +3859,12 @@ function handleRuntimeEvent(eventPayload) {
     nextStatus === AUTOMATION_STATES.STOPPED ||
     nextStatus === AUTOMATION_STATES.ERROR
   ) {
+    if (nextStatus === AUTOMATION_STATES.STOPPED || nextStatus === AUTOMATION_STATES.ERROR) {
+      state.intentAutoMapsDetailEnrichPending = false;
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      state.intentAutoListUrlEnrichPending = false;
+      state.intentAutoListUrlEnrichAutomationId = null;
+    }
     state.lastTerminalAutomationId = automationId || state.lastTerminalAutomationId;
     void (async () => {
       try {
@@ -3419,7 +3891,14 @@ function handleRuntimeEvent(eventPayload) {
           appendLog("table load failed after completion");
         }
 
-        if (state.intentAutoExport) {
+        const mapsEnrichmentTransition = await maybeHandleIntentMapsDetailEnrichment(eventPayload);
+        const urlEnrichmentTransition = mapsEnrichmentTransition.deferExport
+          ? {
+              started: false,
+              deferExport: false
+            }
+          : await maybeHandleIntentListUrlEnrichment(eventPayload);
+        if (state.intentAutoExport && !mapsEnrichmentTransition.deferExport && !urlEnrichmentTransition.deferExport) {
           const exportFormat = String(state.intentAutoExportFormat || "csv").trim().toLowerCase();
           state.intentAutoExport = false;
           state.intentAutoExportFormat = "csv";
@@ -3493,13 +3972,21 @@ async function applyPickerSessionResult(session, purpose) {
       original: selected.selector || "",
       normalized: elements.containerSelector.value
     });
-    await startPicker({
+    const started = await startPicker({
       mode: PICKER_MODES.FIELD,
       multiSelect: false,
       anchorSelector: String(elements.containerSelector.value || "").trim(),
       prompt: "Click one value (name/title/price). Datascrap will follow this pattern across rows.",
-      purpose: "guided_field"
+      purpose: "guided_field",
+      preferredUrl: String(elements.startUrl.value || "").trim()
     });
+    if (!started?.ok) {
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      setListAutoDetectStatus(`Point & Follow failed: ${started?.error || "Unable to start picker."}`, {
+        error: true
+      });
+    }
     return;
   }
 
@@ -3517,20 +4004,29 @@ async function applyPickerSessionResult(session, purpose) {
     });
     if (detected) {
       setListAutoDetectStatus("Point & Follow learned pattern. Starting extraction...");
-      const started = await onStart();
+      const started = await onStart(state.pointFollowStartOptions || {});
       if (started) {
         setListAutoDetectStatus("Point & Follow running. Open DATA to see results.");
       }
       state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
       return;
     }
     setListAutoDetectStatus("Need one extra hint. Click one full row/item.");
-    await startPicker({
+    const started = await startPicker({
       mode: PICKER_MODES.CONTAINER,
       multiSelect: false,
       prompt: "Click one full row/item so Datascrap can map repeating records.",
-      purpose: "guided_container"
+      purpose: "guided_container",
+      preferredUrl: String(elements.startUrl.value || "").trim()
     });
+    if (!started?.ok) {
+      state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
+      setListAutoDetectStatus(`Point & Follow failed: ${started?.error || "Unable to start picker."}`, {
+        error: true
+      });
+    }
     return;
   }
 
@@ -3544,11 +4040,12 @@ async function applyPickerSessionResult(session, purpose) {
       relativeSelector: field.relativeSelector,
       extractMode: field.extractMode
     });
-    const started = await onStart();
+    const started = await onStart(state.pointFollowStartOptions || {});
     if (started) {
       setListAutoDetectStatus("Point & Follow running. Open DATA to see results.");
     }
     state.pointFollowActive = false;
+    state.pointFollowStartOptions = null;
   }
 }
 
@@ -3592,6 +4089,7 @@ function handlePickerEvent(payload) {
     });
     if (state.pointFollowActive && (purpose === "guided_seed" || purpose === "guided_container" || purpose === "guided_field")) {
       state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
       setListAutoDetectStatus("Point & Follow canceled.", {
         error: true
       });
@@ -3605,6 +4103,7 @@ function handlePickerEvent(payload) {
     appendLog("picker error", session);
     if (state.pointFollowActive) {
       state.pointFollowActive = false;
+      state.pointFollowStartOptions = null;
       setListAutoDetectStatus("Point & Follow failed due to picker error.", {
         error: true
       });
@@ -4110,7 +4609,9 @@ function buildTextOptions() {
   };
 }
 
-function buildMapsOptions() {
+function buildMapsOptions(options = {}) {
+  const source = options && typeof options === "object" ? options : {};
+  const maxResults = clamp(parseNumber(source.maxResults, 0), 0, 5000);
   return {
     includeBasicInfo: Boolean(elements.mapsIncludeBasicInfo.checked),
     includeContactDetails: Boolean(elements.mapsIncludeContactDetails.checked),
@@ -4121,7 +4622,7 @@ function buildMapsOptions() {
     onlyNewResults: true,
     autoScrollResults: true,
     untilNoMore: true,
-    maxResults: 0,
+    maxResults,
     maxScrollSteps: 220,
     stabilityPasses: 8,
     scrollDelayMs: 650
@@ -5316,13 +5817,15 @@ async function hydrateSnapshot() {
   setStatus(AUTOMATION_STATES.IDLE);
 }
 
-async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = "", purpose }) {
+async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = "", purpose, preferredUrl = "" }) {
   try {
+    const preferred = String(preferredUrl || elements.startUrl.value || "").trim();
     const response = await sendMessage(MESSAGE_TYPES.PICKER_START_REQUEST, {
       mode,
       multiSelect,
       anchorSelector,
-      prompt
+      prompt,
+      preferredUrl: preferred
     });
     const session = response?.session || null;
     if (!session?.sessionId) {
@@ -5334,9 +5837,18 @@ async function startPicker({ mode, multiSelect, anchorSelector = "", prompt = ""
       mode,
       sessionId: session.sessionId
     });
+    return {
+      ok: true,
+      session
+    };
   } catch (error) {
     setPickerStatus("error");
-    appendLog(`picker start failed: ${error.message}`);
+    const message = friendlyErrorText(error?.message || "Failed to start picker");
+    appendLog(`picker start failed: ${message}`);
+    return {
+      ok: false,
+      error: message
+    };
   }
 }
 
@@ -5410,7 +5922,9 @@ async function onListAutoDetect(options = {}) {
   }
 }
 
-function buildListAutomationConfig() {
+function buildListAutomationConfig(options = {}) {
+  const source = options && typeof options === "object" ? options : {};
+  const loadMoreOverrides = source.loadMore && typeof source.loadMore === "object" ? source.loadMore : {};
   const startUrl = String(elements.startUrl.value || "").trim();
   const containerSelector = String(elements.containerSelector.value || "").trim();
   if (!containerSelector) {
@@ -5445,12 +5959,29 @@ function buildListAutomationConfig() {
       {
         type: "LOAD_MORE",
         method: String(elements.loadMoreMethod.value || LOAD_MORE_METHODS.NONE).trim(),
-        attempts: parseNumber(elements.loadMoreAttempts.value, 5),
-        delayMs: parseNumber(elements.loadMoreDelayMs.value, 900),
-        scrollPx: parseNumber(elements.loadMoreScrollPx.value, 1800),
-        noChangeThreshold: parseNumber(elements.loadMoreNoChangeThreshold.value, 2),
+        attempts: clamp(parseNumber(loadMoreOverrides.attempts, parseNumber(elements.loadMoreAttempts.value, 5)), 1, 30),
+        delayMs: clamp(parseNumber(loadMoreOverrides.delayMs, parseNumber(elements.loadMoreDelayMs.value, 900)), 100, 10000),
+        scrollPx: clamp(
+          parseNumber(loadMoreOverrides.scrollPx, parseNumber(elements.loadMoreScrollPx.value, 1800)),
+          100,
+          20000
+        ),
+        noChangeThreshold: clamp(
+          parseNumber(loadMoreOverrides.noChangeThreshold, parseNumber(elements.loadMoreNoChangeThreshold.value, 2)),
+          1,
+          10
+        ),
         buttonSelector: String(elements.loadMoreButtonSelector.value || "").trim(),
-        nextLinkSelector: String(elements.loadMoreNextSelector.value || "").trim()
+        nextLinkSelector: String(elements.loadMoreNextSelector.value || "").trim(),
+        maxRows: clamp(parseNumber(loadMoreOverrides.maxRows, 0), 0, 50000),
+        untilNoMore: Boolean(loadMoreOverrides.untilNoMore),
+        maxRoundsSafety: clamp(parseNumber(loadMoreOverrides.maxRoundsSafety, 0), 0, 500),
+        autoContinueSegments: Boolean(loadMoreOverrides.autoContinueSegments),
+        autoContinueMaxSegments: clamp(parseNumber(loadMoreOverrides.autoContinueMaxSegments, 1), 1, 50),
+        hardRoundCap: clamp(parseNumber(loadMoreOverrides.hardRoundCap, 5000), 100, 10000),
+        hardCapAutoContinue: Boolean(loadMoreOverrides.hardCapAutoContinue),
+        hardCapAutoContinueMaxChains: clamp(parseNumber(loadMoreOverrides.hardCapAutoContinueMaxChains, 1), 1, 20),
+        hardRoundAbsoluteLimit: clamp(parseNumber(loadMoreOverrides.hardRoundAbsoluteLimit, 5000), 100, 50000)
       }
     ]
   };
@@ -5479,7 +6010,10 @@ async function resolvePageUrlsBySourceMode(mode) {
   return parseManualUrls(elements.pageManualUrls.value);
 }
 
-async function buildPageAutomationConfig() {
+async function buildPageAutomationConfig(options = {}) {
+  const source = options && typeof options === "object" ? options : {};
+  const mapsOptionsOverrides =
+    source.mapsOptions && typeof source.mapsOptions === "object" ? source.mapsOptions : {};
   const startUrl = String(elements.startUrl.value || "").trim();
   const urlSourceMode = String(elements.pageUrlSourceMode.value || URL_SOURCE_MODES.MANUAL).trim();
   const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
@@ -5520,7 +6054,7 @@ async function buildPageAutomationConfig() {
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT) {
     actions[0].textOptions = buildTextOptions();
   } else if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
-    actions[0].mapsOptions = buildMapsOptions();
+    actions[0].mapsOptions = buildMapsOptions(mapsOptionsOverrides);
   }
 
   return {
@@ -5582,51 +6116,544 @@ function resolveToolStartEventName(runnerType, actionType) {
   return "page_extraction_started";
 }
 
-function parseIntentExportFormat(lowerText) {
-  const lower = String(lowerText || "");
-  if (lower.includes("xlsx") || lower.includes("excel")) return "xlsx";
-  if (lower.includes("json")) return "json";
-  return "csv";
+function parseIntentCommand(commandText) {
+  return parseAutonomousGoal(commandText);
 }
 
-function parseIntentCommand(commandText) {
-  const raw = String(commandText || "").trim();
-  const lower = raw.toLowerCase();
-  const hasText = raw.length > 0;
-  const wantsExtract =
-    /\b(extract|scrape|collect|gather|run|get)\b/.test(lower) ||
-    lower.includes("quick extract");
-  const wantsAccess =
-    lower.includes("permission") ||
-    lower.includes("access") ||
-    lower.includes("enable all access") ||
-    lower.includes("allow all access");
-  const wantsPointFollow = lower.includes("point") && lower.includes("follow");
-  const wantsExport = /\bexport\b/.test(lower);
-  const wantsMaps = lower.includes("maps") || lower.includes("google maps");
-  const wantsExhaustive =
-    lower.includes("until no more") ||
-    lower.includes("keep going") ||
-    lower.includes("extract all") ||
-    lower.includes("all in this search");
+function resolveIntentPageActionType(intent = {}) {
+  if (intent.wantsEmail) return PAGE_ACTION_TYPES.EXTRACT_PAGES_EMAIL;
+  if (intent.wantsPhone) return PAGE_ACTION_TYPES.EXTRACT_PAGES_PHONE;
+  if (intent.wantsText) return PAGE_ACTION_TYPES.EXTRACT_PAGES_TEXT;
+  return PAGE_ACTION_TYPES.EXTRACT_PAGES;
+}
+
+function resolveIntentResultTarget(intent = {}) {
+  return clamp(parseNumber(intent?.resultTarget, 0), 0, 50000);
+}
+
+function isLikelySearchResultsUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  try {
+    const parsed = new URL(raw);
+    const host = String(parsed.hostname || "").toLowerCase();
+    const path = String(parsed.pathname || "").toLowerCase();
+    const hasQueryHint = parsed.searchParams.has("q") || parsed.searchParams.has("query") || parsed.searchParams.has("keyword");
+    if (host.includes("google.") && path.startsWith("/search")) return true;
+    if (host.includes("bing.com") && path.includes("/search")) return true;
+    if (host.includes("duckduckgo.com")) return true;
+    if (host.includes("yahoo.") && path.includes("/search")) return true;
+    if (host.includes("yandex.")) return true;
+    if (hasQueryHint && (path.includes("/search") || path === "/" || path.startsWith("/results"))) return true;
+    return false;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function resolveSmartPaginationNextSelector(value = "") {
+  return isLikelySearchResultsUrl(value) ? SMART_PAGINATION_NEXT_SELECTOR : "";
+}
+
+function resolveSmartPaginationAutoContinue(listAutopilotOverrides = {}, plan = null) {
+  if (!Boolean(listAutopilotOverrides?.untilNoMore)) return null;
+
+  const currentMethod = String(elements.loadMoreMethod.value || LOAD_MORE_METHODS.NONE).trim() || LOAD_MORE_METHODS.NONE;
+  const currentSelector = String(elements.loadMoreNextSelector.value || "").trim();
+  const targetUrl = String(
+    elements.startUrl.value || plan?.targetUrl || plan?.discoveredUrl || ""
+  ).trim();
+
+  if (currentMethod === LOAD_MORE_METHODS.NAVIGATE && currentSelector) {
+    return {
+      enabled: true,
+      applied: false,
+      source: "existing_selector",
+      method: currentMethod,
+      nextLinkSelector: currentSelector,
+      targetUrl
+    };
+  }
+
+  if (currentMethod === LOAD_MORE_METHODS.SCROLL || currentMethod === LOAD_MORE_METHODS.CLICK_BUTTON) {
+    return null;
+  }
+
+  const candidateSelector = currentSelector || resolveSmartPaginationNextSelector(targetUrl);
+  if (!candidateSelector) {
+    return null;
+  }
+
+  const methodBefore = currentMethod;
+  elements.loadMoreMethod.value = LOAD_MORE_METHODS.NAVIGATE;
+  elements.loadMoreNextSelector.value = candidateSelector;
 
   return {
-    hasText,
-    wantsExtract,
-    wantsAccess,
-    wantsPointFollow,
-    wantsExport,
-    wantsMaps,
-    wantsExhaustive,
-    exportFormat: parseIntentExportFormat(lower)
+    enabled: true,
+    applied: true,
+    source: currentSelector ? "existing_selector" : "smart_selector_bundle",
+    methodBefore,
+    method: LOAD_MORE_METHODS.NAVIGATE,
+    nextLinkSelector: candidateSelector,
+    targetUrl
   };
+}
+
+function buildListAutopilotOverridesFromIntent(intent = {}) {
+  const baseAttempts = clamp(parseNumber(elements.loadMoreAttempts.value, 5), 1, 30);
+  const baseNoChangeThreshold = clamp(parseNumber(elements.loadMoreNoChangeThreshold.value, 2), 1, 10);
+  const resultTarget = resolveIntentResultTarget(intent);
+  const smartExhaustiveDefault = Boolean(intent?.wantsExtract && resultTarget <= 0);
+  const untilNoMore = Boolean(intent?.wantsExhaustive || resultTarget > 0 || smartExhaustiveDefault);
+
+  let tunedAttempts = baseAttempts;
+  let tunedNoChangeThreshold = baseNoChangeThreshold;
+  let maxRoundsSafety = 0;
+  let autoContinueSegments = false;
+  let autoContinueMaxSegments = 1;
+  let hardRoundCap = 0;
+  let hardCapAutoContinue = false;
+  let hardCapAutoContinueMaxChains = 1;
+  let hardRoundAbsoluteLimit = 0;
+
+  if (resultTarget > 0) {
+    const expectedRowsPerRound = 8;
+    const expectedRounds = Math.max(1, Math.ceil(resultTarget / expectedRowsPerRound));
+    tunedAttempts = clamp(Math.max(tunedAttempts, expectedRounds + 1), 1, 30);
+    tunedNoChangeThreshold = clamp(Math.max(tunedNoChangeThreshold, 3), 1, 10);
+    maxRoundsSafety = clamp(Math.max(40, expectedRounds * 4), 1, 320);
+  }
+
+  if (intent?.wantsExhaustive) {
+    tunedAttempts = clamp(Math.max(tunedAttempts, 24), 1, 30);
+    tunedNoChangeThreshold = clamp(Math.max(tunedNoChangeThreshold, 4), 1, 10);
+    maxRoundsSafety = clamp(Math.max(maxRoundsSafety, 220), 1, 320);
+  } else if (smartExhaustiveDefault) {
+    tunedAttempts = clamp(Math.max(tunedAttempts, 18), 1, 30);
+    tunedNoChangeThreshold = clamp(Math.max(tunedNoChangeThreshold, 3), 1, 10);
+    maxRoundsSafety = clamp(Math.max(maxRoundsSafety, 240), 1, 320);
+  } else if (untilNoMore) {
+    maxRoundsSafety = clamp(Math.max(maxRoundsSafety, 80), 1, 320);
+  }
+
+  if (untilNoMore) {
+    const explicitExhaustive = Boolean(intent?.wantsExhaustive);
+    autoContinueSegments = true;
+    autoContinueMaxSegments = explicitExhaustive
+      ? LIST_AUTOCONTINUE_SEGMENTS_EXHAUSTIVE
+      : LIST_AUTOCONTINUE_SEGMENTS_DEFAULT;
+    hardRoundCap = explicitExhaustive
+      ? LIST_AUTOCONTINUE_HARD_ROUND_CAP_EXHAUSTIVE
+      : LIST_AUTOCONTINUE_HARD_ROUND_CAP_DEFAULT;
+    hardCapAutoContinue = true;
+    hardCapAutoContinueMaxChains = explicitExhaustive
+      ? LIST_HARDCAP_AUTOCONTINUE_CHAINS_EXHAUSTIVE
+      : LIST_HARDCAP_AUTOCONTINUE_CHAINS_DEFAULT;
+    hardRoundAbsoluteLimit = explicitExhaustive
+      ? LIST_HARDCAP_ABSOLUTE_LIMIT_EXHAUSTIVE
+      : LIST_HARDCAP_ABSOLUTE_LIMIT_DEFAULT;
+  }
+
+  return {
+    maxRows: resultTarget,
+    attempts: tunedAttempts,
+    noChangeThreshold: tunedNoChangeThreshold,
+    untilNoMore,
+    maxRoundsSafety,
+    autoContinueSegments,
+    autoContinueMaxSegments,
+    hardRoundCap,
+    hardCapAutoContinue,
+    hardCapAutoContinueMaxChains,
+    hardRoundAbsoluteLimit,
+    hasTarget: resultTarget > 0,
+    exhaustive: Boolean(intent?.wantsExhaustive),
+    smartExhaustiveDefault: smartExhaustiveDefault && !intent?.wantsExhaustive && resultTarget <= 0
+  };
+}
+
+function resolveMapsPlaceUrlsFromSummary(summary = {}) {
+  const preferred = Array.isArray(summary?.successfulUrls) ? summary.successfulUrls : [];
+  const fallback = Array.isArray(summary?.inputUrls) ? summary.inputUrls : [];
+  const source = preferred.length > 0 ? preferred : fallback;
+  const seen = new Set();
+  const urls = [];
+  for (const item of source) {
+    const next = String(item || "").trim();
+    if (!next) continue;
+    if (!/google\.[^/]+\/maps\/place\//i.test(next)) continue;
+    if (seen.has(next)) continue;
+    seen.add(next);
+    urls.push(next);
+    if (urls.length >= 2000) break;
+  }
+  return urls;
+}
+
+async function startIntentMapsDetailEnrichment(urls = [], sourceAutomationId = "") {
+  const mapUrls = Array.isArray(urls) ? urls : [];
+  if (mapUrls.length === 0) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    state.intentAutoMapsDetailEnrichAutomationId = null;
+    return false;
+  }
+
+  try {
+    applyToolPreset("page_details", {
+      navigate: false,
+      forceWelcome: false,
+      track: false
+    });
+    setRunnerTypeIfAvailable(RUNNER_TYPES.PAGE_EXTRACTOR);
+    elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+    elements.pageManualUrls.value = mapUrls.join("\n");
+    elements.pageActionType.value = PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS;
+    elements.queueConcurrency.value = "2";
+    elements.queueDelayMs.value = "900";
+    elements.queueRetries.value = "1";
+    elements.queueRetryDelayMs.value = "1200";
+    elements.queueJitterMs.value = "250";
+    elements.mapsIncludeBasicInfo.checked = true;
+    elements.mapsIncludeContactDetails.checked = true;
+    elements.mapsIncludeReviews.checked = true;
+    elements.mapsIncludeHours.checked = true;
+    elements.mapsIncludeLocation.checked = true;
+    elements.mapsIncludeImages.checked = true;
+    updatePageSourceUi();
+    updatePageActionUi();
+    updateRunnerUi();
+
+    setListAutoDetectStatus("Quick extract: enriching map details (phone, website, hours)...");
+    trackUiEvent("quick_extract_maps_enrichment_starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: mapUrls.length
+    });
+    appendLog("quick extract maps enrichment starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: mapUrls.length
+    });
+
+    const started = await onStart({
+      page: {
+        mapsOptions: {
+          autoScrollResults: false,
+          onlyNewResults: false,
+          untilNoMore: false,
+          maxResults: 0,
+          maxScrollSteps: 1
+        }
+      }
+    });
+
+    if (!started) {
+      state.intentAutoMapsDetailEnrichPending = false;
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      appendLog("quick extract maps enrichment start failed", {
+        reason: state.lastStartError || "unknown"
+      });
+      return false;
+    }
+
+    state.intentAutoMapsDetailEnrichPending = false;
+    state.intentAutoMapsDetailEnrichAutomationId = state.currentAutomationId || null;
+    trackUiEvent("quick_extract_maps_enrichment_started", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      enrichmentAutomationId: String(state.intentAutoMapsDetailEnrichAutomationId || ""),
+      urlCount: mapUrls.length
+    });
+    return true;
+  } catch (error) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    state.intentAutoMapsDetailEnrichAutomationId = null;
+    appendLog(`quick extract maps enrichment failed: ${friendlyErrorText(error?.message || "")}`);
+    return false;
+  }
+}
+
+async function maybeHandleIntentMapsDetailEnrichment(eventPayload = {}) {
+  const eventType = String(eventPayload?.eventType || "").trim();
+  if (eventType !== AUTOMATION_EVENT_TYPES.COMPLETED) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const automationId = String(eventPayload?.payload?.automationId || "").trim();
+  const summary = eventPayload?.payload?.result || {};
+  const actionType = String(summary?.actionType || "").trim().toUpperCase();
+
+  if (state.intentAutoMapsDetailEnrichAutomationId) {
+    if (automationId && automationId === String(state.intentAutoMapsDetailEnrichAutomationId)) {
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      state.intentAutoMapsDetailEnrichPending = false;
+      setListAutoDetectStatus("Quick extract completed: map details enriched and ready.");
+      trackUiEvent("quick_extract_maps_enrichment_completed", {
+        enrichmentAutomationId: automationId
+      });
+    }
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (!state.intentAutoMapsDetailEnrichPending) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (actionType !== PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const mapUrls = resolveMapsPlaceUrlsFromSummary(summary);
+  if (mapUrls.length === 0) {
+    state.intentAutoMapsDetailEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const started = await startIntentMapsDetailEnrichment(mapUrls, automationId);
+  return {
+    started,
+    deferExport: started
+  };
+}
+
+function isSearchEngineHost(value = "") {
+  const host = String(value || "").trim().toLowerCase();
+  if (!host) return false;
+  return (
+    host.includes("google.") ||
+    host.includes("bing.com") ||
+    host.includes("duckduckgo.com") ||
+    host.includes("yahoo.") ||
+    host.includes("yandex.")
+  );
+}
+
+function extractHttpUrlsFromText(value = "") {
+  const source = String(value || "");
+  if (!source) return [];
+  const matches = source.match(/https?:\/\/[^\s)"'<>]+/gi) || [];
+  return matches.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function normalizeHttpUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/i.test(parsed.protocol)) return "";
+    const hostname = String(parsed.hostname || "").toLowerCase();
+    if (!hostname || isSearchEngineHost(hostname)) return "";
+    return parsed.toString();
+  } catch (_error) {
+    return "";
+  }
+}
+
+function resolveUrlsFromTableRows(rows = [], maxUrls = AUTO_URL_ENRICHMENT_MAX_URLS) {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  const limit = clamp(Number(maxUrls || AUTO_URL_ENRICHMENT_MAX_URLS), 1, 5000);
+  const seen = new Set();
+  const urls = [];
+  for (const row of sourceRows) {
+    const candidates = [];
+    if (row?.sourceUrl) {
+      candidates.push(String(row.sourceUrl || ""));
+    }
+    const rowData = row?.rowData && typeof row.rowData === "object" ? row.rowData : {};
+    for (const value of Object.values(rowData)) {
+      candidates.push(String(value || ""));
+    }
+
+    for (const candidate of candidates) {
+      const extracted = extractHttpUrlsFromText(candidate);
+      if (extracted.length === 0) {
+        extracted.push(candidate);
+      }
+      for (const item of extracted) {
+        const normalized = normalizeHttpUrl(item);
+        if (!normalized || seen.has(normalized)) continue;
+        seen.add(normalized);
+        urls.push(normalized);
+        if (urls.length >= limit) {
+          return urls;
+        }
+      }
+    }
+  }
+  return urls;
+}
+
+async function startIntentListUrlEnrichment(urls = [], sourceAutomationId = "") {
+  const targets = Array.isArray(urls) ? urls : [];
+  if (targets.length === 0) {
+    state.intentAutoListUrlEnrichPending = false;
+    state.intentAutoListUrlEnrichAutomationId = null;
+    return false;
+  }
+
+  try {
+    setRunnerTypeIfAvailable(RUNNER_TYPES.METADATA_EXTRACTOR);
+    elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+    elements.pageManualUrls.value = targets.join("\n");
+    elements.metadataIncludeMetaTags.checked = true;
+    elements.metadataIncludeJsonLd.checked = true;
+    elements.metadataIncludeReviewSignals.checked = true;
+    elements.metadataIncludeContactSignals.checked = true;
+    elements.metadataIncludeRawJsonLd.checked = false;
+    elements.queueConcurrency.value = "3";
+    elements.queueDelayMs.value = "350";
+    elements.queueRetries.value = "1";
+    elements.queueRetryDelayMs.value = "1000";
+    elements.queueJitterMs.value = "220";
+    updatePageSourceUi();
+    updatePageActionUi();
+    updateRunnerUi();
+
+    setListAutoDetectStatus("Quick extract: enriching discovered URLs (metadata + contact signals)...");
+    trackUiEvent("quick_extract_url_enrichment_starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: targets.length
+    });
+    appendLog("quick extract url enrichment starting", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      urlCount: targets.length
+    });
+
+    const started = await onStart();
+    if (!started) {
+      state.intentAutoListUrlEnrichPending = false;
+      state.intentAutoListUrlEnrichAutomationId = null;
+      appendLog("quick extract url enrichment start failed", {
+        reason: state.lastStartError || "unknown"
+      });
+      return false;
+    }
+
+    state.intentAutoListUrlEnrichPending = false;
+    state.intentAutoListUrlEnrichAutomationId = state.currentAutomationId || null;
+    trackUiEvent("quick_extract_url_enrichment_started", {
+      sourceAutomationId: String(sourceAutomationId || ""),
+      enrichmentAutomationId: String(state.intentAutoListUrlEnrichAutomationId || ""),
+      urlCount: targets.length
+    });
+    return true;
+  } catch (error) {
+    state.intentAutoListUrlEnrichPending = false;
+    state.intentAutoListUrlEnrichAutomationId = null;
+    appendLog(`quick extract url enrichment failed: ${friendlyErrorText(error?.message || "")}`);
+    return false;
+  }
+}
+
+async function maybeHandleIntentListUrlEnrichment(eventPayload = {}) {
+  const eventType = String(eventPayload?.eventType || "").trim();
+  if (eventType !== AUTOMATION_EVENT_TYPES.COMPLETED) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const automationId = String(eventPayload?.payload?.automationId || "").trim();
+  const summary = eventPayload?.payload?.result || {};
+  const actionType = String(summary?.actionType || "").trim().toUpperCase();
+  const rowCount = Number(summary?.rowCount || 0);
+
+  if (state.intentAutoListUrlEnrichAutomationId) {
+    if (automationId && automationId === String(state.intentAutoListUrlEnrichAutomationId)) {
+      state.intentAutoListUrlEnrichAutomationId = null;
+      state.intentAutoListUrlEnrichPending = false;
+      setListAutoDetectStatus("Quick extract completed: URL enrichment ready.");
+      trackUiEvent("quick_extract_url_enrichment_completed", {
+        enrichmentAutomationId: automationId
+      });
+    }
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (!state.intentAutoListUrlEnrichPending) {
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (actionType === PAGE_ACTION_TYPES.EXTRACT_PAGES_GOOGLE_MAPS) {
+    state.intentAutoListUrlEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  if (rowCount <= 0) {
+    state.intentAutoListUrlEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const urls = resolveUrlsFromTableRows(state.tableRows, AUTO_URL_ENRICHMENT_MAX_URLS);
+  if (urls.length === 0) {
+    state.intentAutoListUrlEnrichPending = false;
+    return {
+      started: false,
+      deferExport: false
+    };
+  }
+
+  const started = await startIntentListUrlEnrichment(urls, automationId);
+  return {
+    started,
+    deferExport: started
+  };
+}
+
+async function ensureOrchestrationTargetUrl(plan) {
+  const currentStartUrl = String(elements.startUrl.value || "").trim();
+  if (!currentStartUrl && plan?.targetUrl) {
+    elements.startUrl.value = String(plan.targetUrl || "").trim();
+  }
+
+  if (plan?.shouldNavigateActiveTab && plan?.targetUrl) {
+    setOrchestrationPhase(plan, "target_discovery", "Opening target page...");
+    const navigation = await navigateActiveTabToUrl(plan.targetUrl);
+    if (!navigation.ok) {
+      throw new Error(`Could not open target page: ${navigation.reason || "unknown error"}`);
+    }
+    await waitForUi(1400);
+    await maybeHydrateStartUrlFromActiveTab({
+      force: true
+    });
+  }
+
+  await maybeHydrateStartUrlFromActiveTab({
+    force: false
+  });
 }
 
 async function onIntentCommandRun() {
   const commandText = String(elements.intentCommandInput?.value || "").trim();
   const intent = parseIntentCommand(commandText);
   if (!intent.hasText) {
-    setListAutoDetectStatus("Type a command first. Example: extract all in this search until no more.", {
+    setListAutoDetectStatus("Type a command first. Example: find home service businesses in Miami.", {
       error: true
     });
     elements.intentCommandInput?.focus();
@@ -5635,10 +6662,33 @@ async function onIntentCommandRun() {
 
   state.intentLastCommand = commandText;
   if (elements.intentCommandHint) {
-    elements.intentCommandHint.textContent = `Command: ${commandText}`;
+    const resultTarget = resolveIntentResultTarget(intent);
+    const targetSuffix = resultTarget > 0 ? ` | target ${resultTarget}` : "";
+    elements.intentCommandHint.textContent = `Command: ${commandText}${targetSuffix}`;
   }
+  setStatus(AUTOMATION_STATES.RUNNING);
 
-  if (intent.wantsAccess && !intent.wantsExtract && !intent.wantsPointFollow && !intent.wantsExport) {
+  const activeUrl = await getActiveTabUrl();
+  let plan = createAutonomousExecutionPlan({
+    goal: intent,
+    startUrl: String(elements.startUrl.value || "").trim(),
+    activeUrl,
+    activeTool: state.activeTool,
+    simpleMode: state.simpleMode
+  });
+  const domainHintResult = applyDomainAutonomyHintToPlan(plan, {
+    startUrl: String(elements.startUrl.value || "").trim(),
+    activeUrl
+  });
+  if (domainHintResult.applied && domainHintResult.plan) {
+    plan = domainHintResult.plan;
+    setListAutoDetectStatus("Domain memory: this site runs better with Point & Follow, applying guided strategy.");
+  }
+  cacheOrchestrationPlan(plan);
+  setOrchestrationPhase(plan, "intent_parse", "Command understood. Building autonomous plan...");
+
+  if (plan.strategy === ORCHESTRATION_STRATEGIES.ACCESS_ONLY) {
+    setOrchestrationPhase(plan, "access_preflight", "Preparing browser access...");
     await onSetupAccess({
       includeApi: false,
       includeDownloads: false,
@@ -5646,17 +6696,30 @@ async function onIntentCommandRun() {
       silent: false,
       preferFullHostAccess: true
     });
+    setStatus(AUTOMATION_STATES.IDLE);
     return;
   }
 
-  if (intent.wantsExport && !intent.wantsExtract) {
+  if (plan.strategy === ORCHESTRATION_STRATEGIES.EXPORT_ONLY) {
+    setOrchestrationPhase(plan, "export_finalize", `Preparing ${intent.exportFormat.toUpperCase()} export...`);
     elements.exportFormat.value = intent.exportFormat;
     await onExportFile();
+    setStatus(AUTOMATION_STATES.IDLE);
     return;
   }
 
-  if (intent.wantsPointFollow) {
-    await onPointAndFollow();
+  if (plan.strategy === ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED) {
+    await ensureOrchestrationTargetUrl(plan);
+    const strategyLine = plan.domainHintApplied
+      ? "Strategy selected: guided Point & Follow (domain memory)"
+      : "Strategy selected: guided Point & Follow";
+    setOrchestrationPhase(plan, "strategy_selection", strategyLine);
+    const guidedReady = await onPointAndFollow();
+    if (!guidedReady) {
+      setStatus(AUTOMATION_STATES.ERROR);
+      return;
+    }
+    setStatus(AUTOMATION_STATES.IDLE);
     return;
   }
 
@@ -5669,27 +6732,284 @@ async function onIntentCommandRun() {
       state.intentAutoExportFormat = "csv";
     }
 
+    await ensureOrchestrationTargetUrl(plan);
+    const strategyLabel =
+      plan.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT
+        ? "Google Maps autopilot"
+        : plan.strategy === ORCHESTRATION_STRATEGIES.PAGE_AUTOPILOT
+          ? "page details autopilot"
+          : "list autodetect autopilot";
+    setOrchestrationPhase(plan, "strategy_selection", `Strategy selected: ${strategyLabel}`);
+
     await onQuickExtract({
-      forceMapsExhaustive: intent.wantsMaps || intent.wantsExhaustive
+      forceMapsExhaustive: intent.wantsMaps || intent.wantsExhaustive,
+      autonomousPlan: plan,
+      intent
     });
     return;
   }
 
-  setListAutoDetectStatus("Command not recognized. Try: extract all in this search until no more.", {
+  setListAutoDetectStatus("Command not recognized. Try: find home service businesses in Miami.", {
     error: true
   });
+  setStatus(AUTOMATION_STATES.IDLE);
 }
 
 async function onQuickExtract(options = {}) {
+  const plan = options?.autonomousPlan || null;
+  const commandText = String(elements.intentCommandInput?.value || "").trim();
+  const intent = options?.intent || (commandText ? parseIntentCommand(commandText) : {});
+  state.intentAutoMapsDetailEnrichPending = false;
+  state.intentAutoMapsDetailEnrichAutomationId = null;
+  state.intentAutoListUrlEnrichPending = false;
+  state.intentAutoListUrlEnrichAutomationId = null;
+  const fallbackEventBase = {
+    runnerType: String(elements.runnerType.value || "").trim(),
+    toolId: state.activeTool
+  };
+  let domainHintCandidates = [
+    String(plan?.targetUrl || "").trim(),
+    String(plan?.discoveredUrl || "").trim(),
+    String(elements.startUrl.value || "").trim()
+  ];
+  const rememberDomainHint = (strategy, reasonText = "") =>
+    rememberDomainAutonomyHint(strategy, {
+      reason: reasonText,
+      urlCandidates: domainHintCandidates
+    });
+
+  const runPointFollowFallback = async ({ fromStrategy = "", reasonText = "", startOptions = null } = {}) => {
+    if (plan) {
+      setOrchestrationPhase(plan, "strategy_selection", "Fallback active: switching to Point & Follow guidance");
+      setOrchestrationPhase(plan, "automation_start", "Waiting for your click to guide extraction...");
+    }
+    rememberDomainHint(
+      ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+      reasonText ? `point_follow_required:${reasonText}` : "point_follow_required"
+    );
+    const prefix = reasonText ? `${reasonText}. ` : "";
+    setListAutoDetectStatus(`${prefix}Starting Point & Follow guidance...`);
+    const guidedReady = await onPointAndFollow({
+      startOptions
+    });
+    if (!guidedReady) {
+      return false;
+    }
+    rememberDomainHint(
+      ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+      reasonText ? `point_follow_ready:${reasonText}` : "point_follow_ready"
+    );
+    trackUiEvent("quick_extract_fallback", {
+      ...fallbackEventBase,
+      fromStrategy: fromStrategy || "unknown",
+      toStrategy: "point_follow",
+      reason: String(reasonText || "").trim()
+    });
+    return true;
+  };
+
+  const runListAutodetectAutopilot = async ({ asFallback = false, fromStrategy = "", reasonText = "" } = {}) => {
+    if (asFallback && plan) {
+      setOrchestrationPhase(plan, "strategy_selection", "Fallback active: trying list autodetect autopilot");
+    }
+    const listAutopilotOverrides = buildListAutopilotOverridesFromIntent(intent);
+
+    if (elements.runnerType.value !== RUNNER_TYPES.LIST_EXTRACTOR) {
+      applyToolPreset("list", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      updateRunnerUi();
+    }
+
+    const hasManualListSetup = Boolean(String(elements.containerSelector.value || "").trim()) && state.listFields.length > 0;
+    if (!hasManualListSetup) {
+      if (asFallback) {
+        const prefix = reasonText ? `Primary strategy failed (${reasonText}). ` : "";
+        setListAutoDetectStatus(`${prefix}Trying list autodetect fallback...`);
+      }
+      const detected = await onListAutoDetect();
+      if (!detected) {
+        rememberDomainHint(
+          ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+          "autodetect_failed_requires_guidance"
+        );
+        return runPointFollowFallback({
+          fromStrategy: asFallback ? "list_autodetect_fallback" : fromStrategy || "list_autodetect",
+          reasonText: "Auto-detect needs guidance",
+          startOptions: {
+            list: {
+              loadMore: {
+                attempts: listAutopilotOverrides.attempts,
+                noChangeThreshold: listAutopilotOverrides.noChangeThreshold,
+                maxRows: listAutopilotOverrides.maxRows,
+                untilNoMore: listAutopilotOverrides.untilNoMore,
+                maxRoundsSafety: listAutopilotOverrides.maxRoundsSafety,
+                autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+                autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+                hardRoundCap: listAutopilotOverrides.hardRoundCap,
+                hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+                hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+                hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit
+              }
+            }
+          }
+        });
+      }
+    }
+
+    if (plan) {
+      setOrchestrationPhase(
+        plan,
+        "automation_start",
+        asFallback ? "Fallback active: starting list autodetect autopilot..." : "Starting list autodetect autopilot..."
+      );
+    }
+    const paginationAutoContinue = resolveSmartPaginationAutoContinue(listAutopilotOverrides, plan);
+    if (paginationAutoContinue?.enabled) {
+      appendLog("quick extract pagination auto-continue", paginationAutoContinue);
+      trackUiEvent("quick_extract_pagination_autocontinue_enabled", {
+        strategy: asFallback ? "list_autodetect_fallback" : plan?.strategy || "list_autodetect",
+        source: paginationAutoContinue.source,
+        applied: Boolean(paginationAutoContinue.applied),
+        nextLinkSelector: paginationAutoContinue.nextLinkSelector
+      });
+    }
+    const targetStatusSuffix = listAutopilotOverrides.hasTarget
+      ? ` Targeting first ${listAutopilotOverrides.maxRows} results.`
+      : listAutopilotOverrides.exhaustive
+        ? " Exhaustive mode enabled: running until no more results."
+        : listAutopilotOverrides.smartExhaustiveDefault
+          ? " Smart mode default: running until no more results."
+        : "";
+    const paginationStatusSuffix = paginationAutoContinue?.enabled ? " Auto-pagination enabled." : "";
+    const segmentationStatusSuffix = listAutopilotOverrides.autoContinueSegments
+      ? ` Segmented auto-continue enabled (${listAutopilotOverrides.autoContinueMaxSegments} segments safety).`
+      : "";
+    const hardCapChainStatusSuffix = listAutopilotOverrides.hardCapAutoContinue
+      ? ` Hard-cap auto-resume enabled (${listAutopilotOverrides.hardCapAutoContinueMaxChains} chains).`
+      : "";
+    setListAutoDetectStatus(
+      `${asFallback ? "Fallback: starting list extraction..." : "Quick extract starting..."}${targetStatusSuffix}${paginationStatusSuffix}${segmentationStatusSuffix}${hardCapChainStatusSuffix}`
+    );
+    const started = await onStart({
+      list: {
+        loadMore: {
+          attempts: listAutopilotOverrides.attempts,
+          noChangeThreshold: listAutopilotOverrides.noChangeThreshold,
+          maxRows: listAutopilotOverrides.maxRows,
+          untilNoMore: listAutopilotOverrides.untilNoMore,
+          maxRoundsSafety: listAutopilotOverrides.maxRoundsSafety,
+          autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+          autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+          hardRoundCap: listAutopilotOverrides.hardRoundCap,
+          hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+          hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+          hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit
+        }
+      }
+    });
+    if (!started) {
+      const startError = state.lastStartError || "List extraction could not start.";
+      rememberDomainHint(
+        ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED,
+        startError ? `list_start_failed:${startError}` : "list_start_failed"
+      );
+      return runPointFollowFallback({
+        fromStrategy: asFallback ? "list_autodetect_fallback" : fromStrategy || "list_autodetect",
+        reasonText: startError,
+        startOptions: {
+          list: {
+            loadMore: {
+              attempts: listAutopilotOverrides.attempts,
+              noChangeThreshold: listAutopilotOverrides.noChangeThreshold,
+              maxRows: listAutopilotOverrides.maxRows,
+              untilNoMore: listAutopilotOverrides.untilNoMore,
+              maxRoundsSafety: listAutopilotOverrides.maxRoundsSafety,
+              autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+              autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+              hardRoundCap: listAutopilotOverrides.hardRoundCap,
+              hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+              hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+              hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit
+            }
+          }
+        }
+      });
+    }
+    const listAutoEnrichEligible = !(intent?.wantsMaps || intent?.wantsLocalLeads || plan?.mapsMode);
+    state.intentAutoListUrlEnrichPending = listAutoEnrichEligible;
+    state.intentAutoListUrlEnrichAutomationId = null;
+    rememberDomainHint(
+      ORCHESTRATION_STRATEGIES.LIST_AUTODETECT_AUTOPILOT,
+      asFallback ? "list_autodetect_fallback_started" : "list_autodetect_started"
+    );
+
+    if (asFallback) {
+      trackUiEvent("quick_extract_fallback", {
+        ...fallbackEventBase,
+        fromStrategy: fromStrategy || "unknown",
+        toStrategy: "list_autodetect",
+        reason: String(reasonText || "").trim()
+      });
+    }
+    if (plan) {
+      setOrchestrationPhase(plan, "monitoring", "List autopilot running. Collecting fresh results...");
+    }
+    setListAutoDetectStatus("Quick extract running. Open DATA to view rows.");
+    trackUiEvent("quick_extract_started", {
+      strategy: asFallback ? "list_autodetect_fallback" : plan?.strategy || "list_autodetect",
+      runnerType: elements.runnerType.value,
+      toolId: state.activeTool,
+      resultTarget: listAutopilotOverrides.maxRows,
+      untilNoMore: listAutopilotOverrides.untilNoMore,
+      smartExhaustiveDefault: listAutopilotOverrides.smartExhaustiveDefault,
+      autoContinueSegments: listAutopilotOverrides.autoContinueSegments,
+      autoContinueMaxSegments: listAutopilotOverrides.autoContinueMaxSegments,
+      hardRoundCap: listAutopilotOverrides.hardRoundCap,
+      hardCapAutoContinue: listAutopilotOverrides.hardCapAutoContinue,
+      hardCapAutoContinueMaxChains: listAutopilotOverrides.hardCapAutoContinueMaxChains,
+      hardRoundAbsoluteLimit: listAutopilotOverrides.hardRoundAbsoluteLimit,
+      paginationAutoContinueEnabled: Boolean(paginationAutoContinue?.enabled),
+      paginationAutoContinueApplied: Boolean(paginationAutoContinue?.applied),
+      paginationNextLinkSelector: String(paginationAutoContinue?.nextLinkSelector || ""),
+      autoUrlEnrichmentPlanned: state.intentAutoListUrlEnrichPending
+    });
+    return true;
+  };
+
   try {
     await maybeHydrateStartUrlFromActiveTab({
       force: false
     });
-    const startUrl = String(elements.startUrl.value || "").trim();
+    let startUrl = String(elements.startUrl.value || "").trim();
+    const discoveredUrl = String(plan?.discoveredUrl || "").trim();
+    const isDiscoveredMapsUrl =
+      discoveredUrl.toLowerCase().includes("google.com/maps") || discoveredUrl.toLowerCase().includes("maps.google.");
+    if (
+      plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT &&
+      isDiscoveredMapsUrl &&
+      (!startUrl ||
+        (!startUrl.toLowerCase().includes("google.com/maps") && !startUrl.toLowerCase().includes("maps.google.")))
+    ) {
+      startUrl = discoveredUrl;
+      elements.startUrl.value = startUrl;
+    }
+    domainHintCandidates = [
+      startUrl,
+      String(plan?.targetUrl || "").trim(),
+      String(plan?.discoveredUrl || "").trim(),
+      String(elements.startUrl.value || "").trim()
+    ];
+
     if (!startUrl) {
       throw new Error("Start URL is required");
     }
 
+    if (plan) {
+      setOrchestrationPhase(plan, "access_preflight", "Preparing browser access...");
+    }
     const setup = await onSetupAccess({
       includeApi: false,
       includeDownloads: false,
@@ -5701,8 +7021,67 @@ async function onQuickExtract(options = {}) {
       throw new Error("Access was denied for this site");
     }
 
+    if (plan?.strategy === ORCHESTRATION_STRATEGIES.PAGE_AUTOPILOT) {
+      applyToolPreset("page_details", {
+        navigate: false,
+        forceWelcome: false,
+        track: false
+      });
+      elements.pageUrlSourceMode.value = URL_SOURCE_MODES.MANUAL;
+      elements.pageManualUrls.value = startUrl;
+
+      if (intent.wantsMetadata) {
+        setRunnerTypeIfAvailable(RUNNER_TYPES.METADATA_EXTRACTOR);
+      } else {
+        setRunnerTypeIfAvailable(RUNNER_TYPES.PAGE_EXTRACTOR);
+        elements.pageActionType.value = resolveIntentPageActionType(intent);
+      }
+
+      updatePageSourceUi();
+      updatePageActionUi();
+      updateRunnerUi();
+
+      if (plan) {
+        setOrchestrationPhase(plan, "automation_start", "Starting page autopilot...");
+      }
+      setListAutoDetectStatus("Quick extract: page autopilot starting...");
+      const started = await onStart();
+      if (!started) {
+        const fallbackStarted = await runListAutodetectAutopilot({
+          asFallback: true,
+          fromStrategy: "page_autopilot",
+          reasonText: state.lastStartError || "Page extraction could not start"
+        });
+        if (fallbackStarted) {
+          return;
+        }
+        throw new Error(state.lastStartError || "Page extraction could not start.");
+      }
+      if (plan) {
+        setOrchestrationPhase(plan, "monitoring", "Page autopilot running. Collecting fresh results...");
+      }
+      setListAutoDetectStatus("Page autopilot running. Open DATA to view rows.");
+      trackUiEvent("quick_extract_started", {
+        strategy: "page_autopilot",
+        runnerType: elements.runnerType.value,
+        toolId: state.activeTool
+      });
+      return;
+    }
+
     const lowerUrl = startUrl.toLowerCase();
     const isGoogleMaps = lowerUrl.includes("google.com/maps") || lowerUrl.includes("maps.google.");
+    if (plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT && !isGoogleMaps) {
+      const fallbackStarted = await runListAutodetectAutopilot({
+        asFallback: true,
+        fromStrategy: "maps_autopilot",
+        reasonText: "Google Maps URL not available"
+      });
+      if (fallbackStarted) {
+        return;
+      }
+      throw new Error("Maps autopilot needs a Google Maps target URL. Add a location query in your command.");
+    }
     if (isGoogleMaps) {
       applyToolPreset("page_details", {
         navigate: false,
@@ -5730,49 +7109,62 @@ async function onQuickExtract(options = {}) {
       updatePageActionUi();
       updateRunnerUi();
 
-      setListAutoDetectStatus("Quick extract: Google Maps detected. Starting maps extraction...");
-      const started = await onStart();
+      if (plan) {
+        setOrchestrationPhase(plan, "automation_start", "Starting Google Maps autopilot...");
+      }
+      const mapsTarget = resolveIntentResultTarget(intent);
+      const mapsSmartExhaustiveDefault = mapsTarget <= 0;
+      const mapsMaxScrollSteps = mapsSmartExhaustiveDefault ? 500 : 220;
+      const mapsTargetSuffix = mapsTarget > 0 ? ` Targeting first ${mapsTarget} map results.` : " Smart mode default: running until no more map results.";
+      setListAutoDetectStatus(`Quick extract: Google Maps detected. Starting maps extraction...${mapsTargetSuffix}`);
+      state.intentAutoMapsDetailEnrichPending = true;
+      state.intentAutoMapsDetailEnrichAutomationId = null;
+      const started = await onStart({
+        page: {
+          mapsOptions: {
+            maxResults: mapsTarget,
+            untilNoMore: true,
+            maxScrollSteps: mapsMaxScrollSteps
+          }
+        }
+      });
       if (!started) {
+        state.intentAutoMapsDetailEnrichPending = false;
+        state.intentAutoMapsDetailEnrichAutomationId = null;
+        const fallbackStarted = await runListAutodetectAutopilot({
+          asFallback: true,
+          fromStrategy: plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT ? "maps_autopilot" : "google_maps",
+          reasonText: state.lastStartError || "Google Maps extraction could not start"
+        });
+        if (fallbackStarted) {
+          return;
+        }
         throw new Error(state.lastStartError || "Google Maps extraction could not start.");
+      }
+      if (plan) {
+        setOrchestrationPhase(plan, "monitoring", "Google Maps autopilot running. Collecting fresh results...");
       }
       setListAutoDetectStatus("Google Maps extraction running. DATA will open when complete.");
       trackUiEvent("quick_extract_started", {
-        strategy: "google_maps",
+        strategy: plan?.strategy === ORCHESTRATION_STRATEGIES.MAPS_AUTOPILOT ? "maps_autopilot" : "google_maps",
         runnerType: elements.runnerType.value,
-        toolId: state.activeTool
+        toolId: state.activeTool,
+        resultTarget: mapsTarget,
+        untilNoMore: true,
+        maxScrollSteps: mapsMaxScrollSteps,
+        smartExhaustiveDefault: mapsSmartExhaustiveDefault,
+        autoMapDetailsEnrichPlanned: state.intentAutoMapsDetailEnrichPending
       });
       return;
     }
 
-    if (elements.runnerType.value !== RUNNER_TYPES.LIST_EXTRACTOR) {
-      applyToolPreset("list", {
-        navigate: false,
-        forceWelcome: false,
-        track: false
-      });
-      updateRunnerUi();
-    }
-
-    const hasManualListSetup = Boolean(String(elements.containerSelector.value || "").trim()) && state.listFields.length > 0;
-    if (!hasManualListSetup) {
-      const detected = await onListAutoDetect();
-      if (!detected) {
-        setListAutoDetectStatus("Auto-detect needs help. Starting Point & Follow...");
-        await onPointAndFollow();
-        return;
-      }
-    }
-
-    setListAutoDetectStatus("Quick extract starting...");
-    const started = await onStart();
-    if (!started) {
+    const listStarted = await runListAutodetectAutopilot({
+      asFallback: false,
+      fromStrategy: plan?.strategy || "list_autodetect"
+    });
+    if (!listStarted) {
       throw new Error(state.lastStartError || "Extraction could not start. Check access permissions and retry.");
     }
-    setListAutoDetectStatus("Quick extract running. Open DATA to view rows.");
-    trackUiEvent("quick_extract_started", {
-      runnerType: elements.runnerType.value,
-      toolId: state.activeTool
-    });
   } catch (error) {
     const message = friendlyErrorText(error?.message || "");
     setListAutoDetectStatus(`Quick extract failed: ${message}`, {
@@ -5789,7 +7181,7 @@ function normalizePickedContainerSelector(selector) {
   return raw.replace(/:nth-of-type\(\d+\)/g, "").replace(/\s{2,}/g, " ").trim();
 }
 
-async function onPointAndFollow() {
+async function onPointAndFollow(options = {}) {
   try {
     await maybeHydrateStartUrlFromActiveTab({
       force: false
@@ -5811,29 +7203,45 @@ async function onPointAndFollow() {
     }
 
     state.pointFollowActive = true;
+    const source = options && typeof options === "object" ? options : {};
+    const startOptions = source.startOptions && typeof source.startOptions === "object" ? source.startOptions : null;
+    state.pointFollowStartOptions = startOptions;
     applyToolPreset("list", {
       navigate: false,
       forceWelcome: false,
       track: false
     });
     setListAutoDetectStatus("Point & Follow: click one data item on the page...");
-    await startPicker({
+    const started = await startPicker({
       mode: PICKER_MODES.CONTAINER,
       multiSelect: false,
       prompt: "Click one value you want to extract. Datascrap will infer the repeating pattern.",
-      purpose: "guided_seed"
+      purpose: "guided_seed",
+      preferredUrl: startUrl
     });
+    if (!started?.ok) {
+      throw new Error(started?.error || "Unable to start picker");
+    }
+    rememberDomainAutonomyHint(ORCHESTRATION_STRATEGIES.POINT_FOLLOW_GUIDED, {
+      reason: "point_follow_ready",
+      urlCandidates: [startUrl, String(elements.startUrl.value || "").trim()]
+    });
+    setStatus(AUTOMATION_STATES.IDLE);
+    return true;
   } catch (error) {
     state.pointFollowActive = false;
+    state.pointFollowStartOptions = null;
     const message = friendlyErrorText(error?.message || "");
     setListAutoDetectStatus(`Point & Follow failed: ${message}`, {
       error: true
     });
     appendLog(`point and follow failed: ${message}`);
+    setStatus(AUTOMATION_STATES.ERROR);
+    return false;
   }
 }
 
-async function onStart() {
+async function onStart(options = {}) {
   try {
     state.lastStartError = "";
     await maybeHydrateStartUrlFromActiveTab({
@@ -5841,12 +7249,15 @@ async function onStart() {
     });
     const runnerType = elements.runnerType.value;
     const actionType = String(elements.pageActionType.value || PAGE_ACTION_TYPES.EXTRACT_PAGES).trim();
+    const source = options && typeof options === "object" ? options : {};
+    const listOptions = source.list && typeof source.list === "object" ? source.list : {};
+    const pageOptions = source.page && typeof source.page === "object" ? source.page : {};
     const config =
       runnerType === RUNNER_TYPES.LIST_EXTRACTOR
-        ? buildListAutomationConfig()
+        ? buildListAutomationConfig(listOptions)
         : runnerType === RUNNER_TYPES.METADATA_EXTRACTOR
           ? await buildMetadataAutomationConfig()
-          : await buildPageAutomationConfig();
+          : await buildPageAutomationConfig(pageOptions);
 
     const payload = await sendMessage(MESSAGE_TYPES.START_REQUEST, {
       runnerType,
@@ -6503,6 +7914,7 @@ chrome.runtime.onMessage.addListener((message) => {
 renderListFields();
 renderPageFields();
 state.welcomeVisits = loadWelcomeVisits();
+state.domainAutonomyHints = loadDomainAutonomyHintsFromStorage();
 state.templates = loadTemplatesFromStorage();
 state.speedProfiles = loadSpeedProfilesFromStorage();
 state.reliabilitySettings = loadReliabilitySettingsFromStorage();
@@ -6531,6 +7943,7 @@ setSetupAccessStatus("Access setup ready");
 if (elements.quickFlowStatusLine) {
   elements.quickFlowStatusLine.textContent = "Quick flow ready";
 }
+renderStatusPill();
 updatePageRecoveryPreview();
 updateIntegrationTestUi();
 renderImagePreview();

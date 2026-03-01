@@ -152,13 +152,22 @@
             <input
               id="intent-command-input"
               type="text"
-              placeholder="Type command: extract all in this search until no more"
+              placeholder="Type command: find home service businesses in Miami"
             />
             <button id="intent-run-btn" class="btn btn-primary" type="button">Run Command</button>
           </div>
           <p id="intent-command-hint" class="field-meta">
-            One command controls extraction. Example: extract all in this search until no more.
+            One command controls extraction. Example: find home service businesses in Miami.
           </p>
+          <div id="quick-flow-progress" class="quick-flow-progress">
+            <div id="quick-flow-progress-ring" class="quick-flow-progress-ring" role="img" aria-label="Automation progress">
+              <span id="quick-flow-progress-pct" class="quick-flow-progress-pct">0%</span>
+            </div>
+            <div class="quick-flow-progress-copy">
+              <span class="field-meta">Autonomous progress</span>
+              <strong id="quick-flow-progress-phase" class="quick-flow-progress-phase">Ready to run</strong>
+            </div>
+          </div>
           <div class="actions actions-4">
             <button id="setup-access-btn" class="btn btn-ghost" type="button">Enable All Access</button>
             <button id="quick-extract-btn" class="btn btn-primary" type="button">Quick Extract</button>

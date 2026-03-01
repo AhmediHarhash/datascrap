@@ -30,7 +30,7 @@ function getTargets() {
 
 const thresholds = {
   maxDueJobs: numberEnv("MAX_DUE_JOBS", 200),
-  maxDeadLetterJobs: numberEnv("MAX_DEAD_LETTER_JOBS", 0),
+  maxDeadLetterJobs: numberEnv("MAX_DEAD_LETTER_JOBS", 3),
   maxDueSchedules: numberEnv("MAX_DUE_SCHEDULES", 200)
 };
 
