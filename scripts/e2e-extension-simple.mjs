@@ -1,8 +1,11 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
-import { waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
+import {
+  createRunProfileDir,
+  removeDirWithRetries,
+  waitForExtensionServiceWorker
+} from "./e2e-profile-utils.mjs";
 
 const KEEP_PROFILE = String(process.env.E2E_KEEP_PROFILE || "").trim() === "1";
 
@@ -16,30 +19,6 @@ function parseExtensionId(serviceWorkerUrl) {
   const raw = String(serviceWorkerUrl || "").trim();
   const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
   return match ? match[1] : "";
-}
-
-function createRunProfileDir() {
-  const runId = `${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
-  return resolve(".tmp", `pw-extension-profile-simple-${runId}`);
-}
-
-async function removeDirWithRetries(dirPath, attempts = 6) {
-  for (let index = 0; index < attempts; index += 1) {
-    try {
-      await rm(dirPath, {
-        recursive: true,
-        force: true
-      });
-      return;
-    } catch (error) {
-      const code = String(error?.code || "");
-      const canRetry = code === "EBUSY" || code === "EPERM" || code === "ENOTEMPTY";
-      if (!canRetry || index === attempts - 1) {
-        throw error;
-      }
-      await delay(120 * (index + 1));
-    }
-  }
 }
 
 async function readUiState(page) {
