@@ -12,6 +12,98 @@ export function createRunProfileDir(tag = "e2e") {
   return resolve(".tmp", `pw-extension-profile-${safeTag}-${runId}`);
 }
 
+export function parseExtensionId(serviceWorkerUrl) {
+  const raw = String(serviceWorkerUrl || "").trim();
+  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
+  return match ? match[1] : "";
+}
+
+export async function patchPermissionApis(page, options = {}) {
+  const includeChangeFlags = Boolean(options?.includeChangeFlags);
+  return page.evaluate(({ includeChangeFlags: includeFlags }) => {
+    if (!globalThis.chrome?.permissions) {
+      return {
+        patched: false,
+        reason: "chrome.permissions unavailable"
+      };
+    }
+    try {
+      const originalContains = globalThis.chrome.permissions.contains;
+      const originalRequest = globalThis.chrome.permissions.request;
+      globalThis.chrome.permissions.contains = (_details, callback) => {
+        if (typeof callback === "function") callback(true);
+      };
+      globalThis.chrome.permissions.request = (_details, callback) => {
+        if (typeof callback === "function") callback(true);
+      };
+      const result = {
+        patched: true
+      };
+      if (includeFlags) {
+        result.containsChanged = originalContains !== globalThis.chrome.permissions.contains;
+        result.requestChanged = originalRequest !== globalThis.chrome.permissions.request;
+      }
+      return result;
+    } catch (error) {
+      return {
+        patched: false,
+        reason: String(error?.message || error)
+      };
+    }
+  }, { includeChangeFlags });
+}
+
+export function parseHistoryRowCount(historyText, tableRowCount = 0) {
+  const raw = String(historyText || "");
+  const byPipe = raw.match(/\brows\s+(\d+)\b/i);
+  if (byPipe?.[1]) return Number(byPipe[1]);
+  const byParen = raw.match(/\((\d+)\s+rows\)/i);
+  if (byParen?.[1]) return Number(byParen[1]);
+  return Math.max(0, Number(tableRowCount || 0));
+}
+
+export function parseIntegerEnv(rawValue, { name, min, max, fallback }) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return fallback;
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`${name} must be an integer in ${min}-${max}, received "${raw}"`);
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be in ${min}-${max}, received "${raw}"`);
+  }
+  return parsed;
+}
+
+export function parseLastLogFieldString(logText = "", fieldName = "") {
+  const field = String(fieldName || "").trim();
+  if (!field) return "";
+  const raw = String(logText || "");
+  const pattern = new RegExp(`"${field}"\\s*:\\s*"([^"]+)"`, "g");
+  let match = null;
+  let last = "";
+  while ((match = pattern.exec(raw)) !== null) {
+    last = String(match[1] || "").trim().toLowerCase();
+  }
+  return last;
+}
+
+export function parseLastLogFieldNumber(logText = "", fieldName = "", fallback = 0) {
+  const field = String(fieldName || "").trim();
+  if (!field) return fallback;
+  const raw = String(logText || "");
+  const pattern = new RegExp(`"${field}"\\s*:\\s*(\\d+)`, "g");
+  let match = null;
+  let last = fallback;
+  while ((match = pattern.exec(raw)) !== null) {
+    const parsed = Number(match[1]);
+    if (Number.isFinite(parsed)) {
+      last = parsed;
+    }
+  }
+  return last;
+}
+
 export async function removeDirWithRetries(dirPath, attempts = 6) {
   const totalAttempts = Number.isFinite(Number(attempts)) ? Math.max(1, Number(attempts)) : 6;
   for (let index = 0; index < totalAttempts; index += 1) {

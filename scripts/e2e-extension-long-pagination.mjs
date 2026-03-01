@@ -2,7 +2,17 @@ import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
+import {
+  createRunProfileDir,
+  parseLastLogFieldNumber,
+  parseLastLogFieldString,
+  patchPermissionApis,
+  parseHistoryRowCount,
+  parseIntegerEnv,
+  parseExtensionId,
+  removeDirWithRetries,
+  waitForExtensionServiceWorker
+} from "./e2e-profile-utils.mjs";
 
 const KEEP_PROFILE = String(process.env.E2E_KEEP_PROFILE || "").trim() === "1";
 const PATCH_PERMISSIONS = String(process.env.E2E_PATCH_PERMISSIONS || "1").trim() !== "0";
@@ -44,25 +54,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseIntegerEnv(rawValue, { name, min, max, fallback }) {
-  const raw = String(rawValue || "").trim();
-  if (!raw) return fallback;
-  if (!/^\d+$/.test(raw)) {
-    throw new Error(`${name} must be an integer in ${min}-${max}, received "${raw}"`);
-  }
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
-    throw new Error(`${name} must be in ${min}-${max}, received "${raw}"`);
-  }
-  return parsed;
-}
-
-function parseExtensionId(serviceWorkerUrl) {
-  const raw = String(serviceWorkerUrl || "").trim();
-  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
-  return match ? match[1] : "";
 }
 
 function buildFixtureHtml(totalRows, batchSize) {
@@ -196,33 +187,6 @@ async function stopFixtureServer(server) {
   });
 }
 
-async function patchPermissionApis(page) {
-  return page.evaluate(() => {
-    if (!globalThis.chrome?.permissions) {
-      return {
-        patched: false,
-        reason: "chrome.permissions unavailable"
-      };
-    }
-    try {
-      globalThis.chrome.permissions.contains = (_details, callback) => {
-        if (typeof callback === "function") callback(true);
-      };
-      globalThis.chrome.permissions.request = (_details, callback) => {
-        if (typeof callback === "function") callback(true);
-      };
-      return {
-        patched: true
-      };
-    } catch (error) {
-      return {
-        patched: false,
-        reason: String(error?.message || error)
-      };
-    }
-  });
-}
-
 async function snapshotUi(page) {
   return page.evaluate(({ eventTailLimit }) => {
     const text = (selector) => String(document.querySelector(selector)?.textContent || "").trim();
@@ -254,40 +218,6 @@ async function snapshotUi(page) {
       eventLogTail
     };
   }, { eventTailLimit: EVENT_LOG_TAIL_MAX });
-}
-
-function parseHistoryRowCount(historyText, tableRowCount = 0) {
-  const raw = String(historyText || "");
-  const byPipe = raw.match(/\brows\s+(\d+)\b/i);
-  if (byPipe?.[1]) return Number(byPipe[1]);
-  const byParen = raw.match(/\((\d+)\s+rows\)/i);
-  if (byParen?.[1]) return Number(byParen[1]);
-  return Math.max(0, Number(tableRowCount || 0));
-}
-
-function parseLastTerminationReason(logText = "") {
-  const raw = String(logText || "");
-  const pattern = /"terminationReason"\s*:\s*"([^"]+)"/g;
-  let match = null;
-  let last = "";
-  while ((match = pattern.exec(raw)) !== null) {
-    last = String(match[1] || "").trim().toLowerCase();
-  }
-  return last;
-}
-
-function parseLastAutoContinueSegmentsUsed(logText = "") {
-  const raw = String(logText || "");
-  const pattern = /"autoContinueSegmentsUsed"\s*:\s*(\d+)/g;
-  let match = null;
-  let last = 0;
-  while ((match = pattern.exec(raw)) !== null) {
-    const parsed = Number(match[1]);
-    if (Number.isFinite(parsed)) {
-      last = parsed;
-    }
-  }
-  return last;
 }
 
 async function waitForTerminalAndRows(page, timeoutMs = 360000) {
@@ -421,8 +351,8 @@ async function main() {
     await panelPage.waitForTimeout(1500);
     const afterRun = await snapshotUi(panelPage);
     const finalRowCount = parseHistoryRowCount(afterRun.selectedHistoryText, afterRun.tableRowCount);
-    const terminationReason = parseLastTerminationReason(afterRun.eventLogTail);
-    const autoContinueSegmentsUsed = parseLastAutoContinueSegmentsUsed(afterRun.eventLogTail);
+    const terminationReason = parseLastLogFieldString(afterRun.eventLogTail, "terminationReason");
+    const autoContinueSegmentsUsed = parseLastLogFieldNumber(afterRun.eventLogTail, "autoContinueSegmentsUsed", 0);
     const hardCapConfigured = /"hardCapAutoContinue"\s*:\s*true/i.test(afterRun.eventLogTail);
 
     await panelPage.screenshot({

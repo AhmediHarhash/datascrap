@@ -2,7 +2,14 @@ import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { createRunProfileDir, removeDirWithRetries, waitForExtensionServiceWorker } from "./e2e-profile-utils.mjs";
+import {
+  createRunProfileDir,
+  patchPermissionApis,
+  parseHistoryRowCount,
+  parseExtensionId,
+  removeDirWithRetries,
+  waitForExtensionServiceWorker
+} from "./e2e-profile-utils.mjs";
 
 const KEEP_PROFILE = String(process.env.E2E_KEEP_PROFILE || "").trim() === "1";
 const PATCH_PERMISSIONS = String(process.env.E2E_PATCH_PERMISSIONS || "1").trim() !== "0";
@@ -21,12 +28,6 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function parseExtensionId(serviceWorkerUrl) {
-  const raw = String(serviceWorkerUrl || "").trim();
-  const match = raw.match(/^chrome-extension:\/\/([^/]+)\//i);
-  return match ? match[1] : "";
 }
 
 function parseTargetResultsFromEnv(rawValue) {
@@ -181,33 +182,6 @@ async function stopFixtureServer(server) {
   });
 }
 
-async function patchPermissionApis(page) {
-  return page.evaluate(() => {
-    if (!globalThis.chrome?.permissions) {
-      return {
-        patched: false,
-        reason: "chrome.permissions unavailable"
-      };
-    }
-    try {
-      globalThis.chrome.permissions.contains = (_details, callback) => {
-        if (typeof callback === "function") callback(true);
-      };
-      globalThis.chrome.permissions.request = (_details, callback) => {
-        if (typeof callback === "function") callback(true);
-      };
-      return {
-        patched: true
-      };
-    } catch (error) {
-      return {
-        patched: false,
-        reason: String(error?.message || error)
-      };
-    }
-  });
-}
-
 async function snapshotUi(page) {
   return page.evaluate(() => {
     const text = (selector) => String(document.querySelector(selector)?.textContent || "").trim();
@@ -253,15 +227,6 @@ async function waitForEventLogSignal(page, signal, timeoutMs = EVENT_LOG_SIGNAL_
     await page.waitForTimeout(EVENT_LOG_POLL_INTERVAL_MS);
   }
   return false;
-}
-
-function parseHistoryRowCount(historyText, tableRowCount = 0) {
-  const raw = String(historyText || "");
-  const byPipe = raw.match(/\brows\s+(\d+)\b/i);
-  if (byPipe?.[1]) return Number(byPipe[1]);
-  const byParen = raw.match(/\((\d+)\s+rows\)/i);
-  if (byParen?.[1]) return Number(byParen[1]);
-  return Math.max(0, Number(tableRowCount || 0));
 }
 
 async function waitForTerminalAndRows(page, timeoutMs = 120000) {
